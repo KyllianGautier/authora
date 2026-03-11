@@ -1,98 +1,167 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Authora
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Authentication microservice built with NestJS 11, TypeScript, PostgreSQL, and RabbitMQ.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- User registration with email verification
+- Password management with history-based reuse prevention
+- Account deletion with email verification
+- Two-factor authentication (TOTP) with recovery codes
+- JWT-based sign-in with refresh tokens (httpOnly cookie)
+- Asynchronous email notifications via RabbitMQ
+- Automatic revocation of expired one-time tokens (cron job)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Prerequisites
 
-## Project setup
+- Node.js
+- Docker & Docker Compose
+
+## Getting started
+
+1. Start the infrastructure services:
 
 ```bash
-$ npm install
+docker compose up -d
 ```
 
-## Compile and run the project
+2. Install dependencies:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+3. Generate an RSA key pair for JWT signing:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+mkdir -p keys
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/private.pem
+openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 ```
 
-## Deployment
+The `keys/` directory is gitignored. Each environment should have its own key pair.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+4. Copy `.env.example` to `.env` and fill in the values.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+5. Start the application:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The API is available at `http://localhost:3000`. Swagger documentation is served at `/api`.
 
-## Resources
+## Configuration
 
-Check out a few resources that may come in handy when working with NestJS:
+All variables with a default value are optional.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Application
 
-## Support
+| Variable   | Description                            | Default       |
+|------------|----------------------------------------|---------------|
+| `NODE_ENV` | `development`, `production`, or `test` | `development` |
+| `PORT`     | HTTP server port                       | `3000`        |
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Database & messaging
 
-## Stay in touch
+| Variable       | Description             | Default      |
+|----------------|-------------------------|--------------|
+| `HOST`         | Database host (IP)      | *required*   |
+| `DB_PORT`      | Database port           | `5432`       |
+| `DB_USERNAME`  | Database username       | *required*   |
+| `DB_PASSWORD`  | Database password       | *required*   |
+| `DB_NAME`      | Database name           | `authora_db` |
+| `RABBITMQ_URL` | RabbitMQ connection URL | *required*   |
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Security
 
-## License
+| Variable                                              | Description                                                           | Default             |
+|-------------------------------------------------------|-----------------------------------------------------------------------|---------------------|
+| `HASH_SALT_ROUNDS`                                    | bcrypt salt rounds                                                    | `10`                |
+| `EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS`         | Sign-up token lifetime                                                | `86400` (1 day)     |
+| `ACCOUNT_DELETION_TOKEN_EXPIRATION_SECONDS`           | Account deletion token TTL                                            | `3600` (1 hour)     |
+| `TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS`     | 2FA verify token lifetime                                             | `86400` (1 day)     |
+| `TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS`   | 2FA validate token lifetime                                           | `86400` (1 day)     |
+| `TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS`  | 2FA disabling token TTL                                               | `86400` (1 day)     |
+| `JWT_PRIVATE_KEY_PATH`                                | Path to RS256 private key PEM file                                    | *required*          |
+| `JWT_PUBLIC_KEY_PATH`                                 | Path to RS256 public key PEM file                                     | *required*          |
+| `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`                 | Access token lifetime                                                 | `900` (15 min)      |
+| `JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS`          | Refresh token lifetime (rememberMe: false)                            | `86400` (1 day)     |
+| `JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS`           | Refresh token lifetime (rememberMe: true), must be greater than short | `2592000` (30 days) |
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## API endpoints
+
+| Method | Path                                 | Description                     |
+|--------|--------------------------------------|---------------------------------|
+| POST   | `/sign-up`                           | Create a registration           |
+| POST   | `/sign-up/resend-verification-email` | Resend email verification token |
+| POST   | `/sign-up/verify`                    | Verify email and create user    |
+| POST   | `/sign-in`                           | Sign in                         |
+| POST   | `/sign-in/refresh`                   | Refresh access token            |
+| POST   | `/auth/change-password`              | Change user password            |
+| POST   | `/auth/delete-account`               | Request account deletion        |
+| POST   | `/auth/delete-account/verify`        | Verify and delete account       |
+| POST   | `/2fa/setup`                         | Setup two-factor authentication |
+| POST   | `/2fa/verify`                        | Enable two-factor authentication|
+
+## RabbitMQ messages
+
+Authora publishes email notification events to the `authora_email_queue` durable queue. A separate consumer service is expected to process these messages and send the actual emails.
+
+Each message is a JSON object with the following structure:
+
+```json
+{
+  "pattern": "<event-type>",
+  "data": { ... }
+}
+```
+
+### Event types
+
+#### `sign-up-verification`
+
+Published when a user signs up or requests a new verification email.
+
+```json
+{
+  "pattern": "sign-up-verification",
+  "data": {
+    "email": "user@example.com",
+    "token": "a]4f2b..."
+  }
+}
+```
+
+#### `account-deletion-verification`
+
+Published when a user requests account deletion.
+
+```json
+{
+  "pattern": "account-deletion-verification",
+  "data": {
+    "email": "user@example.com",
+    "token": "b7e9c1..."
+  }
+}
+```
+
+## Scripts
+
+```bash
+npm run build          # Build the project
+npm run start:dev      # Start in watch mode
+npm run lint           # Lint and auto-fix
+npm run format         # Format with Prettier
+npm test               # Run unit tests
+npm run test:e2e       # Run e2e tests (requires Docker)
+```
+
+## Testing
+
+End-to-end tests use [Testcontainers](https://testcontainers.com/) to spin up PostgreSQL and RabbitMQ containers automatically. No manual setup is needed beyond having Docker running.
+
+```bash
+npm run test:e2e
+```

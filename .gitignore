@@ -35,6 +35,12 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# JWT keys
+/keys
+
+# Generated docs
+/docs
+
 # dotenv environment variable files
 .env
 .env.development.local
