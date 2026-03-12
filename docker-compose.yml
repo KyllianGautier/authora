@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: authora
+      POSTGRES_PASSWORD: changeit
+      POSTGRES_DB: authora_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - authora
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    networks:
+      - authora
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  pgdata:
+  rabbitmq_data:
+
+networks:
+  authora:
+    driver: overlay
