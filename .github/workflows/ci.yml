@@ -109,7 +109,7 @@ jobs:
 
       - name: Start app and extract OpenAPI spec
         run: |
-          node dist/main &
+          node dist/src/main &
           APP_PID=$!
           sleep 3
           curl -sf http://localhost:3000/api-json -o openapi.json
@@ -175,6 +175,6 @@ jobs:
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
           repository: ${{ vars.DOCKERHUB_USERNAME }}/authora
           readme-filepath: DOCKERHUB.md
