@@ -1,0 +1,31 @@
+# Test infrastructure — started by global-setup.ts, stopped by global-teardown.ts.
+# All values come from .env.test via --env-file passed to docker compose.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${PG_USERNAME}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE}
+    ports:
+      - '${PG_PORT}:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${PG_USERNAME} -d ${PG_DATABASE}']
+      interval: 1s
+      timeout: 5s
+      retries: 30
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    ports:
+      - '${RABBITMQ_PORT}:5672'
+    tmpfs:
+      - /var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 1s
+      timeout: 5s
+      retries: 30

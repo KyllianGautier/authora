@@ -1,7 +1,7 @@
 import { generateKeyPairSync } from 'crypto';
+import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
-import { GenericContainer, Wait } from 'testcontainers';
 import { Client } from 'pg';
 import dotenv from 'dotenv';
 
@@ -31,34 +31,16 @@ function ensureTestKeys() {
 export default async function globalSetup() {
   ensureTestKeys();
 
-  const pgPort = parseInt(process.env.PG_PORT!);
-  const rabbitmqUrl = new URL(process.env.RABBITMQ_URL!);
-  const rabbitmqPort = parseInt(rabbitmqUrl.port);
-
-  // Start containers on fixed ports matching .env.test
-  const postgresContainer = await new GenericContainer('postgres:17')
-    .withEnvironment({
-      POSTGRES_USER: process.env.PG_USERNAME!,
-      POSTGRES_PASSWORD: process.env.PG_PASSWORD!,
-      POSTGRES_DB: process.env.PG_DATABASE!
-    })
-    .withExposedPorts({ container: 5432, host: pgPort })
-    .withWaitStrategy(Wait.forLogMessage('ready to accept connections', 2))
-    .start();
-
-  const rabbitmqContainer = await new GenericContainer('rabbitmq:4')
-    .withExposedPorts({ container: 5672, host: rabbitmqPort })
-    .withWaitStrategy(Wait.forLogMessage('Server startup complete'))
-    .start();
-
-  // Pass container references to global-teardown.ts via globalThis
-  (globalThis as any).__POSTGRES_CONTAINER__ = postgresContainer;
-  (globalThis as any).__RABBITMQ_CONTAINER__ = rabbitmqContainer;
+  // Start test containers and wait for healthchecks to pass
+  execSync(
+    'docker compose -f test/docker-compose.test.yml --env-file .env.test up -d --wait',
+    { stdio: 'inherit' }
+  );
 
   // Create the 'authora' schema (TypeORM synchronize only creates tables, not schemas)
   const pgClient = new Client({
     host: process.env.PG_HOST,
-    port: pgPort,
+    port: parseInt(process.env.PG_PORT!),
     user: process.env.PG_USERNAME,
     password: process.env.PG_PASSWORD,
     database: process.env.PG_DATABASE
