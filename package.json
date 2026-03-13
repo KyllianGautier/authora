@@ -17,7 +17,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand --forceExit"
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand --forceExit",
+    "generate:keys": "bash scripts/generate-keys.sh",
+    "stack:deploy": "env $(grep -v '^#' .env | xargs) docker stack deploy -c develop-stack-compose.yml AUTHORA",
+    "stack:remove": "docker stack rm AUTHORA"
   },
   "dependencies": {
     "@nest-lab/throttler-storage-redis": "^1.2.0",
