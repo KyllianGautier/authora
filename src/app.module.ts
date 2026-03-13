@@ -34,6 +34,8 @@ import { SERVICES } from './service';
         database: config.get('PG_DATABASE'),
         schema: 'authora',
         entities: ENTITIES,
+        migrations: ['dist/src/migration/*.js'],
+        migrationsRun: true,
         synchronize: config.get('NODE_ENV') !== 'production'
       })
     }),
