@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Delay } from '../decorator/delay.decorator';
 import {
   ApiConflictResponse,
   ApiNotFoundResponse,
@@ -19,6 +20,7 @@ export class TwoFactorAuthController {
   constructor(private readonly _twoFactorAuthService: TwoFactorAuthService) {}
 
   @Post('setup')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Setup two-factor authentication' })
   @ApiOkResponse({
@@ -36,6 +38,7 @@ export class TwoFactorAuthController {
   }
 
   @Post('verify')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify and enable two-factor authentication' })
   @ApiOkResponse({

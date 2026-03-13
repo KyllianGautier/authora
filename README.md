@@ -89,6 +89,13 @@ All variables with a default value are optional.
 | `JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS`          | Refresh token lifetime (rememberMe: false)                            | `86400` (1 day)     |
 | `JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS`           | Refresh token lifetime (rememberMe: true), must be greater than short | `2592000` (30 days) |
 
+### Delay
+
+| Variable       | Description                                          | Default |
+|----------------|------------------------------------------------------|---------|
+| `ENDPOINT_DELAY_MIN_MS` | Minimum random response delay in ms  | `200`   |
+| `ENDPOINT_DELAY_MAX_MS` | Maximum random response delay in ms, must be greater than min  | `400`   |
+
 ## API endpoints
 
 | Method | Path                                 | Description                     |

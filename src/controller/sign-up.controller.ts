@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Delay } from '../decorator/delay.decorator';
 import {
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -24,6 +25,7 @@ export class SignUpController {
   constructor(private readonly _signUpService: SignUpService) {}
 
   @Post()
+  @Delay()
   @ApiOperation({ summary: 'Create a registration' })
   @ApiCreatedResponse({
     description: 'Registration created',
@@ -35,6 +37,7 @@ export class SignUpController {
   }
 
   @Post('resend-verification-email')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resend email verification token' })
   @ApiOkResponse({ description: 'Verification email resent' })
@@ -46,6 +49,7 @@ export class SignUpController {
   }
 
   @Post('check-email')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Check if an email is available' })
   @ApiOkResponse({
@@ -59,6 +63,7 @@ export class SignUpController {
   }
 
   @Post('verify')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email and create user' })
   @ApiOkResponse({

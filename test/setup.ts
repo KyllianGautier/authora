@@ -76,6 +76,8 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   process.env.JWT_ACCESS_TOKEN_EXPIRATION_SECONDS = '900';
   process.env.JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS = '86400';
   process.env.JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS = '2592000';
+  process.env.ENDPOINT_DELAY_MIN_MS = '1';
+  process.env.ENDPOINT_DELAY_MAX_MS = '2';
 
   // Load AppModule AFTER env vars are set so ConfigModule.forRoot()
   // reads the correct dynamic container URLs instead of root .env values

@@ -53,5 +53,13 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(1)
     .default(2592000)
-    .greater(Joi.ref('JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS'))
+    .greater(Joi.ref('JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS')),
+
+  // Delay
+  ENDPOINT_DELAY_MIN_MS: Joi.number().integer().min(0).default(200),
+  ENDPOINT_DELAY_MAX_MS: Joi.number()
+    .integer()
+    .min(0)
+    .default(400)
+    .greater(Joi.ref('ENDPOINT_DELAY_MIN_MS'))
 });
