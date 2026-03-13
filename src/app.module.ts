@@ -25,11 +25,12 @@ import { SERVICES } from './service';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.getOrThrow('HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.getOrThrow('DB_USERNAME'),
-        password: config.getOrThrow('DB_PASSWORD'),
-        database: config.get('DB_NAME'),
+        host: config.getOrThrow('PG_HOST'),
+        port: config.get<number>('PG_PORT'),
+        username: config.getOrThrow('PG_USERNAME'),
+        password: config.getOrThrow('PG_PASSWORD'),
+        database: config.get('PG_DATABASE'),
+        schema: 'authora',
         entities: ENTITIES,
         synchronize: config.get('NODE_ENV') !== 'production'
       })

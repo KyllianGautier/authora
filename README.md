@@ -63,17 +63,17 @@ All variables with a default value are optional.
 | `NODE_ENV` | `development`, `production`, or `test` | `development` |
 | `PORT`     | HTTP server port                       | `3000`        |
 
-### Database, messaging & Redis
+### External services
 
-| Variable       | Description             | Default      |
-|----------------|-------------------------|--------------|
-| `HOST`         | Database host (IP)      | *required*   |
-| `DB_PORT`      | Database port           | `5432`       |
-| `DB_USERNAME`  | Database username       | *required*   |
-| `DB_PASSWORD`  | Database password       | *required*   |
-| `DB_NAME`      | Database name           | `authora_db` |
-| `RABBITMQ_URL` | RabbitMQ connection URL | *required*   |
-| `REDIS_URL`    | Redis connection URL    | *required*   |
+| Variable       | Description              | Default      |
+|----------------|--------------------------|--------------|
+| `PG_HOST`      | PostgreSQL host (IP)     | **required**   |
+| `PG_PORT`      | PostgreSQL port          | `5432`       |
+| `PG_USERNAME`  | PostgreSQL username      | **required**   |
+| `PG_PASSWORD`  | PostgreSQL password      | **required**   |
+| `PG_DATABASE`  | PostgreSQL database name | `authora_db` |
+| `RABBITMQ_URL` | RabbitMQ connection URL  | **required**   |
+| `REDIS_URL`    | Redis connection URL     | **required**   |
 
 ### Security
 
@@ -87,8 +87,8 @@ All variables with a default value are optional.
 | `TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS`     | 2FA verify token lifetime                                             | `86400` (1 day)     |
 | `TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS`   | 2FA validate token lifetime                                           | `86400` (1 day)     |
 | `TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS`  | 2FA disabling token TTL                                               | `86400` (1 day)     |
-| `JWT_PRIVATE_KEY_PATH`                                | Path to RS256 private key PEM file                                    | *required*          |
-| `JWT_PUBLIC_KEY_PATH`                                 | Path to RS256 public key PEM file                                     | *required*          |
+| `JWT_PRIVATE_KEY_PATH`                                | Path to RS256 private key PEM file                                    | **required**          |
+| `JWT_PUBLIC_KEY_PATH`                                 | Path to RS256 public key PEM file                                     | **required**          |
 | `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`                 | Access token lifetime                                                 | `900` (15 min)      |
 | `JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS`          | Refresh token lifetime (rememberMe: false)                            | `86400` (1 day)     |
 | `JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS`           | Refresh token lifetime (rememberMe: true), must be greater than short | `2592000` (30 days) |
@@ -99,10 +99,10 @@ All variables with a default value are optional.
 
 ### Delay
 
-| Variable       | Description                                          | Default |
-|----------------|------------------------------------------------------|---------|
-| `ENDPOINT_DELAY_MIN_MS` | Minimum random response delay in ms  | `200`   |
-| `ENDPOINT_DELAY_MAX_MS` | Maximum random response delay in ms, must be greater than min  | `400`   |
+| Variable                | Description                                                   | Default |
+|-------------------------|---------------------------------------------------------------|---------|
+| `ENDPOINT_DELAY_MIN_MS` | Minimum random response delay in ms                           | `200`   |
+| `ENDPOINT_DELAY_MAX_MS` | Maximum random response delay in ms, must be greater than min | `400`   |
 
 ## API endpoints
 

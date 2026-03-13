@@ -124,9 +124,9 @@ jobs:
           curl -sf http://localhost:3000/api-json -o openapi.json
           kill $APP_PID
         env:
-          HOST: 127.0.0.1
-          DB_USERNAME: authora
-          DB_PASSWORD: authora
+          PG_HOST: 127.0.0.1
+          PG_USERNAME: authora
+          PG_PASSWORD: authora
           RABBITMQ_URL: amqp://localhost:5672
           REDIS_URL: redis://localhost:6379
           JWT_PRIVATE_KEY_PATH: ./keys/private.pem

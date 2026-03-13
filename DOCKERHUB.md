@@ -1,6 +1,6 @@
 # Authora
 
-Authentication microservice built with NestJS 11, TypeScript, PostgreSQL, and RabbitMQ.
+Authentication microservice built with NestJS 11, TypeScript, PostgreSQL, RabbitMQ, and Redis.
 
 ## Features
 
@@ -21,31 +21,34 @@ services:
     ports:
       - '3000:3000'
     environment:
-      HOST: postgres
-      DB_USERNAME: authora
-      DB_PASSWORD: changeit
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      JWT_PRIVATE_KEY_PATH: /keys/private.pem
-      JWT_PUBLIC_KEY_PATH: /keys/public.pem
+      PG_HOST: ${PG_HOST}
+      PG_USERNAME: ${PG_USERNAME}
+      PG_PASSWORD: ${PG_PASSWORD}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_PRIVATE_KEY_PATH: ${JWT_PRIVATE_KEY_PATH}
+      JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH}
     volumes:
       - ./keys:/keys:ro
     depends_on:
       - postgres
       - rabbitmq
+      - redis
 
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: authora
-      POSTGRES_PASSWORD: changeit
-      POSTGRES_DB: authora_db
+      POSTGRES_USER: ${PG_USERNAME}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE}
     volumes:
       - pgdata:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:4-management-alpine
-    ports:
-      - '5672:5672'
+
+  redis:
+    image: redis:7-alpine
 
 volumes:
   pgdata:
@@ -80,25 +83,25 @@ All variables with a default value are optional.
 | `NODE_ENV` | `development`, `production`, or `test` | `development` |
 | `PORT`     | HTTP server port                       | `3000`        |
 
-### Database & messaging
+### External services
 
-| Variable       | Description             | Default      |
-|----------------|-------------------------|--------------|
-| `HOST`         | Database host (IP)      | **required** |
-| `DB_PORT`      | Database port           | `5432`       |
-| `DB_USERNAME`  | Database username       | **required** |
-| `DB_PASSWORD`  | Database password       | **required** |
-| `DB_NAME`      | Database name           | `authora_db` |
-| `RABBITMQ_URL` | RabbitMQ connection URL | **required** |
-| `REDIS_URL`    | Redis connection URL    | **required** |
+| Variable       | Description              | Default      |
+|----------------|--------------------------|--------------|
+| `PG_HOST`      | PostgreSQL host (IP)     | **required** |
+| `PG_PORT`      | PostgreSQL port          | `5432`       |
+| `PG_USERNAME`  | PostgreSQL username      | **required** |
+| `PG_PASSWORD`  | PostgreSQL password      | **required** |
+| `PG_DATABASE`  | PostgreSQL database name | `authora_db` |
+| `RABBITMQ_URL` | RabbitMQ connection URL  | **required** |
+| `REDIS_URL`    | Redis connection URL     | **required** |
 
 ### Security
 
 | Variable                                             | Description                                                           | Default             |
 |------------------------------------------------------|-----------------------------------------------------------------------|---------------------|
-| `HASH_MEMORY_COST`                                   | Argon2id memory cost in KiB                                           | `65536` (64 MB)     |
-| `HASH_TIME_COST`                                     | Argon2id time cost (iterations)                                       | `3`                 |
-| `HASH_PARALLELISM`                                   | Argon2id parallelism (threads)                                        | `4`                 |
+| `HASH_MEMORY_COST`                                   | Password hashing memory cost in KiB                                   | `65536` (64 MB)     |
+| `HASH_TIME_COST`                                     | Password hashing time cost (iterations)                               | `3`                 |
+| `HASH_PARALLELISM`                                   | Password hashing parallelism (threads)                                | `4`                 |
 | `EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS`        | Sign-up token lifetime                                                | `86400` (1 day)     |
 | `ACCOUNT_DELETION_TOKEN_EXPIRATION_SECONDS`          | Account deletion token TTL                                            | `3600` (1 hour)     |
 | `TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS`    | 2FA verify token lifetime                                             | `86400` (1 day)     |
@@ -116,10 +119,10 @@ All variables with a default value are optional.
 
 ### Delay
 
-| Variable       | Description                                          | Default |
-|----------------|------------------------------------------------------|---------|
-| `ENDPOINT_DELAY_MIN_MS` | Minimum random response delay in ms  | `200`   |
-| `ENDPOINT_DELAY_MAX_MS` | Maximum random response delay in ms, must be greater than min  | `400`   |
+| Variable                | Description                                                   | Default |
+|-------------------------|---------------------------------------------------------------|---------|
+| `ENDPOINT_DELAY_MIN_MS` | Minimum random response delay in ms                           | `200`   |
+| `ENDPOINT_DELAY_MAX_MS` | Maximum random response delay in ms, must be greater than min | `400`   |
 
 ## API endpoints
 

@@ -7,12 +7,12 @@ export const envValidationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().port().default(3000),
 
-  // Database
-  HOST: Joi.string().ip().required(),
-  DB_PORT: Joi.number().port().default(5432),
-  DB_USERNAME: Joi.string().required(),
-  DB_PASSWORD: Joi.string().required(),
-  DB_NAME: Joi.string().default('authora_db'),
+  // PostgreSQL
+  PG_HOST: Joi.string().ip().required(),
+  PG_PORT: Joi.number().port().default(5432),
+  PG_USERNAME: Joi.string().required(),
+  PG_PASSWORD: Joi.string().required(),
+  PG_DATABASE: Joi.string().default('authora_db'),
 
   // RabbitMQ
   RABBITMQ_URL: Joi.string().uri().required(),

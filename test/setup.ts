@@ -60,11 +60,11 @@ export async function getTestApp(): Promise<INestApplication<App>> {
 
   // Set all environment variables BEFORE loading AppModule
   // so that ConfigModule.forRoot() picks up the dynamic container URLs
-  process.env.HOST = '127.0.0.1';
-  process.env.DB_PORT = postgresContainer.getMappedPort(5432).toString();
-  process.env.DB_USERNAME = 'test';
-  process.env.DB_PASSWORD = 'test';
-  process.env.DB_NAME = 'authora_test';
+  process.env.PG_HOST = '127.0.0.1';
+  process.env.PG_PORT = postgresContainer.getMappedPort(5432).toString();
+  process.env.PG_USERNAME = 'test';
+  process.env.PG_PASSWORD = 'test';
+  process.env.PG_DATABASE = 'authora_test';
   rabbitmqUrl = `amqp://${rabbitmqContainer.getHost()}:${rabbitmqContainer.getMappedPort(5672)}`;
   process.env.RABBITMQ_URL = rabbitmqUrl;
   process.env.REDIS_URL = 'redis://localhost:6379';
