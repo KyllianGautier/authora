@@ -2,31 +2,36 @@
 
 This document lists all security topics relevant to an authentication API, with their current status in Authora.
 
-## Summary
+## Missing
 
-| #  | Topic                                                                   | Status                   |
-|----|-------------------------------------------------------------------------|--------------------------|
-| 1  | [Password hashing](#1-password-hashing)                                 | Implemented              |
-| 2  | [Password strength requirements](#2-password-strength-requirements)      | Missing                  |
-| 3  | [Password reuse prevention](#3-password-reuse-prevention)               | Implemented              |
-| 4  | [JWT configuration](#4-jwt-configuration)                               | Implemented              |
-| 5  | [Access / refresh token separation](#5-access-token--refresh-token-separation) | Implemented        |
-| 6  | [Refresh token hashing](#6-refresh-token-hashing)                       | Implemented              |
-| 7  | [Refresh token rotation](#7-refresh-token-rotation)                     | Implemented              |
-| 8  | [Session invalidation on password change](#8-session-invalidation-on-password-change) | Missing        |
-| 9  | [Generic error messages](#9-generic-error-messages)                     | Implemented              |
-| 10 | [Timing attack mitigation](#10-timing-attack-mitigation)                | Implemented (not merged) |
-| 11 | [Two-factor authentication](#11-two-factor-authentication-2fa)          | Implemented              |
-| 12 | [Rate limiting](#12-rate-limiting)                                      | Missing                  |
-| 13 | [Account lockout](#13-account-lockout)                                  | Missing                  |
-| 14 | [Input validation](#14-input-validation)                                | Implemented              |
-| 15 | [SQL injection protection](#15-sql-injection-protection)                | Implemented              |
-| 16 | [Cookie security](#16-cookie-security-xss--csrf)                        | Implemented              |
-| 17 | [Security headers (Helmet)](#17-security-headers-helmet)                | Missing                  |
-| 18 | [CORS configuration](#18-cors-configuration)                            | Missing                  |
-| 19 | [Request payload size limiting](#19-request-payload-size-limiting)       | Missing                  |
-| 20 | [Logging and monitoring](#20-logging-and-monitoring)                    | Missing                  |
-| 21 | [Dependency vulnerabilities](#21-dependency-vulnerabilities)             | Missing                  |
+| #  | Topic                                                                                 |
+|----|---------------------------------------------------------------------------------------|
+| 2  | [Password strength requirements](#2-password-strength-requirements)                   |
+| 8  | [Session invalidation on password change](#8-session-invalidation-on-password-change) |
+| 13 | [Account lockout](#13-account-lockout)                                                |
+| 17 | [Security headers (Helmet)](#17-security-headers-helmet)                              |
+| 18 | [CORS configuration](#18-cors-configuration)                                          |
+| 19 | [Request payload size limiting](#19-request-payload-size-limiting)                    |
+| 20 | [Logging and monitoring](#20-logging-and-monitoring)                                  |
+| 21 | [Dependency vulnerabilities](#21-dependency-vulnerabilities)                          |
+
+## Implemented
+
+| #  | Topic                                                                          |
+|----|--------------------------------------------------------------------------------|
+| 1  | [Password hashing](#1-password-hashing)                                        |
+| 3  | [Password reuse prevention](#3-password-reuse-prevention)                      |
+| 4  | [JWT configuration](#4-jwt-configuration)                                      |
+| 5  | [Access / refresh token separation](#5-access-token--refresh-token-separation) |
+| 6  | [Refresh token hashing](#6-refresh-token-hashing)                              |
+| 7  | [Refresh token rotation](#7-refresh-token-rotation)                            |
+| 9  | [Generic error messages](#9-generic-error-messages)                            |
+| 10 | [Timing attack mitigation](#10-timing-attack-mitigation)                       |
+| 11 | [Two-factor authentication](#11-two-factor-authentication-2fa)                 |
+| 12 | [Rate limiting](#12-rate-limiting)                                             |
+| 14 | [Input validation](#14-input-validation)                                       |
+| 15 | [SQL injection protection](#15-sql-injection-protection)                       |
+| 16 | [Cookie security](#16-cookie-security-xss--csrf)                               |
 
 ---
 
@@ -34,11 +39,11 @@ This document lists all security topics relevant to an authentication API, with 
 
 Passwords must never be stored in plain text. Use a robust hashing algorithm with automatic salting and a configurable cost factor.
 
-**Recommended:** bcrypt or Argon2.
+**Recommended:** Argon2.
 
 **Status: Implemented**
 
-- bcrypt with configurable `HASH_SALT_ROUNDS` (default 10)
+- Argon2id with configurable `HASH_MEMORY_COST`, `HASH_TIME_COST`, `HASH_PARALLELISM`
 - Used for passwords, refresh tokens, one-time tokens, and recovery codes
 
 ---
@@ -95,8 +100,8 @@ Refresh tokens must be hashed before storage, exactly like passwords. Only the c
 
 **Status: Implemented**
 
-- Refresh tokens are bcrypt-hashed before being saved to the database
-- Verification uses `bcrypt.compare()`
+- Refresh tokens are Argon2id-hashed before being saved to the database
+- Verification uses `argon2.verify()`
 
 ---
 
@@ -137,7 +142,7 @@ Authentication endpoints must not reveal whether a user exists. Always return a 
 
 Even with generic error messages, response time differences can reveal whether a user exists or a password is correct. Add a random delay to sensitive endpoints.
 
-**Status: Implemented (feature branch, not yet merged to develop)**
+**Status: Implemented**
 
 - `@Delay()` decorator + `DelayInterceptor` with configurable `ENDPOINT_DELAY_MIN_MS` / `ENDPOINT_DELAY_MAX_MS`
 - Applied to all enumeration-sensitive endpoints
@@ -152,7 +157,7 @@ Offer TOTP-based 2FA with recovery codes as a fallback.
 
 - TOTP setup with QR code and manual code
 - Verification with 6-digit code
-- 10 bcrypt-hashed recovery codes generated on activation
+- 10 Argon2id-hashed recovery codes generated on activation
 - Disable flow with one-time token verification
 
 ---
@@ -163,10 +168,12 @@ Limit the number of requests per IP/user to prevent brute force and credential s
 
 **Recommended:** `@nestjs/throttler` with a storage backend (e.g., Redis).
 
-**Status: Missing**
+**Status: Implemented**
 
-- No throttling package or middleware present
-- All endpoints accept unlimited requests
+- `@nestjs/throttler` with Redis storage backend (`@nest-lab/throttler-storage-redis`)
+- Custom `AuthThrottleGuard` with three-dimensional limiting: by IP (`origin`), by email (`identity`), and by IP+email (`combined`)
+- Applied to sign-in and auth-sensitive endpoints via `@UseGuards(AuthThrottleGuard)`
+- Configurable via `THROTTLE_TTL_SECONDS`, `THROTTLE_ORIGIN_LIMIT`, `THROTTLE_IDENTITY_LIMIT`, `THROTTLE_COMBINED_LIMIT`
 
 ---
 
