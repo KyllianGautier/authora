@@ -11,7 +11,9 @@ import {
 } from '@nestjs/common';
 import { Delay } from '../decorator/delay.decorator';
 import {
+  ApiAcceptedResponse,
   ApiBadRequestResponse,
+  ApiGoneResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -19,7 +21,9 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
+import { MagicLinkInputDto } from '../dto/input/magic-link.input.dto';
 import { SignInInputDto } from '../dto/input/sign-in.input.dto';
+import { ValidateMagicLinkInputDto } from '../dto/input/validate-magic-link.input.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
 import { SignInService } from '../service/sign-in.service';
 
@@ -86,6 +90,45 @@ export class SignInController {
       accessToken,
       clearRefreshToken
     );
+
+    this._setRefreshTokenCookie(res, refreshToken);
+
+    return body;
+  }
+
+  @Post('magic-link')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request a magic link' })
+  @ApiAcceptedResponse({
+    description: 'If the account exists, the magic link will be sent via email'
+  })
+  async magicLink(@Body() dto: MagicLinkInputDto): Promise<{ message: string }> {
+    await this._signInService.magicLink(dto);
+
+    return {
+      message: 'If the account exists, the magic link will be sent via email'
+    };
+  }
+
+  @Post('magic-link/validate')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sign in with a magic link' })
+  @ApiOkResponse({
+    description: 'Authenticated successfully',
+    type: SignInOutputDto
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  @ApiGoneResponse({ description: 'Magic link has expired' })
+  async validateMagicLink(
+    @Body() dto: ValidateMagicLinkInputDto,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<SignInOutputDto> {
+    const { body, refreshToken } =
+      await this._signInService.validateMagicLink(dto);
 
     this._setRefreshTokenCookie(res, refreshToken);
 

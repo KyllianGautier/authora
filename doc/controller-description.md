@@ -1,5 +1,7 @@
 # Controller description
 
+Here is the description of all Authora endpoints that have to be implemented.
+
 ## Sing-up controller
 
 ### POST /api/v1/sign-up
@@ -187,3 +189,23 @@ It verifies that both JWT and refresh token are submitted by header and cookie, 
 Output 400: JWT is not yet expired
 Output 401: refresh token expired or revoked
 Output 200: same return than sign-in (access token, expiring date and the new refresh token by httpOnly cookie)
+
+
+### POST /sign-in/magic-link
+
+Ask for a magic-link.
+
+Input Dto contains the user email, an optional `redirectTo` URL, and an optional `locale`.
+
+It generates a OTT and send it by email. The `redirectTo` URL and `locale` are included in the magic link so that the Authora UI can display in the correct language and redirect the user after validation.
+
+Output 202: If the account exists, the magic link will be sent via email
+
+
+### POST /sign-in/magic-link/validate
+
+Verify the magic link and sign-in the user.
+
+Input Dto contains the user email and token.
+
+It returns the same result as sign-in endpoint

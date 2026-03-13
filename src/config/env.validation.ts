@@ -6,6 +6,7 @@ export const envValidationSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   PORT: Joi.number().port().default(3000),
+  AUTHORA_BASE_URL: Joi.string().uri().required(),
 
   // PostgreSQL
   PG_HOST: Joi.string().ip().required(),
@@ -41,6 +42,14 @@ export const envValidationSchema = Joi.object({
     .min(1)
     .default(86400),
   TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS: Joi.number()
+    .integer()
+    .min(1)
+    .default(86400),
+  MAGIC_LINK_TOKEN_EXPIRATION_SECONDS: Joi.number()
+    .integer()
+    .min(1)
+    .default(300),
+  MAGIC_LINK_REFRESH_TOKEN_EXPIRATION_SECONDS: Joi.number()
     .integer()
     .min(1)
     .default(86400),
