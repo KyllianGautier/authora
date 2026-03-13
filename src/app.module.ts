@@ -20,6 +20,7 @@ import { SERVICES } from './service';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
       validationSchema: envValidationSchema
     }),
     TypeOrmModule.forRootAsync({
