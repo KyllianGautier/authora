@@ -9,7 +9,7 @@ import {
 import { PasswordEntity } from '../../src/entity/password.entity';
 import { UserEntity } from '../../src/entity/user.entity';
 import { createUserWithPassword } from '../utils/create-user-with-password';
-import { clearDatabase, consumeEmailQueue, getTestApp } from '../setup';
+import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
 
 describe('POST /auth/delete-account/verify', () => {
   let app: INestApplication<App>;
@@ -21,7 +21,7 @@ describe('POST /auth/delete-account/verify', () => {
   }, 120_000);
 
   beforeEach(async () => {
-    await clearDatabase();
+    await resetTestState();
     await consumeEmailQueue();
   });
 
@@ -223,6 +223,22 @@ describe('POST /auth/delete-account/verify', () => {
         .post('/auth/delete-account/verify')
         .send({ email: 'user@example.com', token: oldToken })
         .expect(401);
+    });
+  });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/auth/delete-account/verify')
+          .send({ email: 'throttle@example.com', token: 'fake-token' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/delete-account/verify')
+        .send({ email: 'throttle@example.com', token: 'fake-token' });
+
+      expect(response.status).toBe(429);
     });
   });
 });

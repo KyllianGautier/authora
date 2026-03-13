@@ -3,10 +3,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as amqplib from 'amqplib';
 import { execSync } from 'child_process';
-import { mkdtempSync, writeFileSync, readFileSync } from 'fs';
+import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
+import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
+import cookieParser from 'cookie-parser';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
@@ -64,6 +66,7 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   process.env.DB_NAME = 'authora_test';
   rabbitmqUrl = `amqp://${rabbitmqContainer.getHost()}:${rabbitmqContainer.getMappedPort(5672)}`;
   process.env.RABBITMQ_URL = rabbitmqUrl;
+  process.env.REDIS_URL = 'redis://localhost:6379';
   process.env.NODE_ENV = 'test';
   process.env.HASH_SALT_ROUNDS = '4';
   process.env.EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS = '86400';
@@ -76,6 +79,10 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   process.env.JWT_ACCESS_TOKEN_EXPIRATION_SECONDS = '900';
   process.env.JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS = '86400';
   process.env.JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS = '2592000';
+  process.env.THROTTLE_TTL_SECONDS = '60';
+  process.env.THROTTLE_ORIGIN_LIMIT = '30';
+  process.env.THROTTLE_IDENTITY_LIMIT = '10';
+  process.env.THROTTLE_COMBINED_LIMIT = '5';
   process.env.ENDPOINT_DELAY_MIN_MS = '1';
   process.env.ENDPOINT_DELAY_MAX_MS = '2';
 
@@ -84,14 +91,14 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { AppModule } = require('../src/app.module');
 
-  // Bootstrap the NestJS app
+  // Bootstrap the NestJS app (override Redis throttler storage with in-memory)
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule]
-  }).compile();
+  })
+    .overrideProvider(ThrottlerStorage)
+    .useClass(ThrottlerStorageService)
+    .compile();
 
-  // Apply the same global config as main.ts
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const cookieParser = require('cookie-parser');
   app = moduleFixture.createNestApplication();
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -101,14 +108,21 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   return app;
 }
 
-// Truncate all tables between tests to ensure isolation
-export async function clearDatabase(): Promise<void> {
+// Reset all shared state between tests to ensure isolation
+export async function resetTestState(): Promise<void> {
+  // Truncate all database tables
   const dataSource = app.get(DataSource);
   const entities = dataSource.entityMetadatas;
   for (const entity of entities) {
     const repository = dataSource.getRepository(entity.name);
     await repository.query(`TRUNCATE TABLE "${entity.tableName}" CASCADE`);
   }
+
+  // Reset throttler in-memory storage
+  const storage = app.get(ThrottlerStorage);
+  // onApplicationShutdown clears all timeouts, then we can safely clear the map
+  storage.onApplicationShutdown();
+  storage.storage.clear();
 }
 
 // Consume all messages from the email queue and return their parsed payloads

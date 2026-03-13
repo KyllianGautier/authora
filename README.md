@@ -1,6 +1,6 @@
 # Authora
 
-Authentication microservice built with NestJS 11, TypeScript, PostgreSQL, and RabbitMQ.
+Authentication microservice built with NestJS 11, TypeScript, PostgreSQL, RabbitMQ, and Redis.
 
 ## Features
 
@@ -11,6 +11,7 @@ Authentication microservice built with NestJS 11, TypeScript, PostgreSQL, and Ra
 - JWT-based sign-in with refresh tokens (httpOnly cookie)
 - Asynchronous email notifications via RabbitMQ
 - Automatic revocation of expired one-time tokens (cron job)
+- Rate limiting with three dimensions (IP, email, IP+email) backed by Redis
 
 ## Prerequisites
 
@@ -62,7 +63,7 @@ All variables with a default value are optional.
 | `NODE_ENV` | `development`, `production`, or `test` | `development` |
 | `PORT`     | HTTP server port                       | `3000`        |
 
-### Database & messaging
+### Database, messaging & Redis
 
 | Variable       | Description             | Default      |
 |----------------|-------------------------|--------------|
@@ -72,6 +73,7 @@ All variables with a default value are optional.
 | `DB_PASSWORD`  | Database password       | *required*   |
 | `DB_NAME`      | Database name           | `authora_db` |
 | `RABBITMQ_URL` | RabbitMQ connection URL | *required*   |
+| `REDIS_URL`    | Redis connection URL    | *required*   |
 
 ### Security
 
@@ -88,6 +90,10 @@ All variables with a default value are optional.
 | `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`                 | Access token lifetime                                                 | `900` (15 min)      |
 | `JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS`          | Refresh token lifetime (rememberMe: false)                            | `86400` (1 day)     |
 | `JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS`           | Refresh token lifetime (rememberMe: true), must be greater than short | `2592000` (30 days) |
+| `THROTTLE_TTL_SECONDS`                                | Rate limit window                                                     | `60` (1 min)        |
+| `THROTTLE_ORIGIN_LIMIT`                               | Max requests per IP per window                                        | `30`                |
+| `THROTTLE_IDENTITY_LIMIT`                             | Max requests per email per window                                     | `10`                |
+| `THROTTLE_COMBINED_LIMIT`                             | Max requests per IP+email per window                                  | `5`                 |
 
 ### Delay
 

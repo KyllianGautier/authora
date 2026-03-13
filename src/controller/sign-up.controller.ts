@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { Delay } from '../decorator/delay.decorator';
 import {
   ApiConflictResponse,
@@ -11,6 +11,7 @@ import {
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { CheckEmailInputDto } from '../dto/input/check-email.input.dto';
+import { AuthThrottleGuard } from '../config/auth-throttle.guard';
 import { ResendVerificationEmailInputDto } from '../dto/input/resend-verification-email.input.dto';
 import { SignUpInputDto } from '../dto/input/sign-up.input.dto';
 import { VerifyEmailInputDto } from '../dto/input/verify-email.input.dto';
@@ -26,6 +27,7 @@ export class SignUpController {
 
   @Post()
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @ApiOperation({ summary: 'Create a registration' })
   @ApiCreatedResponse({
     description: 'Registration created',
@@ -38,6 +40,7 @@ export class SignUpController {
 
   @Post('resend-verification-email')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resend email verification token' })
   @ApiOkResponse({ description: 'Verification email resent' })
@@ -64,6 +67,7 @@ export class SignUpController {
 
   @Post('verify')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email and create user' })
   @ApiOkResponse({

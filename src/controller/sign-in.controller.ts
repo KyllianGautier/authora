@@ -6,7 +6,8 @@ import {
   Post,
   Req,
   Res,
-  UnauthorizedException
+  UnauthorizedException,
+  UseGuards
 } from '@nestjs/common';
 import { Delay } from '../decorator/delay.decorator';
 import {
@@ -17,6 +18,7 @@ import {
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { AuthThrottleGuard } from '../config/auth-throttle.guard';
 import { SignInInputDto } from '../dto/input/sign-in.input.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
 import { SignInService } from '../service/sign-in.service';
@@ -28,6 +30,7 @@ export class SignInController {
 
   @Post()
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in' })
   @ApiOkResponse({
@@ -47,6 +50,7 @@ export class SignInController {
   }
 
   @Post('refresh')
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiOkResponse({

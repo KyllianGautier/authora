@@ -6,7 +6,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { RefreshTokenEntity } from '../../src/entity/refresh-token.entity';
 import {
-  clearDatabase,
+  resetTestState,
   consumeEmailQueue,
   getTestApp,
   getTestPublicKey
@@ -24,7 +24,7 @@ describe('POST /sign-in', () => {
   }, 120_000);
 
   beforeEach(async () => {
-    await clearDatabase();
+    await resetTestState();
     await consumeEmailQueue();
   });
 
@@ -340,6 +340,22 @@ describe('POST /sign-in', () => {
         .expect(200);
 
       expect(response.body.accessToken).toBeDefined();
+    });
+  });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/sign-in')
+          .send({ email: 'throttle@example.com', password: 'password123', rememberMe: false });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/sign-in')
+        .send({ email: 'throttle@example.com', password: 'password123', rememberMe: false });
+
+      expect(response.status).toBe(429);
     });
   });
 });

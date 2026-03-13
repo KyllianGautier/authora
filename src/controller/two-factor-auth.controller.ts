@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { Delay } from '../decorator/delay.decorator';
 import {
   ApiConflictResponse,
@@ -8,6 +8,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { AuthThrottleGuard } from '../config/auth-throttle.guard';
 import { SetupTwoFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
 import { VerifyTwoFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
 import { SetupTwoFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
@@ -21,6 +22,7 @@ export class TwoFactorAuthController {
 
   @Post('setup')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Setup two-factor authentication' })
   @ApiOkResponse({
@@ -39,6 +41,7 @@ export class TwoFactorAuthController {
 
   @Post('verify')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify and enable two-factor authentication' })
   @ApiOkResponse({

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { Delay } from '../decorator/delay.decorator';
 import {
   ApiBadRequestResponse,
@@ -9,6 +9,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { AuthThrottleGuard } from '../config/auth-throttle.guard';
 import { ChangePasswordInputDto } from '../dto/input/change-password.input.dto';
 import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
@@ -21,6 +22,7 @@ export class AuthController {
 
   @Post('change-password')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Change user password' })
   @ApiOkResponse({ description: 'Password changed successfully' })
@@ -34,6 +36,7 @@ export class AuthController {
 
   @Post('delete-account')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request account deletion' })
   @ApiOkResponse({ description: 'Verification email sent' })
@@ -44,6 +47,7 @@ export class AuthController {
 
   @Post('delete-account/verify')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify and delete account' })
   @ApiOkResponse({ description: 'Account deleted' })
