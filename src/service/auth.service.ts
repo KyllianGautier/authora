@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { ChangePasswordInputDto } from '../dto/input/change-password.input.dto';
 import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
 import { OneTimeTokenType } from '../entity/one-time-token.entity';
 import { EmailService } from './email.service';
+import { HashService } from './hash.service';
 import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
@@ -15,7 +15,8 @@ export class AuthService {
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
     private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
-    private readonly _emailService: EmailService
+    private readonly _emailService: EmailService,
+    private readonly _hashService: HashService
   ) {}
 
   async changePassword(dto: ChangePasswordInputDto): Promise<void> {
@@ -42,7 +43,7 @@ export class AuthService {
     // Check that the new password has not been used before
     const isNewPasswordAlreadyUsed = await Promise.all(
       user.passwords.map((password) =>
-        bcrypt.compare(dto.newPassword, password.passwordHash)
+        this._hashService.verify(password.passwordHash, dto.newPassword)
       )
     );
 

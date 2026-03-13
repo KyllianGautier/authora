@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+
 import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import cookieParser from 'cookie-parser';
@@ -68,7 +69,9 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   process.env.RABBITMQ_URL = rabbitmqUrl;
   process.env.REDIS_URL = 'redis://localhost:6379';
   process.env.NODE_ENV = 'test';
-  process.env.HASH_SALT_ROUNDS = '4';
+  process.env.HASH_MEMORY_COST = '1024';
+  process.env.HASH_TIME_COST = '1';
+  process.env.HASH_PARALLELISM = '1';
   process.env.EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS = '86400';
   process.env.ACCOUNT_DELETION_TOKEN_EXPIRATION_SECONDS = '3600';
   process.env.TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS = '86400';

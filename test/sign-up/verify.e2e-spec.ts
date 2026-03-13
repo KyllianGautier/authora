@@ -1,12 +1,12 @@
 import { INestApplication } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { RegistrationEntity } from '../../src/entity/registration.entity';
 import { UserEntity } from '../../src/entity/user.entity';
 import { PasswordEntity } from '../../src/entity/password.entity';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
+import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
+import { hashVerify } from '../utils/hash';
 
 describe('POST /sign-up/verify', () => {
   let app: INestApplication<App>;
@@ -220,9 +220,9 @@ describe('POST /sign-up/verify', () => {
       expect(password!.revoked).toBe(false);
 
       // The password should match the original sign-up password
-      const matches = await bcrypt.compare(
-        'password123',
-        password!.passwordHash
+      const matches = await hashVerify(
+        password!.passwordHash,
+        'password123'
       );
       expect(matches).toBe(true);
     });

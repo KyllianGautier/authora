@@ -1,19 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
 import { RefreshTokenEntity } from '../../entity/refresh-token.entity';
 import { UserEntity } from '../../entity/user.entity';
+import { HashService } from '../hash.service';
 
 @Injectable()
 export class RefreshTokenEntityService {
   constructor(
     @InjectRepository(RefreshTokenEntity)
     private readonly _repository: Repository<RefreshTokenEntity>,
-    private readonly _configService: ConfigService
+    private readonly _hashService: HashService
   ) {}
 
   async create(
@@ -27,7 +26,7 @@ export class RefreshTokenEntityService {
     );
 
     const clearToken = randomBytes(32).toString('hex');
-    const tokenHash = await this._hash(clearToken);
+    const tokenHash = await this._hashService.hash(clearToken);
 
     const expiredAt = DateTime.utc()
       .plus({ seconds: expirationSeconds })
@@ -57,7 +56,7 @@ export class RefreshTokenEntityService {
     if (DateTime.fromJSDate(refreshToken.expiredAt) < DateTime.utc()) {
       return false;
     }
-    return bcrypt.compare(clearToken, refreshToken.tokenHash);
+    return this._hashService.verify(refreshToken.tokenHash, clearToken);
   }
 
   async rotate(
@@ -69,7 +68,7 @@ export class RefreshTokenEntityService {
 
     // Generate a new refresh token with the same expiration date
     const clearToken = randomBytes(32).toString('hex');
-    const tokenHash = await this._hash(clearToken);
+    const tokenHash = await this._hashService.hash(clearToken);
 
     await this._repository.save(
       this._repository.create({
@@ -80,11 +79,5 @@ export class RefreshTokenEntityService {
     );
 
     return clearToken;
-  }
-
-  private async _hash(value: string): Promise<string> {
-    const saltRounds =
-      this._configService.getOrThrow<number>('HASH_SALT_ROUNDS');
-    return bcrypt.hash(value, saltRounds);
   }
 }

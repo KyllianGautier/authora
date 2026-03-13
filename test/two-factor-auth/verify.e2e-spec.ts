@@ -1,11 +1,11 @@
 import { INestApplication } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { TwoFactorAuthEntity } from '../../src/entity/two-factor-auth.entity';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
+import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
+import { hashVerify } from '../utils/hash';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 
 describe('POST /2fa/verify', () => {
@@ -250,9 +250,9 @@ describe('POST /2fa/verify', () => {
       // Each returned recovery code should match the corresponding hash
       const clearCodes = response.body.recoveryCodes as string[];
       for (let i = 0; i < clearCodes.length; i++) {
-        const matches = await bcrypt.compare(
-          clearCodes[i],
-          twoFactorAuth!.recoveryCodeHashes[i]
+        const matches = await hashVerify(
+          twoFactorAuth!.recoveryCodeHashes[i],
+          clearCodes[i]
         );
         expect(matches).toBe(true);
       }

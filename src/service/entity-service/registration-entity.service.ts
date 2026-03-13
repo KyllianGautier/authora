@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
 import { RegistrationEntity } from '../../entity/registration.entity';
+import { HashService } from '../hash.service';
 
 @Injectable()
 export class RegistrationEntityService {
   constructor(
     @InjectRepository(RegistrationEntity)
     private readonly _repository: Repository<RegistrationEntity>,
-    private readonly _configService: ConfigService
+    private readonly _configService: ConfigService,
+    private readonly _hashService: HashService
   ) {}
 
   async create(data: {
@@ -20,8 +21,8 @@ export class RegistrationEntityService {
     clearEmailVerificationToken: string;
   }): Promise<RegistrationEntity> {
     const [passwordHash, emailVerificationTokenHash] = await Promise.all([
-      this._hash(data.clearPassword),
-      this._hash(data.clearEmailVerificationToken)
+      this._hashService.hash(data.clearPassword),
+      this._hashService.hash(data.clearEmailVerificationToken)
     ]);
     return this._repository.save(
       this._repository.create({
@@ -46,7 +47,7 @@ export class RegistrationEntityService {
     registration: RegistrationEntity,
     clearEmailVerificationToken: string
   ): Promise<RegistrationEntity> {
-    registration.emailVerificationTokenHash = await this._hash(
+    registration.emailVerificationTokenHash = await this._hashService.hash(
       clearEmailVerificationToken
     );
     registration.emailVerificationTokenExpiresAt =
@@ -63,11 +64,5 @@ export class RegistrationEntityService {
       'EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS'
     );
     return DateTime.utc().plus({ seconds: expirationSeconds }).toJSDate();
-  }
-
-  private async _hash(value: string): Promise<string> {
-    const saltRounds =
-      this._configService.getOrThrow<number>('HASH_SALT_ROUNDS');
-    return bcrypt.hash(value, saltRounds);
   }
 }

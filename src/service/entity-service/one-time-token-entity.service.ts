@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
@@ -15,6 +14,7 @@ import {
   OneTimeTokenType
 } from '../../entity/one-time-token.entity';
 import { UserEntity } from '../../entity/user.entity';
+import { HashService } from '../hash.service';
 
 const EXPIRATION_CONFIG_KEYS: Record<OneTimeTokenType, string> = {
   [OneTimeTokenType.AccountDeletion]:
@@ -32,7 +32,8 @@ export class OneTimeTokenEntityService {
   constructor(
     @InjectRepository(OneTimeTokenEntity)
     private readonly _repository: Repository<OneTimeTokenEntity>,
-    private readonly _configService: ConfigService
+    private readonly _configService: ConfigService,
+    private readonly _hashService: HashService
   ) {}
 
   async create(user: UserEntity, type: OneTimeTokenType): Promise<string> {
@@ -53,7 +54,7 @@ export class OneTimeTokenEntityService {
       type
     });
 
-    const tokenHash: string = await this._hash(clearToken);
+    const tokenHash: string = await this._hashService.hash(clearToken);
 
     return this._repository.save(
       this._repository.create({
@@ -83,7 +84,7 @@ export class OneTimeTokenEntityService {
       throw new OneTimeTokenExpiredException();
     }
 
-    const isTokenValid = await bcrypt.compare(clearToken, token.tokenHash);
+    const isTokenValid = await this._hashService.verify(token.tokenHash, clearToken);
 
     if (!isTokenValid) {
       throw new OneTimeTokenInvalidException();
@@ -95,12 +96,6 @@ export class OneTimeTokenEntityService {
       EXPIRATION_CONFIG_KEYS[type]
     );
     return DateTime.utc().plus({ seconds: expirationSeconds }).toJSDate();
-  }
-
-  private async _hash(value: string): Promise<string> {
-    const saltRounds =
-      this._configService.getOrThrow<number>('HASH_SALT_ROUNDS');
-    return bcrypt.hash(value, saltRounds);
   }
 }
 
