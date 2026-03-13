@@ -1,11 +1,11 @@
 import { INestApplication } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { PasswordEntity } from '../../src/entity/password.entity';
 import { createUserWithPassword } from '../utils/create-user-with-password';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
+import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
+import { hashVerify } from '../utils/hash';
 
 describe('POST /auth/change-password', () => {
   let app: INestApplication<App>;
@@ -149,9 +149,9 @@ describe('POST /auth/change-password', () => {
       expect(passwords[0].revoked).toBe(true);
       expect(passwords[1].revoked).toBe(false);
 
-      const newPasswordMatches = await bcrypt.compare(
-        'newPassword',
-        passwords[1].passwordHash
+      const newPasswordMatches = await hashVerify(
+        passwords[1].passwordHash,
+        'newPassword'
       );
       expect(newPasswordMatches).toBe(true);
     });

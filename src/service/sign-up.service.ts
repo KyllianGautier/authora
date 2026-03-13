@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { DateTime } from 'luxon';
 import { CheckEmailInputDto } from '../dto/input/check-email.input.dto';
@@ -10,6 +9,7 @@ import { CheckEmailOutputDto } from '../dto/output/check-email.output.dto';
 import { SignUpOutputDto } from '../dto/output/sign-up.output.dto';
 import { VerifyEmailOutputDto } from '../dto/output/verify-email.output.dto';
 import { EmailService } from './email.service';
+import { HashService } from './hash.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RegistrationEntityService } from './entity-service/registration-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
@@ -20,7 +20,8 @@ export class SignUpService {
     private readonly _registrationEntityService: RegistrationEntityService,
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
-    private readonly _emailService: EmailService
+    private readonly _emailService: EmailService,
+    private readonly _hashService: HashService
   ) {}
 
   async signUp(dto: SignUpInputDto): Promise<SignUpOutputDto> {
@@ -112,9 +113,9 @@ export class SignUpService {
     }
 
     // Validate the verification token
-    const isTokenValid = await bcrypt.compare(
-      dto.token,
-      registration.emailVerificationTokenHash
+    const isTokenValid = await this._hashService.verify(
+      registration.emailVerificationTokenHash,
+      dto.token
     );
 
     if (!isTokenValid) {

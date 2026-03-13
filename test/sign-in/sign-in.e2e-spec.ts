@@ -1,5 +1,4 @@
 import { INestApplication } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -11,6 +10,7 @@ import {
   getTestApp,
   getTestPublicKey
 } from '../setup';
+import { hashVerify } from '../utils/hash';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { extractCookie } from '../utils/extract-cookie';
 
@@ -215,9 +215,9 @@ describe('POST /sign-in', () => {
       expect(refreshTokens).toHaveLength(1);
       expect(refreshTokens[0].revoked).toBe(false);
 
-      const matches = await bcrypt.compare(
-        cookie!.value,
-        refreshTokens[0].tokenHash
+      const matches = await hashVerify(
+        refreshTokens[0].tokenHash,
+        cookie!.value
       );
       expect(matches).toBe(true);
     });

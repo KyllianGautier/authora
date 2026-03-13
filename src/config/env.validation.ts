@@ -21,7 +21,9 @@ export const envValidationSchema = Joi.object({
   REDIS_URL: Joi.string().uri().required(),
 
   // Security
-  HASH_SALT_ROUNDS: Joi.number().integer().min(1).default(10),
+  HASH_MEMORY_COST: Joi.number().integer().min(1).default(65536),
+  HASH_TIME_COST: Joi.number().integer().min(1).default(3),
+  HASH_PARALLELISM: Joi.number().integer().min(1).default(4),
   EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS: Joi.number()
     .integer()
     .min(1)

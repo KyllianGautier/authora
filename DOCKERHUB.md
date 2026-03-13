@@ -96,7 +96,9 @@ All variables with a default value are optional.
 
 | Variable                                             | Description                                                           | Default             |
 |------------------------------------------------------|-----------------------------------------------------------------------|---------------------|
-| `HASH_SALT_ROUNDS`                                   | bcrypt salt rounds                                                    | `10`                |
+| `HASH_MEMORY_COST`                                   | Argon2id memory cost in KiB                                           | `65536` (64 MB)     |
+| `HASH_TIME_COST`                                     | Argon2id time cost (iterations)                                       | `3`                 |
+| `HASH_PARALLELISM`                                   | Argon2id parallelism (threads)                                        | `4`                 |
 | `EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS`        | Sign-up token lifetime                                                | `86400` (1 day)     |
 | `ACCOUNT_DELETION_TOKEN_EXPIRATION_SECONDS`          | Account deletion token TTL                                            | `3600` (1 hour)     |
 | `TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS`    | 2FA verify token lifetime                                             | `86400` (1 day)     |

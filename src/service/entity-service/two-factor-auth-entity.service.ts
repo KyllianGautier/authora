@@ -4,14 +4,13 @@ import {
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import * as speakeasy from 'speakeasy';
 import { Repository } from 'typeorm';
 import { TwoFactorAuthEntity } from '../../entity/two-factor-auth.entity';
 import { UserEntity } from '../../entity/user.entity';
+import { HashService } from '../hash.service';
 
 const RECOVERY_CODE_COUNT = 10;
 const TOTP_ISSUER = 'Authora';
@@ -21,7 +20,7 @@ export class TwoFactorAuthEntityService {
   constructor(
     @InjectRepository(TwoFactorAuthEntity)
     private readonly _repository: Repository<TwoFactorAuthEntity>,
-    private readonly _configService: ConfigService
+    private readonly _hashService: HashService
   ) {}
 
   async create(user: UserEntity): Promise<TwoFactorAuthEntity> {
@@ -86,7 +85,7 @@ export class TwoFactorAuthEntityService {
     );
 
     const recoveryCodeHashes = await Promise.all(
-      clearRecoveryCodes.map((code) => this._hash(code))
+      clearRecoveryCodes.map((code) => this._hashService.hash(code))
     );
 
     twoFactorAuth.isEnabled = true;
@@ -111,12 +110,6 @@ export class TwoFactorAuthEntityService {
     const part1 = Array.from(bytes.subarray(0, 4), (b) => chars[b % chars.length]).join('');
     const part2 = Array.from(bytes.subarray(4, 8), (b) => chars[b % chars.length]).join('');
     return `${part1}-${part2}`;
-  }
-
-  private async _hash(value: string): Promise<string> {
-    const saltRounds =
-      this._configService.getOrThrow<number>('HASH_SALT_ROUNDS');
-    return bcrypt.hash(value, saltRounds);
   }
 }
 
