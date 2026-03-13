@@ -95,4 +95,20 @@ describe('POST /sign-up/check-email', () => {
       );
     });
   });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/sign-up/check-email')
+          .send({ email: 'throttle@example.com' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/sign-up/check-email')
+        .send({ email: 'throttle@example.com' });
+
+      expect(response.status).toBe(429);
+    });
+  });
 });

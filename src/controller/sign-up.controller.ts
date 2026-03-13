@@ -53,6 +53,7 @@ export class SignUpController {
 
   @Post('check-email')
   @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Check if an email is available' })
   @ApiOkResponse({
