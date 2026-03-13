@@ -64,6 +64,18 @@ export const envValidationSchema = Joi.object({
   THROTTLE_IDENTITY_LIMIT: Joi.number().integer().min(1).default(10),
   THROTTLE_COMBINED_LIMIT: Joi.number().integer().min(1).default(5),
 
+  // Password strength
+  PASSWORD_MIN_LENGTH: Joi.number().integer().min(8).default(8),
+  PASSWORD_REQUIRE_DIGIT: Joi.boolean().default(true),
+  PASSWORD_REQUIRE_SPECIAL_CHAR: Joi.boolean().default(true),
+  PASSWORD_REQUIRE_LOWERCASE: Joi.boolean().default(true),
+  PASSWORD_REQUIRE_UPPERCASE: Joi.boolean().default(true),
+  PASSWORD_FORBID_SEQUENTIAL_CHARS: Joi.boolean().default(false),
+  PASSWORD_FORBID_REPEATED_CHARS: Joi.boolean().default(false),
+  PASSWORD_FORBID_KEYBOARD_SEQUENCE: Joi.boolean().default(false),
+  PASSWORD_FORBID_USER_INFO: Joi.boolean().default(true),
+  PASSWORD_FORBID_COMMON_PASSWORD: Joi.boolean().default(false),
+
   // Delay
   ENDPOINT_DELAY_MIN_MS: Joi.number().integer().min(0).default(200),
   ENDPOINT_DELAY_MAX_MS: Joi.number()

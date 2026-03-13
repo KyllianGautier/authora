@@ -65,15 +65,15 @@ All variables with a default value are optional.
 
 ### External services
 
-| Variable       | Description              | Default      |
-|----------------|--------------------------|--------------|
-| `PG_HOST`      | PostgreSQL host (IP)     | **required**   |
-| `PG_PORT`      | PostgreSQL port          | `5432`       |
-| `PG_USERNAME`  | PostgreSQL username      | **required**   |
-| `PG_PASSWORD`  | PostgreSQL password      | **required**   |
-| `PG_DATABASE`  | PostgreSQL database name | `authora_db` |
-| `RABBITMQ_URL` | RabbitMQ connection URL  | **required**   |
-| `REDIS_URL`    | Redis connection URL     | **required**   |
+| Variable       | Description              | Default       |
+|----------------|--------------------------|---------------|
+| `PG_HOST`      | PostgreSQL host (IP)     | **required**  |
+| `PG_PORT`      | PostgreSQL port          | `5432`        |
+| `PG_USERNAME`  | PostgreSQL username      | **required**  |
+| `PG_PASSWORD`  | PostgreSQL password      | **required**  |
+| `PG_DATABASE`  | PostgreSQL database name | `authora_db`  |
+| `RABBITMQ_URL` | RabbitMQ connection URL  | **required**  |
+| `REDIS_URL`    | Redis connection URL     | **required**  |
 
 ### Security
 
@@ -87,8 +87,8 @@ All variables with a default value are optional.
 | `TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS`     | 2FA verify token lifetime                                             | `86400` (1 day)     |
 | `TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS`   | 2FA validate token lifetime                                           | `86400` (1 day)     |
 | `TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS`  | 2FA disabling token TTL                                               | `86400` (1 day)     |
-| `JWT_PRIVATE_KEY_PATH`                                | Path to RS256 private key PEM file                                    | **required**          |
-| `JWT_PUBLIC_KEY_PATH`                                 | Path to RS256 public key PEM file                                     | **required**          |
+| `JWT_PRIVATE_KEY_PATH`                                | Path to RS256 private key PEM file                                    | **required**        |
+| `JWT_PUBLIC_KEY_PATH`                                 | Path to RS256 public key PEM file                                     | **required**        |
 | `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`                 | Access token lifetime                                                 | `900` (15 min)      |
 | `JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS`          | Refresh token lifetime (rememberMe: false)                            | `86400` (1 day)     |
 | `JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS`           | Refresh token lifetime (rememberMe: true), must be greater than short | `2592000` (30 days) |
@@ -96,6 +96,42 @@ All variables with a default value are optional.
 | `THROTTLE_ORIGIN_LIMIT`                               | Max requests per IP per window                                        | `30`                |
 | `THROTTLE_IDENTITY_LIMIT`                             | Max requests per email per window                                     | `10`                |
 | `THROTTLE_COMBINED_LIMIT`                             | Max requests per IP+email per window                                  | `5`                 |
+
+### Password strength
+
+| Variable                            | Description                                         | Default |
+|-------------------------------------|-----------------------------------------------------|---------|
+| `PASSWORD_MIN_LENGTH`               | Minimum password length (min 8)                     | `8`     |
+| `PASSWORD_REQUIRE_DIGIT`            | Require at least one digit                          | `true`  |
+| `PASSWORD_REQUIRE_SPECIAL_CHAR`     | Require at least one special character              | `true`  |
+| `PASSWORD_REQUIRE_LOWERCASE`        | Require at least one lowercase letter               | `true`  |
+| `PASSWORD_REQUIRE_UPPERCASE`        | Require at least one uppercase letter               | `true`  |
+| `PASSWORD_FORBID_SEQUENTIAL_CHARS`  | Forbid sequential characters (e.g. `abcd`, `4321`)  | `false` |
+| `PASSWORD_FORBID_REPEATED_CHARS`    | Forbid repeated characters (e.g. `aaa`, `111`)      | `false` |
+| `PASSWORD_FORBID_KEYBOARD_SEQUENCE` | Forbid keyboard row sequences (e.g. `qwer`, `qsdf`) | `false` |
+| `PASSWORD_FORBID_USER_INFO`         | Forbid parts of the user's email                    | `true`  |
+| `PASSWORD_FORBID_COMMON_PASSWORD`   | Forbid breached passwords (Have I Been Pwned API)   | `false` |
+
+Password strength rules are enforced on sign-up and password change. All can be toggled individually via environment variables.
+
+**Require rules** check that the password meets minimum content requirements:
+
+- **Minimum length** — the password must be at least `PASSWORD_MIN_LENGTH` characters long (minimum 8).
+- **Digit** — requires at least one digit (`0-9`).
+- **Special character** — requires at least one of the following characters:
+  ```
+  !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
+  ```
+- **Lowercase letter** — requires at least one lowercase letter (`a-z`).
+- **Uppercase letter** — requires at least one uppercase letter (`A-Z`).
+
+**Forbid rules** reject passwords that contain unsafe patterns:
+
+- **Sequential characters** — detects 4+ ascending or descending consecutive letters (`abcd`, `dcba`) or digits (`1234`, `9876`). Case-insensitive.
+- **Repeated characters** — detects 3+ identical consecutive characters (`aaa`, `111`). Case-insensitive.
+- **Keyboard sequences** — detects 4+ consecutive keys on QWERTY or AZERTY keyboard rows (`qwer`, `asdf`, `qsdf`), including reversed sequences and the number row.
+- **User info** — checks that the password does not contain parts of the user's email. The local part is split by `.`, `-`, `_`, `+` separators, and each domain label (excluding the TLD) is checked. Only parts of 3+ characters are matched. Case-insensitive.
+- **Common passwords** — checks the password against the [Have I Been Pwned](https://haveibeenpwned.com/Passwords) API using k-anonymity (only the first 5 characters of the SHA-1 hash are sent). If the API is unreachable, the password is accepted (fail-open).
 
 ### Delay
 

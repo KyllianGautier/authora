@@ -13,6 +13,7 @@ import { envValidationSchema } from './config/env.validation';
 import { CONTROLLERS } from './controller';
 import { ENTITIES } from './entity';
 import { DelayInterceptor } from './interceptor/delay.interceptor';
+import { IsStrongPasswordConstraint } from './dto/validator/is-strong-password.decorator';
 import { SERVICES } from './service';
 
 @Module({
@@ -99,6 +100,7 @@ import { SERVICES } from './service';
   controllers: [...CONTROLLERS],
   providers: [
     ...SERVICES,
+    IsStrongPasswordConstraint,
     {
       provide: APP_INTERCEPTOR,
       useClass: DelayInterceptor

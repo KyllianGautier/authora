@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { IsDifferentFrom } from '../validator/is-different-from.decorator';
+import { IsStrongPassword } from '../validator/is-strong-password.decorator';
 
 export class ChangePasswordInputDto {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
@@ -24,5 +25,6 @@ export class ChangePasswordInputDto {
   @IsDifferentFrom('currentPassword', {
     message: 'New password must be different from current password'
   })
+  @IsStrongPassword({ emailField: 'email' })
   newPassword: string;
 }

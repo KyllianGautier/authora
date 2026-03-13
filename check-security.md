@@ -2,40 +2,33 @@
 
 This document lists all security topics relevant to an authentication API, with their current status in Authora.
 
-## Missing
+## TODO checklist
 
-| #  | Topic                                                                                 |
-|----|---------------------------------------------------------------------------------------|
-| 2  | [Password strength requirements](#2-password-strength-requirements)                   |
-| 8  | [Session invalidation on password change](#8-session-invalidation-on-password-change) |
-| 13 | [Account lockout](#13-account-lockout)                                                |
-| 17 | [Security headers (Helmet)](#17-security-headers-helmet)                              |
-| 18 | [CORS configuration](#18-cors-configuration)                                          |
-| 19 | [Request payload size limiting](#19-request-payload-size-limiting)                    |
-| 20 | [Logging and monitoring](#20-logging-and-monitoring)                                  |
-| 21 | [Dependency vulnerabilities](#21-dependency-vulnerabilities)                          |
-
-## Implemented
-
-| #  | Topic                                                                          |
-|----|--------------------------------------------------------------------------------|
-| 1  | [Password hashing](#1-password-hashing)                                        |
-| 3  | [Password reuse prevention](#3-password-reuse-prevention)                      |
-| 4  | [JWT configuration](#4-jwt-configuration)                                      |
-| 5  | [Access / refresh token separation](#5-access-token--refresh-token-separation) |
-| 6  | [Refresh token hashing](#6-refresh-token-hashing)                              |
-| 7  | [Refresh token rotation](#7-refresh-token-rotation)                            |
-| 9  | [Generic error messages](#9-generic-error-messages)                            |
-| 10 | [Timing attack mitigation](#10-timing-attack-mitigation)                       |
-| 11 | [Two-factor authentication](#11-two-factor-authentication-2fa)                 |
-| 12 | [Rate limiting](#12-rate-limiting)                                             |
-| 14 | [Input validation](#14-input-validation)                                       |
-| 15 | [SQL injection protection](#15-sql-injection-protection)                       |
-| 16 | [Cookie security](#16-cookie-security-xss--csrf)                               |
+- [ ] [Session invalidation on password change](#session-invalidation-on-password-change)
+- [ ] [Account lockout](#account-lockout)
+- [ ] [Security headers (Helmet)](#security-headers-helmet)
+- [ ] [CORS configuration](#cors-configuration)
+- [ ] [Request payload size limiting](#request-payload-size-limiting)
+- [ ] [Logging and monitoring](#logging-and-monitoring)
+- [ ] [Dependency vulnerabilities](#dependency-vulnerabilities)
+- [x] [Password hashing](#password-hashing)
+- [x] [Password strength requirements](#password-strength-requirements)
+- [x] [Password reuse prevention](#password-reuse-prevention)
+- [x] [JWT configuration](#jwt-configuration)
+- [x] [Access / refresh token separation](#access-token--refresh-token-separation)
+- [x] [Refresh token hashing](#refresh-token-hashing)
+- [x] [Refresh token rotation](#refresh-token-rotation)
+- [x] [Generic error messages](#generic-error-messages)
+- [x] [Timing attack mitigation](#timing-attack-mitigation)
+- [x] [Two-factor authentication (2FA)](#two-factor-authentication-2fa)
+- [x] [Rate limiting](#rate-limiting)
+- [x] [Input validation](#input-validation)
+- [x] [SQL injection protection](#sql-injection-protection)
+- [x] [Cookie security (XSS / CSRF)](#cookie-security-xss--csrf)
 
 ---
 
-## 1. Password hashing
+## Password hashing
 
 Passwords must never be stored in plain text. Use a robust hashing algorithm with automatic salting and a configurable cost factor.
 
@@ -48,19 +41,22 @@ Passwords must never be stored in plain text. Use a robust hashing algorithm wit
 
 ---
 
-## 2. Password strength requirements
+## Password strength requirements
 
 Reject weak passwords at the input validation level. Enforce minimum length and complexity (uppercase, lowercase, digits, special characters).
 
-**Status: Missing**
+**Status: Implemented**
 
-- Password fields only have `@IsString()` and `@IsNotEmpty()` validators
-- No minimum length, no complexity rules
-- Users can register with passwords like `"a"`
+- Custom `@IsStrongPassword()` class-validator decorator with `ConfigService` integration
+- 5 require rules: minimum length, digit, special character, lowercase, uppercase
+- 5 forbid rules: sequential chars, repeated chars, keyboard sequences (QWERTY/AZERTY), user info (email parts), breached passwords (Have I Been Pwned API with k-anonymity)
+- All rules configurable via environment variables (`PASSWORD_*`)
+- `emailField` option to check password against user's email
+- Breached password check uses fail-open strategy (skipped if API unreachable)
 
 ---
 
-## 3. Password reuse prevention
+## Password reuse prevention
 
 When a user changes their password, check that the new password has not been used before.
 
@@ -71,7 +67,7 @@ When a user changes their password, check that the new password has not been use
 
 ---
 
-## 4. JWT configuration
+## JWT configuration
 
 Use asymmetric signing (RS256) with keys loaded from environment variables. Keep access tokens short-lived.
 
@@ -83,7 +79,7 @@ Use asymmetric signing (RS256) with keys loaded from environment variables. Keep
 
 ---
 
-## 5. Access token / refresh token separation
+## Access token / refresh token separation
 
 Access tokens should be short-lived and returned in the response body. Refresh tokens should be long-lived and stored in a secure cookie.
 
@@ -94,7 +90,7 @@ Access tokens should be short-lived and returned in the response body. Refresh t
 
 ---
 
-## 6. Refresh token hashing
+## Refresh token hashing
 
 Refresh tokens must be hashed before storage, exactly like passwords. Only the client holds the clear value.
 
@@ -105,7 +101,7 @@ Refresh tokens must be hashed before storage, exactly like passwords. Only the c
 
 ---
 
-## 7. Refresh token rotation
+## Refresh token rotation
 
 When a refresh token is used, invalidate it and issue a new one. This limits the window of exploitation if a token is stolen.
 
@@ -116,7 +112,7 @@ When a refresh token is used, invalidate it and issue a new one. This limits the
 
 ---
 
-## 8. Session invalidation on password change
+## Session invalidation on password change
 
 When a user changes their password, all existing refresh tokens must be revoked to force re-authentication on every device.
 
@@ -127,7 +123,7 @@ When a user changes their password, all existing refresh tokens must be revoked 
 
 ---
 
-## 9. Generic error messages
+## Generic error messages
 
 Authentication endpoints must not reveal whether a user exists. Always return a generic message like "Invalid credentials".
 
@@ -138,7 +134,7 @@ Authentication endpoints must not reveal whether a user exists. Always return a 
 
 ---
 
-## 10. Timing attack mitigation
+## Timing attack mitigation
 
 Even with generic error messages, response time differences can reveal whether a user exists or a password is correct. Add a random delay to sensitive endpoints.
 
@@ -149,7 +145,7 @@ Even with generic error messages, response time differences can reveal whether a
 
 ---
 
-## 11. Two-factor authentication (2FA)
+## Two-factor authentication (2FA)
 
 Offer TOTP-based 2FA with recovery codes as a fallback.
 
@@ -162,7 +158,7 @@ Offer TOTP-based 2FA with recovery codes as a fallback.
 
 ---
 
-## 12. Rate limiting
+## Rate limiting
 
 Limit the number of requests per IP/user to prevent brute force and credential stuffing attacks.
 
@@ -177,7 +173,7 @@ Limit the number of requests per IP/user to prevent brute force and credential s
 
 ---
 
-## 13. Account lockout
+## Account lockout
 
 After N consecutive failed login attempts on a specific account, temporarily lock the account regardless of the source IP.
 
@@ -188,7 +184,7 @@ After N consecutive failed login attempts on a specific account, temporarily loc
 
 ---
 
-## 14. Input validation
+## Input validation
 
 Never trust client input. Validate and sanitize all incoming data at the DTO level.
 
@@ -199,7 +195,7 @@ Never trust client input. Validate and sanitize all incoming data at the DTO lev
 
 ---
 
-## 15. SQL injection protection
+## SQL injection protection
 
 Always use parameterized queries or a secure ORM. Never interpolate user input into raw SQL.
 
@@ -210,7 +206,7 @@ Always use parameterized queries or a secure ORM. Never interpolate user input i
 
 ---
 
-## 16. Cookie security (XSS / CSRF)
+## Cookie security (XSS / CSRF)
 
 Refresh token cookies must be configured to prevent client-side access and cross-site attacks.
 
@@ -222,7 +218,7 @@ Refresh token cookies must be configured to prevent client-side access and cross
 
 ---
 
-## 17. Security headers (Helmet)
+## Security headers (Helmet)
 
 HTTP security headers protect against clickjacking, MIME sniffing, and other browser-level attacks.
 
@@ -235,7 +231,7 @@ HTTP security headers protect against clickjacking, MIME sniffing, and other bro
 
 ---
 
-## 18. CORS configuration
+## CORS configuration
 
 Explicitly define which origins are allowed to call the API to prevent unauthorized cross-origin requests.
 
@@ -246,7 +242,7 @@ Explicitly define which origins are allowed to call the API to prevent unauthori
 
 ---
 
-## 19. Request payload size limiting
+## Request payload size limiting
 
 Limit the size of incoming request bodies to prevent denial-of-service attacks with oversized payloads.
 
@@ -256,7 +252,7 @@ Limit the size of incoming request bodies to prevent denial-of-service attacks w
 
 ---
 
-## 20. Logging and monitoring
+## Logging and monitoring
 
 Log authentication events (failed logins, password changes, token usage, suspicious IPs) for audit and incident response.
 
@@ -267,7 +263,7 @@ Log authentication events (failed logins, password changes, token usage, suspici
 
 ---
 
-## 21. Dependency vulnerabilities
+## Dependency vulnerabilities
 
 Regularly audit dependencies for known CVEs. Integrate `npm audit` into CI/CD.
 

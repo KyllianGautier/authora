@@ -117,6 +117,21 @@ All variables with a default value are optional.
 | `THROTTLE_IDENTITY_LIMIT`                            | Max requests per email per window                                     | `10`                |
 | `THROTTLE_COMBINED_LIMIT`                            | Max requests per IP+email per window                                  | `5`                 |
 
+### Password strength
+
+| Variable                             | Description                                          | Default |
+|--------------------------------------|------------------------------------------------------|---------|
+| `PASSWORD_MIN_LENGTH`                | Minimum password length (min 8)                      | `8`     |
+| `PASSWORD_REQUIRE_DIGIT`             | Require at least one digit                           | `true`  |
+| `PASSWORD_REQUIRE_SPECIAL_CHAR`      | Require at least one special character               | `true`  |
+| `PASSWORD_REQUIRE_LOWERCASE`         | Require at least one lowercase letter                | `true`  |
+| `PASSWORD_REQUIRE_UPPERCASE`         | Require at least one uppercase letter                | `true`  |
+| `PASSWORD_FORBID_SEQUENTIAL_CHARS`   | Forbid sequential characters (e.g. `abcd`, `4321`)   | `false` |
+| `PASSWORD_FORBID_REPEATED_CHARS`     | Forbid repeated characters (e.g. `aaa`, `111`)       | `false` |
+| `PASSWORD_FORBID_KEYBOARD_SEQUENCE`  | Forbid keyboard row sequences (e.g. `qwer`, `qsdf`)  | `false` |
+| `PASSWORD_FORBID_USER_INFO`          | Forbid parts of the user's email                     | `true`  |
+| `PASSWORD_FORBID_COMMON_PASSWORD`    | Forbid breached passwords (Have I Been Pwned API)    | `false` |
+
 ### Delay
 
 | Variable                | Description                                                   | Default |

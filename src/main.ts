@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { useContainer } from 'class-validator';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { version } from '../package.json';
@@ -8,6 +9,7 @@ import { version } from '../package.json';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
