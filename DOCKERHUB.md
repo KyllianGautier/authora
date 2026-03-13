@@ -113,6 +113,7 @@ All variables with a default value are optional.
 |--------|--------------------------------------|----------------------------------|
 | POST   | `/sign-up`                           | Create a registration            |
 | POST   | `/sign-up/resend-verification-email` | Resend email verification token  |
+| POST   | `/sign-up/check-email`               | Check if an email is available   |
 | POST   | `/sign-up/verify`                    | Verify email and create user     |
 | POST   | `/sign-in`                           | Sign in                          |
 | POST   | `/sign-in/refresh`                   | Refresh access token             |

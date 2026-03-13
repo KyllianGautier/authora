@@ -9,9 +9,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { CheckEmailInputDto } from '../dto/input/check-email.input.dto';
 import { ResendVerificationEmailInputDto } from '../dto/input/resend-verification-email.input.dto';
 import { SignUpInputDto } from '../dto/input/sign-up.input.dto';
 import { VerifyEmailInputDto } from '../dto/input/verify-email.input.dto';
+import { CheckEmailOutputDto } from '../dto/output/check-email.output.dto';
 import { SignUpOutputDto } from '../dto/output/sign-up.output.dto';
 import { VerifyEmailOutputDto } from '../dto/output/verify-email.output.dto';
 import { SignUpService } from '../service/sign-up.service';
@@ -41,6 +43,19 @@ export class SignUpController {
     @Body() dto: ResendVerificationEmailInputDto
   ): Promise<void> {
     return this._signUpService.resendVerificationEmail(dto);
+  }
+
+  @Post('check-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Check if an email is available' })
+  @ApiOkResponse({
+    description: 'Email availability check result',
+    type: CheckEmailOutputDto
+  })
+  async checkEmail(
+    @Body() dto: CheckEmailInputDto
+  ): Promise<CheckEmailOutputDto> {
+    return this._signUpService.checkEmail(dto);
   }
 
   @Post('verify')

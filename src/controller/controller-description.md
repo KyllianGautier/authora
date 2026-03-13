@@ -33,6 +33,19 @@ Input Dto contains the email and the email verification token.
 Output Dto returns a user infos (email and createdAt).
 
 
+### POST /sign-up/check-email
+
+Check if an email is available.
+
+Input Dto contains the email to check.
+
+Check if the email is already used by a user or a registration.
+
+Returns always a status 200 with a neutral message:
+- Email is already used: "If the email can be used, you will be able to sign-up."
+- Email is available: "You can continue the registration process if this email is valid."
+
+
 ## Two Factor Auth controller
 
 ### POST /2fa/setup
