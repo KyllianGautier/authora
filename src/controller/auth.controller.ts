@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Delay } from '../decorator/delay.decorator';
 import {
   ApiBadRequestResponse,
   ApiGoneResponse,
@@ -19,6 +20,7 @@ export class AuthController {
   constructor(private readonly _authService: AuthService) {}
 
   @Post('change-password')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Change user password' })
   @ApiOkResponse({ description: 'Password changed successfully' })
@@ -31,6 +33,7 @@ export class AuthController {
   }
 
   @Post('delete-account')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request account deletion' })
   @ApiOkResponse({ description: 'Verification email sent' })
@@ -40,6 +43,7 @@ export class AuthController {
   }
 
   @Post('delete-account/verify')
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify and delete account' })
   @ApiOkResponse({ description: 'Account deleted' })

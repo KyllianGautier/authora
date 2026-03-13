@@ -8,6 +8,7 @@ import {
   Res,
   UnauthorizedException
 } from '@nestjs/common';
+import { Delay } from '../decorator/delay.decorator';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
@@ -26,6 +27,7 @@ export class SignInController {
   constructor(private readonly _signInService: SignInService) {}
 
   @Post()
+  @Delay()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in' })
   @ApiOkResponse({

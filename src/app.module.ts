@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -9,6 +10,7 @@ import { EMAIL_QUEUE } from './config/constants';
 import { envValidationSchema } from './config/env.validation';
 import { CONTROLLERS } from './controller';
 import { ENTITIES } from './entity';
+import { DelayInterceptor } from './interceptor/delay.interceptor';
 import { SERVICES } from './service';
 
 @Module({
@@ -73,6 +75,12 @@ import { SERVICES } from './service';
     ])
   ],
   controllers: [...CONTROLLERS],
-  providers: [...SERVICES]
+  providers: [
+    ...SERVICES,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DelayInterceptor
+    }
+  ]
 })
 export class AppModule {}
