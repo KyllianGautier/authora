@@ -30,9 +30,23 @@ services:
       restart_policy:
         condition: on-failure
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    networks:
+      - authora
+    volumes:
+      - redis_data:/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
 volumes:
   pgdata:
   rabbitmq_data:
+  redis_data:
 
 networks:
   authora:

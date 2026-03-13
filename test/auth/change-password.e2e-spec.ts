@@ -5,7 +5,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { PasswordEntity } from '../../src/entity/password.entity';
 import { createUserWithPassword } from '../utils/create-user-with-password';
-import { clearDatabase, consumeEmailQueue, getTestApp } from '../setup';
+import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
 
 describe('POST /auth/change-password', () => {
   let app: INestApplication<App>;
@@ -17,7 +17,7 @@ describe('POST /auth/change-password', () => {
   }, 120_000);
 
   beforeEach(async () => {
-    await clearDatabase();
+    await resetTestState();
     await consumeEmailQueue();
   });
 
@@ -287,6 +287,22 @@ describe('POST /auth/change-password', () => {
           newPassword: 'newPassword'
         })
         .expect(200);
+    });
+  });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/auth/change-password')
+          .send({ email: 'throttle@example.com', currentPassword: 'old123', newPassword: 'new123' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/change-password')
+        .send({ email: 'throttle@example.com', currentPassword: 'old123', newPassword: 'new123' });
+
+      expect(response.status).toBe(429);
     });
   });
 });

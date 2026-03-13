@@ -4,7 +4,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { TwoFactorAuthEntity } from '../../src/entity/two-factor-auth.entity';
 import { UserEntity } from '../../src/entity/user.entity';
-import { clearDatabase, consumeEmailQueue, getTestApp } from '../setup';
+import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 
 describe('POST /2fa/setup', () => {
@@ -17,7 +17,7 @@ describe('POST /2fa/setup', () => {
   }, 120_000);
 
   beforeEach(async () => {
-    await clearDatabase();
+    await resetTestState();
     await consumeEmailQueue();
   });
 
@@ -193,6 +193,22 @@ describe('POST /2fa/setup', () => {
 
       expect(response.body.qrcode).toMatch(/^data:image\/png;base64,/);
       expect(response.body.manualCode).toBeDefined();
+    });
+  });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/2fa/setup')
+          .send({ email: 'throttle@example.com', password: 'password123' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/2fa/setup')
+        .send({ email: 'throttle@example.com', password: 'password123' });
+
+      expect(response.status).toBe(429);
     });
   });
 });

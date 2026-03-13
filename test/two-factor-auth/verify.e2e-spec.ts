@@ -5,7 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { TwoFactorAuthEntity } from '../../src/entity/two-factor-auth.entity';
-import { clearDatabase, consumeEmailQueue, getTestApp } from '../setup';
+import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 
 describe('POST /2fa/verify', () => {
@@ -18,7 +18,7 @@ describe('POST /2fa/verify', () => {
   }, 120_000);
 
   beforeEach(async () => {
-    await clearDatabase();
+    await resetTestState();
     await consumeEmailQueue();
   });
 
@@ -358,6 +358,22 @@ describe('POST /2fa/verify', () => {
         .expect(200);
 
       expect(response.body.recoveryCodes).toHaveLength(10);
+    });
+  });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/2fa/verify')
+          .send({ email: 'throttle@example.com', password: 'password123', code: '000000' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/2fa/verify')
+        .send({ email: 'throttle@example.com', password: 'password123', code: '000000' });
+
+      expect(response.status).toBe(429);
     });
   });
 });

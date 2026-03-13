@@ -6,7 +6,7 @@ import { DataSource } from 'typeorm';
 import { RefreshTokenEntity } from '../../src/entity/refresh-token.entity';
 import { UserEntity } from '../../src/entity/user.entity';
 import {
-  clearDatabase,
+  resetTestState,
   consumeEmailQueue,
   getTestApp,
   getTestPrivateKey,
@@ -25,7 +25,7 @@ describe('POST /sign-in/refresh', () => {
   }, 120_000);
 
   beforeEach(async () => {
-    await clearDatabase();
+    await resetTestState();
     await consumeEmailQueue();
   });
 
@@ -563,6 +563,24 @@ describe('POST /sign-in/refresh', () => {
         .expect(200);
 
       expect(response.body.accessToken).toBeDefined();
+    });
+  });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 30; i++) {
+        await request(app.getHttpServer())
+          .post('/sign-in/refresh')
+          .set('Authorization', 'Bearer fake-token')
+          .set('Cookie', 'refreshToken=fake-token');
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/sign-in/refresh')
+        .set('Authorization', 'Bearer fake-token')
+        .set('Cookie', 'refreshToken=fake-token');
+
+      expect(response.status).toBe(429);
     });
   });
 });

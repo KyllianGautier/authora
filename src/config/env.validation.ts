@@ -17,6 +17,9 @@ export const envValidationSchema = Joi.object({
   // RabbitMQ
   RABBITMQ_URL: Joi.string().uri().required(),
 
+  // Redis
+  REDIS_URL: Joi.string().uri().required(),
+
   // Security
   HASH_SALT_ROUNDS: Joi.number().integer().min(1).default(10),
   EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS: Joi.number()
@@ -54,6 +57,10 @@ export const envValidationSchema = Joi.object({
     .min(1)
     .default(2592000)
     .greater(Joi.ref('JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS')),
+  THROTTLE_TTL_SECONDS: Joi.number().integer().min(1).default(60),
+  THROTTLE_ORIGIN_LIMIT: Joi.number().integer().min(1).default(30),
+  THROTTLE_IDENTITY_LIMIT: Joi.number().integer().min(1).default(10),
+  THROTTLE_COMBINED_LIMIT: Joi.number().integer().min(1).default(5),
 
   // Delay
   ENDPOINT_DELAY_MIN_MS: Joi.number().integer().min(0).default(200),

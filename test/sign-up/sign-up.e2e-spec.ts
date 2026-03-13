@@ -4,7 +4,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { RegistrationEntity } from '../../src/entity/registration.entity';
 import { UserEntity } from '../../src/entity/user.entity';
-import { clearDatabase, consumeEmailQueue, getTestApp } from '../setup';
+import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
 
 describe('POST /sign-up', () => {
   let app: INestApplication<App>;
@@ -16,7 +16,7 @@ describe('POST /sign-up', () => {
   }, 120_000);
 
   beforeEach(async () => {
-    await clearDatabase();
+    await resetTestState();
     await consumeEmailQueue();
   });
 
@@ -175,6 +175,22 @@ describe('POST /sign-up', () => {
           token: expect.any(String)
         }
       });
+    });
+  });
+
+  describe('throttling', () => {
+    it('should return 429 when rate limit is exceeded', async () => {
+      for (let i = 0; i < 5; i++) {
+        await request(app.getHttpServer())
+          .post('/sign-up')
+          .send({ email: 'throttle@example.com', password: 'password123' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/sign-up')
+        .send({ email: 'throttle@example.com', password: 'password123' });
+
+      expect(response.status).toBe(429);
     });
   });
 });
