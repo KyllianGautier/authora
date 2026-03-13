@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { DateTime } from 'luxon';
+import { CheckEmailInputDto } from '../dto/input/check-email.input.dto';
 import { ResendVerificationEmailInputDto } from '../dto/input/resend-verification-email.input.dto';
 import { SignUpInputDto } from '../dto/input/sign-up.input.dto';
 import { VerifyEmailInputDto } from '../dto/input/verify-email.input.dto';
+import { CheckEmailOutputDto } from '../dto/output/check-email.output.dto';
 import { SignUpOutputDto } from '../dto/output/sign-up.output.dto';
 import { VerifyEmailOutputDto } from '../dto/output/verify-email.output.dto';
 import { EmailService } from './email.service';
@@ -72,6 +74,21 @@ export class SignUpService {
 
     // Send the new verification email
     await this._emailService.sendSignUpVerification(email, verificationToken);
+  }
+
+  async checkEmail(dto: CheckEmailInputDto): Promise<CheckEmailOutputDto> {
+    const email = dto.email.toLowerCase();
+
+    const [emailInRegistration, emailInUser] = await Promise.all([
+      this._registrationEntityService.existsByEmail(email),
+      this._userEntityService.existsByEmail(email)
+    ]);
+
+    if (emailInRegistration || emailInUser) {
+      return { message: 'If the email can be used, you will be able to sign-up.' };
+    }
+
+    return { message: 'You can continue the registration process if this email is valid.' };
   }
 
   async verifyEmail(dto: VerifyEmailInputDto): Promise<VerifyEmailOutputDto> {
