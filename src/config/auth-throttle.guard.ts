@@ -1,9 +1,13 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 
 @Injectable()
 export class AuthThrottleGuard extends ThrottlerGuard {
+  protected override throwThrottlingException(): Promise<void> {
+    throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+  }
+
   protected override generateKey(
     context: ExecutionContext,
     _tracker: string,
