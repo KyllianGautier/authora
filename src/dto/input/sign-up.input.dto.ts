@@ -7,7 +7,7 @@ export class SignUpInputDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ description: 'Clear text password', example: 'password123' })
+  @ApiProperty({ description: 'Clear text password', example: 'P@ssw0rd!' })
   @IsString()
   @IsNotEmpty()
   @IsStrongPassword({ emailField: 'email' })

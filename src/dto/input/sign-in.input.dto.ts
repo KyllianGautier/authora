@@ -8,7 +8,7 @@ export class SignInInputDto {
 
   @ApiProperty({
     description: 'Current clear text password',
-    example: 'password123'
+    example: 'P@ssw0rd!'
   })
   @IsString()
   @IsNotEmpty()

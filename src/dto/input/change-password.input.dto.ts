@@ -10,7 +10,7 @@ export class ChangePasswordInputDto {
 
   @ApiProperty({
     description: 'Current clear text password',
-    example: 'password123'
+    example: 'P@ssw0rd!'
   })
   @IsString()
   @IsNotEmpty()
@@ -18,7 +18,7 @@ export class ChangePasswordInputDto {
 
   @ApiProperty({
     description: 'New clear text password',
-    example: 'newPassword456'
+    example: 'N3wP@ss!'
   })
   @IsString()
   @IsNotEmpty()
