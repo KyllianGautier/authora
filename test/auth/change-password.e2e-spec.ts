@@ -25,7 +25,7 @@ describe('POST /auth/change-password', () => {
     it('should return 400 when email is missing', () => {
       return request(app.getHttpServer())
         .post('/auth/change-password')
-        .send({ currentPassword: 'old123', newPassword: 'new123' })
+        .send({ currentPassword: 'oldPass123', newPassword: 'newPass123' })
         .expect(400);
     });
 
@@ -34,8 +34,8 @@ describe('POST /auth/change-password', () => {
         .post('/auth/change-password')
         .send({
           email: 'not-an-email',
-          currentPassword: 'old123',
-          newPassword: 'new123'
+          currentPassword: 'oldPass123',
+          newPassword: 'newPass123'
         })
         .expect(400);
     });
@@ -43,7 +43,7 @@ describe('POST /auth/change-password', () => {
     it('should return 400 when currentPassword is missing', () => {
       return request(app.getHttpServer())
         .post('/auth/change-password')
-        .send({ email: 'user@example.com', newPassword: 'new123' })
+        .send({ email: 'user@example.com', newPassword: 'newPass123' })
         .expect(400);
     });
 
@@ -53,7 +53,7 @@ describe('POST /auth/change-password', () => {
         .send({
           email: 'user@example.com',
           currentPassword: '',
-          newPassword: 'new123'
+          newPassword: 'newPass123'
         })
         .expect(400);
     });
@@ -61,7 +61,7 @@ describe('POST /auth/change-password', () => {
     it('should return 400 when newPassword is missing', () => {
       return request(app.getHttpServer())
         .post('/auth/change-password')
-        .send({ email: 'user@example.com', currentPassword: 'old123' })
+        .send({ email: 'user@example.com', currentPassword: 'oldPass123' })
         .expect(400);
     });
 
@@ -70,7 +70,7 @@ describe('POST /auth/change-password', () => {
         .post('/auth/change-password')
         .send({
           email: 'user@example.com',
-          currentPassword: 'old123',
+          currentPassword: 'oldPass123',
           newPassword: ''
         })
         .expect(400);
@@ -97,6 +97,23 @@ describe('POST /auth/change-password', () => {
         .send({})
         .expect(400);
     });
+
+    it('should return 400 when newPassword is too short', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/change-password')
+        .send({
+          email: 'user@example.com',
+          currentPassword: 'oldPassword',
+          newPassword: 'short'
+        })
+        .expect(400);
+
+      expect(response.body.message).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Password must contain')
+        ])
+      );
+    });
   });
 
   describe('behavior', () => {
@@ -105,8 +122,8 @@ describe('POST /auth/change-password', () => {
         .post('/auth/change-password')
         .send({
           email: 'unknown@example.com',
-          currentPassword: 'old123',
-          newPassword: 'new123'
+          currentPassword: 'oldPass123',
+          newPassword: 'newPass123'
         })
         .expect(401);
 
@@ -121,7 +138,7 @@ describe('POST /auth/change-password', () => {
         .send({
           email: 'user@example.com',
           currentPassword: 'wrongPassword',
-          newPassword: 'new123'
+          newPassword: 'newPass123'
         })
         .expect(401);
 
@@ -295,12 +312,12 @@ describe('POST /auth/change-password', () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
           .post('/auth/change-password')
-          .send({ email: 'throttle@example.com', currentPassword: 'old123', newPassword: 'new123' });
+          .send({ email: 'throttle@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
       }
 
       const response = await request(app.getHttpServer())
         .post('/auth/change-password')
-        .send({ email: 'throttle@example.com', currentPassword: 'old123', newPassword: 'new123' });
+        .send({ email: 'throttle@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
 
       expect(response.status).toBe(429);
     });

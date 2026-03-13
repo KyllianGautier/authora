@@ -9,9 +9,11 @@ import { tmpdir } from 'os';
 
 import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
+import { useContainer } from 'class-validator';
 import cookieParser from 'cookie-parser';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
+import { Client } from 'pg';
 
 let postgresContainer: StartedTestContainer;
 let rabbitmqContainer: StartedTestContainer;
@@ -31,7 +33,8 @@ export function getTestPrivateKey(): string {
 export async function getTestApp(): Promise<INestApplication<App>> {
   if (initialized) return app;
 
-  // Start PostgreSQL and RabbitMQ containers
+  // --- Step 1: Start external service containers ---
+  // Testcontainers auto-provisions PostgreSQL and RabbitMQ with random ports
   postgresContainer = await new GenericContainer('postgres:17')
     .withEnvironment({
       POSTGRES_USER: 'test',
@@ -47,7 +50,7 @@ export async function getTestApp(): Promise<INestApplication<App>> {
     .withWaitStrategy(Wait.forLogMessage('Server startup complete'))
     .start();
 
-  // Generate test RSA keys in a temp directory
+  // --- Step 2: Generate temporary RSA keys for JWT signing ---
   testKeysDir = mkdtempSync(join(tmpdir(), 'authora-test-keys-'));
   const privateKeyPath = join(testKeysDir, 'private.pem');
   const publicKeyPath = join(testKeysDir, 'public.pem');
@@ -58,8 +61,13 @@ export async function getTestApp(): Promise<INestApplication<App>> {
     `openssl rsa -in ${privateKeyPath} -pubout -out ${publicKeyPath} 2>/dev/null`
   );
 
-  // Set all environment variables BEFORE loading AppModule
-  // so that ConfigModule.forRoot() picks up the dynamic container URLs
+  // --- Step 3: Set all environment variables ---
+  // Must happen BEFORE loading AppModule so ConfigModule.forRoot() picks up
+  // the dynamic container URLs instead of root .env values.
+  // Argon2 params are set to minimal values for faster test execution.
+  // Password strength rules are disabled so tests can use simple passwords;
+  // only PASSWORD_MIN_LENGTH is enforced. Rule-specific coverage lives
+  // in the unit tests (is-strong-password.spec.ts).
   process.env.PG_HOST = '127.0.0.1';
   process.env.PG_PORT = postgresContainer.getMappedPort(5432).toString();
   process.env.PG_USERNAME = 'test';
@@ -86,15 +94,40 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   process.env.THROTTLE_ORIGIN_LIMIT = '30';
   process.env.THROTTLE_IDENTITY_LIMIT = '10';
   process.env.THROTTLE_COMBINED_LIMIT = '5';
+  process.env.PASSWORD_MIN_LENGTH = '8';
+  process.env.PASSWORD_REQUIRE_DIGIT = 'false';
+  process.env.PASSWORD_REQUIRE_SPECIAL_CHAR = 'false';
+  process.env.PASSWORD_REQUIRE_LOWERCASE = 'false';
+  process.env.PASSWORD_REQUIRE_UPPERCASE = 'false';
+  process.env.PASSWORD_FORBID_SEQUENTIAL_CHARS = 'false';
+  process.env.PASSWORD_FORBID_REPEATED_CHARS = 'false';
+  process.env.PASSWORD_FORBID_KEYBOARD_SEQUENCE = 'false';
+  process.env.PASSWORD_FORBID_USER_INFO = 'false';
+  process.env.PASSWORD_FORBID_COMMON_PASSWORD = 'false';
   process.env.ENDPOINT_DELAY_MIN_MS = '1';
   process.env.ENDPOINT_DELAY_MAX_MS = '2';
 
-  // Load AppModule AFTER env vars are set so ConfigModule.forRoot()
-  // reads the correct dynamic container URLs instead of root .env values
+  // --- Step 4: Create the 'authora' PostgreSQL schema ---
+  // TypeORM's synchronize creates tables but not schemas, so we must
+  // create the schema manually before the app boots.
+  const pgClient = new Client({
+    host: '127.0.0.1',
+    port: postgresContainer.getMappedPort(5432),
+    user: 'test',
+    password: 'test',
+    database: 'authora_test'
+  });
+  await pgClient.connect();
+  await pgClient.query('CREATE SCHEMA IF NOT EXISTS authora');
+  await pgClient.end();
+
+  // --- Step 5: Load AppModule and bootstrap the NestJS app ---
+  // Dynamic require() is used so ConfigModule.forRoot() reads the env vars
+  // we just set instead of loading from the root .env file.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { AppModule } = require('../src/app.module');
 
-  // Bootstrap the NestJS app (override Redis throttler storage with in-memory)
+  // Override Redis-backed throttle storage with in-memory (no Redis needed)
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule]
   })
@@ -103,6 +136,12 @@ export async function getTestApp(): Promise<INestApplication<App>> {
     .compile();
 
   app = moduleFixture.createNestApplication();
+
+  // Allow class-validator to resolve validators through NestJS DI container.
+  // Without this, custom validators like @IsStrongPassword() that inject
+  // ConfigService would fail with "Cannot read properties of undefined".
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
+
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   await app.init();
@@ -118,7 +157,9 @@ export async function resetTestState(): Promise<void> {
   const entities = dataSource.entityMetadatas;
   for (const entity of entities) {
     const repository = dataSource.getRepository(entity.name);
-    await repository.query(`TRUNCATE TABLE "${entity.tableName}" CASCADE`);
+    await repository.query(
+      `TRUNCATE TABLE "${entity.schema}"."${entity.tableName}" CASCADE`
+    );
   }
 
   // Reset throttler in-memory storage

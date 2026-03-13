@@ -52,6 +52,19 @@ describe('POST /sign-up', () => {
     it('should return 400 when body is empty', () => {
       return request(app.getHttpServer()).post('/sign-up').send({}).expect(400);
     });
+
+    it('should return 400 when password is too short', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/sign-up')
+        .send({ email: 'user@example.com', password: 'short' })
+        .expect(400);
+
+      expect(response.body.message).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Password must contain')
+        ])
+      );
+    });
   });
 
   describe('behavior', () => {
