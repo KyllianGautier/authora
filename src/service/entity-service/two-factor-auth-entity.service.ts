@@ -1,7 +1,6 @@
 import {
   ConflictException,
   Injectable,
-  NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -28,7 +27,7 @@ export class TwoFactorAuthEntityService {
       where: { user: { id: user.id } }
     });
 
-    if (existing !== null && existing.isEnabled) {
+    if (existing !== null && existing.isVerified) {
       throw new TwoFactorAuthAlreadyEnabledException();
     }
 
@@ -45,16 +44,16 @@ export class TwoFactorAuthEntityService {
       this._repository.create({
         user,
         secret,
-        isEnabled: false,
+        isVerified: false,
         recoveryCodeHashes: []
       })
     );
   }
 
-  async verifyUserTwoFactorAuth(
+  async verifyForUser(
     user: UserEntity,
     clearCode: string
-  ): Promise<boolean> {
+  ): Promise<string[]> {
     const twoFactorAuth = await this._repository.findOne({
       where: { user: { id: user.id } }
     });
@@ -63,21 +62,15 @@ export class TwoFactorAuthEntityService {
       throw new TwoFactorAuthNotFoundException();
     }
 
-    return speakeasy.totp.verify({
+    const isCodeValid = speakeasy.totp.verify({
       secret: twoFactorAuth.secret,
       encoding: 'base32',
       token: clearCode,
       window: 1
     });
-  }
 
-  async enableForUser(user: UserEntity): Promise<string[]> {
-    const twoFactorAuth = await this._repository.findOne({
-      where: { user: { id: user.id } }
-    });
-
-    if (twoFactorAuth === null) {
-      throw new TwoFactorAuthNotFoundException();
+    if (!isCodeValid) {
+      throw new TwoFactorAuthCodeInvalidException();
     }
 
     const clearRecoveryCodes = Array.from({ length: RECOVERY_CODE_COUNT }, () =>
@@ -88,11 +81,37 @@ export class TwoFactorAuthEntityService {
       clearRecoveryCodes.map((code) => this._hashService.hash(code))
     );
 
-    twoFactorAuth.isEnabled = true;
+    twoFactorAuth.isVerified = true;
     twoFactorAuth.recoveryCodeHashes = recoveryCodeHashes;
     await this._repository.save(twoFactorAuth);
 
     return clearRecoveryCodes;
+  }
+
+  async disableForUser(
+    user: UserEntity,
+    clearCode: string
+  ): Promise<void> {
+    const twoFactorAuth = await this._repository.findOne({
+      where: { user: { id: user.id }, isVerified: true }
+    });
+
+    if (twoFactorAuth === null) {
+      throw new TwoFactorAuthNotFoundException();
+    }
+
+    const isCodeValid = speakeasy.totp.verify({
+      secret: twoFactorAuth.secret,
+      encoding: 'base32',
+      token: clearCode,
+      window: 1
+    });
+
+    if (!isCodeValid) {
+      throw new TwoFactorAuthCodeInvalidException();
+    }
+
+    await this._repository.remove(twoFactorAuth);
   }
 
   buildOtpauthUri(twoFactorAuth: TwoFactorAuthEntity, email: string): string {
@@ -119,14 +138,14 @@ export class TwoFactorAuthAlreadyEnabledException extends ConflictException {
   }
 }
 
-export class TwoFactorAuthNotFoundException extends NotFoundException {
+export class TwoFactorAuthNotFoundException extends UnauthorizedException {
   constructor() {
-    super('Two-factor authentication setup not found');
+    super('Invalid credentials');
   }
 }
 
 export class TwoFactorAuthCodeInvalidException extends UnauthorizedException {
   constructor() {
-    super('Two-factor authentication code is invalid');
+    super('Invalid credentials');
   }
 }

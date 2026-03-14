@@ -154,6 +154,7 @@ All variables with a default value are optional.
 | POST   | `/auth/delete-account/verify`        | Verify and delete account        |
 | POST   | `/2fa/setup`                         | Setup two-factor authentication  |
 | POST   | `/2fa/verify`                        | Enable two-factor authentication |
+| POST   | `/2fa/disable`                       | Disable two-factor authentication |
 
 ## RabbitMQ messages
 

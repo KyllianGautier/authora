@@ -1,13 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as QRCode from 'qrcode';
+import { DisableTwoFactorAuthInputDto } from '../dto/input/disable-two-factor-auth.input.dto';
 import { SetupTwoFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
 import { VerifyTwoFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
 import { SetupTwoFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
 import { PasswordEntityService } from './entity-service/password-entity.service';
-import {
-  TwoFactorAuthCodeInvalidException,
-  TwoFactorAuthEntityService
-} from './entity-service/two-factor-auth-entity.service';
+import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
 
 @Injectable()
@@ -69,19 +67,35 @@ export class TwoFactorAuthService {
       throw new InvalidCredentialsException();
     }
 
-    // Verify the 6-digits code from the 2FA app against the stored secret
-    const isCodeValid =
-      await this._twoFactorAuthEntityService.verifyUserTwoFactorAuth(
-        user,
-        dto.code
-      );
+    // Verify the 6-digits code, enable 2FA, and return the recovery codes
+    return this._twoFactorAuthEntityService.verifyForUser(
+      user,
+      dto.code
+    );
+  }
 
-    if (!isCodeValid) {
-      throw new TwoFactorAuthCodeInvalidException();
+  async disable(dto: DisableTwoFactorAuthInputDto): Promise<void> {
+    const email = dto.email.toLowerCase();
+
+    // Find the user and verify the password
+    const user = await this._userEntityService.findByEmailWithPasswords(email);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
     }
 
-    // Enable two-factor authentication and return the recovery codes
-    return this._twoFactorAuthEntityService.enableForUser(user);
+    const isPasswordValid =
+      await this._passwordEntityService.verifyUserPassword(user, dto.password);
+
+    if (!isPasswordValid) {
+      throw new InvalidCredentialsException();
+    }
+
+    // Verify the 6-digits code and remove the two-factor authentication
+    await this._twoFactorAuthEntityService.disableForUser(
+      user,
+      dto.code
+    );
   }
 }
 

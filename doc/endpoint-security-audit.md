@@ -15,4 +15,5 @@
 | POST /auth/delete-account/verify        | Yes   | Yes      | Token brute-force                                                             | Protected |
 | POST /2fa/setup                         | Yes   | Yes      | Credential brute-force                                                        | Protected |
 | POST /2fa/verify                        | Yes   | Yes      | TOTP code brute-force                                                         | Protected |
+| POST /2fa/disable                       | Yes   | Yes      | Credential brute-force, TOTP code brute-force                                 | Protected |
 | GET /status                             | No    | No       | Public health check, no sensitive data                                        | N/A       |
