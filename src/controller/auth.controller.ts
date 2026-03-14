@@ -2,8 +2,6 @@ import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs
 import { Delay } from '../decorator/delay.decorator';
 import {
   ApiBadRequestResponse,
-  ApiGoneResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -51,9 +49,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify and delete account' })
   @ApiOkResponse({ description: 'Account deleted' })
-  @ApiNotFoundResponse({ description: 'No pending account deletion found' })
-  @ApiGoneResponse({ description: 'Verification token has expired' })
-  @ApiUnauthorizedResponse({ description: 'Verification token is invalid' })
+  @ApiUnauthorizedResponse({ description: 'Invalid token' })
   async verifyDeleteAccount(
     @Body() dto: VerifyDeleteAccountInputDto
   ): Promise<void> {

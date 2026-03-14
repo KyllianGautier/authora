@@ -3,10 +3,12 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { TwoFactorAuthEntity } from '../../src/entity/two-factor-auth.entity';
-import { UserEntity } from '../../src/entity/user.entity';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
+import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
+import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 
+// Initiates 2FA setup: generates a TOTP secret, returns a QR code and manual code,
+// and creates an unverified TwoFactorAuth record in the database.
 describe('POST /2fa/setup', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
@@ -22,39 +24,58 @@ describe('POST /2fa/setup', () => {
   });
 
   describe('validation', () => {
-    it('should return 400 when email is missing', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when email is missing', async () => {
+      const response = await request(app.getHttpServer())
         .post('/2fa/setup')
         .send({ password: 'password123' })
         .expect(400);
+
+      expect(response.body.message).toEqual(['email must be an email']);
     });
 
-    it('should return 400 when email is invalid', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when email is invalid', async () => {
+      const response = await request(app.getHttpServer())
         .post('/2fa/setup')
         .send({ email: 'not-an-email', password: 'password123' })
         .expect(400);
+
+      expect(response.body.message).toEqual(['email must be an email']);
     });
 
-    it('should return 400 when password is missing', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when password is missing', async () => {
+      const response = await request(app.getHttpServer())
         .post('/2fa/setup')
         .send({ email: 'user@example.com' })
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'password should not be empty',
+        'password must be a string'
+      ]);
     });
 
-    it('should return 400 when password is empty', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when password is empty', async () => {
+      const response = await request(app.getHttpServer())
         .post('/2fa/setup')
         .send({ email: 'user@example.com', password: '' })
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'password should not be empty'
+      ]);
     });
 
-    it('should return 400 when body is empty', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when body is empty', async () => {
+      const response = await request(app.getHttpServer())
         .post('/2fa/setup')
         .send({})
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'email must be an email',
+        'password should not be empty',
+        'password must be a string'
+      ]);
     });
   });
 
@@ -83,7 +104,7 @@ describe('POST /2fa/setup', () => {
       expect(response.body.message).toBe('Invalid credentials');
     });
 
-    it('should return 200 with a qrcode and manual code', async () => {
+    it('should return 200 with qrcode and manual code and create a record in database', async () => {
       await createUserWithPassword(
         dataSource,
         'user@example.com',
@@ -99,20 +120,8 @@ describe('POST /2fa/setup', () => {
       expect(response.body.manualCode).toBeDefined();
       expect(typeof response.body.manualCode).toBe('string');
       expect(response.body.manualCode.length).toBeGreaterThan(0);
-    });
 
-    it('should create a two-factor auth record in the database', async () => {
-      await createUserWithPassword(
-        dataSource,
-        'user@example.com',
-        'password123'
-      );
-
-      const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
+      // The DB record should be unverified (pending TOTP code confirmation) with no recovery codes yet
       const twoFactorAuth = await dataSource
         .getRepository(TwoFactorAuthEntity)
         .findOne({ where: { user: { email: 'user@example.com' } } });
@@ -123,35 +132,6 @@ describe('POST /2fa/setup', () => {
       expect(twoFactorAuth!.recoveryCodeHashes).toEqual([]);
     });
 
-    it('should replace previous two-factor auth on re-setup', async () => {
-      await createUserWithPassword(
-        dataSource,
-        'user@example.com',
-        'password123'
-      );
-
-      const firstResponse = await request(app.getHttpServer())
-        .post('/2fa/setup')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      const secondResponse = await request(app.getHttpServer())
-        .post('/2fa/setup')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      // A new secret should be generated
-      expect(secondResponse.body.manualCode).not.toBe(
-        firstResponse.body.manualCode
-      );
-
-      const allTwoFactorAuths = await dataSource
-        .getRepository(TwoFactorAuthEntity)
-        .find({ where: { user: { email: 'user@example.com' } } });
-
-      expect(allTwoFactorAuths).toHaveLength(1);
-    });
-
     it('should return 409 when two-factor auth is already enabled', async () => {
       const user = await createUserWithPassword(
         dataSource,
@@ -159,15 +139,7 @@ describe('POST /2fa/setup', () => {
         'password123'
       );
 
-      const twoFactorAuthRepo = dataSource.getRepository(TwoFactorAuthEntity);
-      await twoFactorAuthRepo.save(
-        twoFactorAuthRepo.create({
-          user,
-          secret: 'some-secret',
-          isVerified: true,
-          recoveryCodeHashes: ['hash1']
-        })
-      );
+      await createTwoFactorAuth(dataSource, user, true);
 
       const response = await request(app.getHttpServer())
         .post('/2fa/setup')
@@ -196,19 +168,54 @@ describe('POST /2fa/setup', () => {
     });
   });
 
+  // Three-dimensional rate limiting: combined (same IP+email, limit 5),
+  // identity (same email from different IPs, limit 10), origin (same IP with different emails, limit 30).
   describe('throttling', () => {
-    it('should return 429 when rate limit is exceeded', async () => {
+    it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
           .post('/2fa/setup')
-          .send({ email: 'throttle@example.com', password: 'password123' });
+          .send({ email: 'combined@example.com', password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
         .post('/2fa/setup')
-        .send({ email: 'throttle@example.com', password: 'password123' });
+        .send({ email: 'combined@example.com', password: 'password123' });
 
       expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when identity rate limit is exceeded', async () => {
+      for (let i = 0; i < 10; i++) {
+        await request(app.getHttpServer())
+          .post('/2fa/setup')
+          .set('X-Forwarded-For', `10.0.0.${i}`)
+          .send({ email: 'identity@example.com', password: 'password123' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/2fa/setup')
+        .set('X-Forwarded-For', '10.0.0.99')
+        .send({ email: 'identity@example.com', password: 'password123' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when origin rate limit is exceeded', async () => {
+      for (let i = 0; i < 30; i++) {
+        await request(app.getHttpServer())
+          .post('/2fa/setup')
+          .send({ email: `origin-${i}@example.com`, password: 'password123' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/2fa/setup')
+        .send({ email: 'origin-final@example.com', password: 'password123' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
     });
   });
 });

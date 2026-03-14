@@ -3,7 +3,6 @@ import { Delay } from '../decorator/delay.decorator';
 import {
   ApiConflictResponse,
   ApiCreatedResponse,
-  ApiGoneResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -76,8 +75,7 @@ export class SignUpController {
     type: VerifyEmailOutputDto
   })
   @ApiNotFoundResponse({ description: 'No pending sign-up found' })
-  @ApiGoneResponse({ description: 'Verification token has expired' })
-  @ApiUnauthorizedResponse({ description: 'Verification token is invalid' })
+  @ApiUnauthorizedResponse({ description: 'Invalid token' })
   async verifyEmail(
     @Body() dto: VerifyEmailInputDto
   ): Promise<VerifyEmailOutputDto> {

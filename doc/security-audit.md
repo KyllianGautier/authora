@@ -11,6 +11,7 @@ This document lists all security topics relevant to an authentication API, with 
 - [ ] [Request payload size limiting](#request-payload-size-limiting)
 - [ ] [Logging and monitoring](#logging-and-monitoring)
 - [ ] [Dependency vulnerabilities](#dependency-vulnerabilities)
+- [ ] [TOTP secret encryption at rest](#totp-secret-encryption-at-rest)
 - [x] [Password hashing](#password-hashing)
 - [x] [Password strength requirements](#password-strength-requirements)
 - [x] [Password reuse prevention](#password-reuse-prevention)
@@ -277,3 +278,14 @@ Regularly audit dependencies for known CVEs. Integrate `npm audit` into CI/CD.
 **Status: Missing**
 
 - No `npm audit` script or security scanning tool configured
+
+---
+
+## TOTP secret encryption at rest
+
+TOTP secrets are currently stored in plain text in the database. If the database is compromised, an attacker can generate valid TOTP codes for any user. Encrypt secrets at rest using a symmetric algorithm (e.g., AES-256-GCM) with a server-side key, and decrypt on read when verifying codes.
+
+**Status: Missing**
+
+- TOTP secrets stored as plain text in the `two_factor_auth` table
+- No encryption key management in place

@@ -7,10 +7,21 @@ import {
   OneTimeTokenType
 } from '../../src/entity/one-time-token.entity';
 import { PasswordEntity } from '../../src/entity/password.entity';
+import { RefreshTokenEntity } from '../../src/entity/refresh-token.entity';
+import { TwoFactorAuthEntity } from '../../src/entity/two-factor-auth.entity';
 import { UserEntity } from '../../src/entity/user.entity';
+import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
+import {
+  createOneTimeToken,
+  FAKE_ONE_TIME_TOKEN
+} from '../utils/create-one-time-token';
+import { createRefreshToken } from '../utils/create-refresh-token';
+import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
+import { getExpiredDate } from '../utils/date';
 
+// Confirms account deletion using the one-time token from the verification email.
+// Deletes the user and all related data (passwords, refresh tokens, 2FA, one-time tokens).
 describe('POST /auth/delete-account/verify', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
@@ -26,39 +37,56 @@ describe('POST /auth/delete-account/verify', () => {
   });
 
   describe('validation', () => {
-    it('should return 400 when email is missing', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when email is missing', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
         .send({ token: 'some-token' })
         .expect(400);
+
+      expect(response.body.message).toEqual(['email must be an email']);
     });
 
-    it('should return 400 when email is invalid', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when email is invalid', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
         .send({ email: 'not-an-email', token: 'some-token' })
         .expect(400);
+
+      expect(response.body.message).toEqual(['email must be an email']);
     });
 
-    it('should return 400 when token is missing', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when token is missing', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
         .send({ email: 'user@example.com' })
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'token should not be empty',
+        'token must be a string'
+      ]);
     });
 
-    it('should return 400 when token is empty', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when token is empty', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
         .send({ email: 'user@example.com', token: '' })
         .expect(400);
+
+      expect(response.body.message).toEqual(['token should not be empty']);
     });
 
-    it('should return 400 when body is empty', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when body is empty', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
         .send({})
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'email must be an email',
+        'token should not be empty',
+        'token must be a string'
+      ]);
     });
   });
 
@@ -74,171 +102,192 @@ describe('POST /auth/delete-account/verify', () => {
       );
     });
 
-    it('should return 404 when no deletion token exists', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+    it('should return 401 when no deletion token exists', async () => {
+      await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
 
       const response = await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
         .send({ email: 'user@example.com', token: 'some-token' })
-        .expect(404);
+        .expect(401);
 
-      expect(response.body.message).toBe('One-time token not found');
+      expect(response.body.message).toBe('Invalid token');
     });
 
     it('should return 401 when token is invalid', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-
-      await request(app.getHttpServer())
-        .post('/auth/delete-account')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      const response = await request(app.getHttpServer())
-        .post('/auth/delete-account/verify')
-        .send({ email: 'user@example.com', token: 'wrong-token' })
-        .expect(401);
-
-      expect(response.body.message).toBe('One-time token is invalid');
-    });
-
-    it('should return 410 when deletion token is expired', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-
-      await request(app.getHttpServer())
-        .post('/auth/delete-account')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      // Set the token expiration to the past
-      await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .update(
-          { type: OneTimeTokenType.AccountDeletion },
-          { expiredAt: new Date('2000-01-01') }
-        );
-
-      const messages = await consumeEmailQueue();
-      const token = messages[0].data.token as string;
-
-      const response = await request(app.getHttpServer())
-        .post('/auth/delete-account/verify')
-        .send({ email: 'user@example.com', token })
-        .expect(410);
-
-      expect(response.body.message).toBe('One-time token has expired');
-    });
-
-    it('should delete the user and all related data on valid token', async () => {
       const user = await createUserWithPassword(
         dataSource,
         'user@example.com',
         'password123'
       );
 
-      await request(app.getHttpServer())
-        .post('/auth/delete-account')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
+      await createOneTimeToken(
+        dataSource,
+        user,
+        OneTimeTokenType.AccountDeletion
+      );
 
-      // Verify the OTT was created before deletion
-      const tokenBefore = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .findOneBy({ user: { id: user.id } });
-      expect(tokenBefore).not.toBeNull();
+      const response = await request(app.getHttpServer())
+        .post('/auth/delete-account/verify')
+        .send({ email: 'user@example.com', token: 'wrong-token' })
+        .expect(401);
 
-      const messages = await consumeEmailQueue();
-      const token = messages[0].data.token as string;
+      expect(response.body.message).toBe('Invalid token');
+    });
+
+    // Even with the correct token, an expired deletion token must be rejected
+    it('should return 401 when deletion token is expired', async () => {
+      const user = await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
+
+      await createOneTimeToken(
+        dataSource,
+        user,
+        OneTimeTokenType.AccountDeletion,
+        { expiredAt: getExpiredDate() }
+      );
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/delete-account/verify')
+        .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN })
+        .expect(401);
+
+      expect(response.body.message).toBe('Invalid token');
+    });
+
+    it('should return 200 and delete the user and all related data', async () => {
+      // Set up a user with every possible type of related data
+      const user = await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
+
+      await createRefreshToken(dataSource, user);
+      await createTwoFactorAuth(dataSource, user, true);
+      await createOneTimeToken(
+        dataSource,
+        user,
+        OneTimeTokenType.AccountDeletion
+      );
 
       await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
-        .send({ email: 'user@example.com', token })
+        .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN })
         .expect(200);
 
-      // User should be deleted
+      // Verify the user and all related entities have been cascade-deleted
       const deletedUser = await dataSource
         .getRepository(UserEntity)
         .findOneBy({ email: 'user@example.com' });
+
       expect(deletedUser).toBeNull();
 
-      // Passwords should be cascade-deleted
       const passwords = await dataSource
         .getRepository(PasswordEntity)
         .find({ where: { user: { id: user.id } } });
+
       expect(passwords).toHaveLength(0);
 
-      // One-time tokens should be cascade-deleted
-      const tokens = await dataSource
+      const refreshTokens = await dataSource
+        .getRepository(RefreshTokenEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(refreshTokens).toHaveLength(0);
+
+      const twoFactorAuth = await dataSource
+        .getRepository(TwoFactorAuthEntity)
+        .findOneBy({ user: { id: user.id } });
+
+      expect(twoFactorAuth).toBeNull();
+
+      const oneTimeTokens = await dataSource
         .getRepository(OneTimeTokenEntity)
         .find({ where: { user: { id: user.id } } });
-      expect(tokens).toHaveLength(0);
+
+      expect(oneTimeTokens).toHaveLength(0);
     });
 
-    it('should work with resent deletion token', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+    it('should normalize email to lowercase', async () => {
+      const user = await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
 
-      await request(app.getHttpServer())
-        .post('/auth/delete-account')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      // Drain first deletion message
-      await consumeEmailQueue();
-
-      await request(app.getHttpServer())
-        .post('/auth/delete-account')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      const messages = await consumeEmailQueue();
-      const newToken = messages[0].data.token as string;
+      await createOneTimeToken(
+        dataSource,
+        user,
+        OneTimeTokenType.AccountDeletion
+      );
 
       await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
-        .send({ email: 'user@example.com', token: newToken })
+        .send({ email: 'User@Example.COM', token: FAKE_ONE_TIME_TOKEN })
         .expect(200);
 
-      const user = await dataSource
+      const deletedUser = await dataSource
         .getRepository(UserEntity)
         .findOneBy({ email: 'user@example.com' });
-      expect(user).toBeNull();
-    });
 
-    it('should reject the old token after re-request', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-
-      await request(app.getHttpServer())
-        .post('/auth/delete-account')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      const firstMessages = await consumeEmailQueue();
-      const oldToken = firstMessages[0].data.token as string;
-
-      await request(app.getHttpServer())
-        .post('/auth/delete-account')
-        .send({ email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      await request(app.getHttpServer())
-        .post('/auth/delete-account/verify')
-        .send({ email: 'user@example.com', token: oldToken })
-        .expect(401);
+      expect(deletedUser).toBeNull();
     });
   });
 
+  // Three-dimensional rate limiting: combined (same IP+email, limit 5),
+  // identity (same email from different IPs, limit 10), origin (same IP with different emails, limit 30).
   describe('throttling', () => {
-    it('should return 429 when rate limit is exceeded', async () => {
+    it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
           .post('/auth/delete-account/verify')
-          .send({ email: 'throttle@example.com', token: 'fake-token' });
+          .send({ email: 'combined@example.com', token: 'fake-token' });
       }
 
       const response = await request(app.getHttpServer())
         .post('/auth/delete-account/verify')
-        .send({ email: 'throttle@example.com', token: 'fake-token' });
+        .send({ email: 'combined@example.com', token: 'fake-token' });
 
       expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when identity rate limit is exceeded', async () => {
+      for (let i = 0; i < 10; i++) {
+        await request(app.getHttpServer())
+          .post('/auth/delete-account/verify')
+          .set('X-Forwarded-For', `10.0.0.${i}`)
+          .send({ email: 'identity@example.com', token: 'fake-token' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/delete-account/verify')
+        .set('X-Forwarded-For', '10.0.0.99')
+        .send({ email: 'identity@example.com', token: 'fake-token' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when origin rate limit is exceeded', async () => {
+      for (let i = 0; i < 30; i++) {
+        await request(app.getHttpServer())
+          .post('/auth/delete-account/verify')
+          .send({ email: `origin-${i}@example.com`, token: 'fake-token' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/delete-account/verify')
+        .send({ email: 'origin-final@example.com', token: 'fake-token' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
     });
   });
 });

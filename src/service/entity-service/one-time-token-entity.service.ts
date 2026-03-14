@@ -1,7 +1,5 @@
 import {
-  GoneException,
   Injectable,
-  NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -74,20 +72,20 @@ export class OneTimeTokenEntityService {
     const token = user.oneTimeTokens.find((ott) => ott.type === type);
 
     if (token === undefined) {
-      throw new OneTimeTokenNotFoundException();
+      throw new InvalidTokenException();
     }
 
     if (
       token.revoked ||
       DateTime.utc() > DateTime.fromJSDate(token.expiredAt)
     ) {
-      throw new OneTimeTokenExpiredException();
+      throw new InvalidTokenException();
     }
 
     const isTokenValid = await this._hashService.verify(token.tokenHash, clearToken);
 
     if (!isTokenValid) {
-      throw new OneTimeTokenInvalidException();
+      throw new InvalidTokenException();
     }
   }
 
@@ -106,20 +104,8 @@ export class OneTimeTokenEntityService {
   }
 }
 
-export class OneTimeTokenNotFoundException extends NotFoundException {
+export class InvalidTokenException extends UnauthorizedException {
   constructor() {
-    super('One-time token not found');
-  }
-}
-
-export class OneTimeTokenExpiredException extends GoneException {
-  constructor() {
-    super('One-time token has expired');
-  }
-}
-
-export class OneTimeTokenInvalidException extends UnauthorizedException {
-  constructor() {
-    super('One-time token is invalid');
+    super('Invalid token');
   }
 }

@@ -109,7 +109,7 @@ export class SignUpService {
       DateTime.fromJSDate(registration.emailVerificationTokenExpiresAt);
 
     if (isTokenExpired) {
-      throw new EmailVerificationTokenExpiredException();
+      throw new InvalidTokenException();
     }
 
     // Validate the verification token
@@ -119,7 +119,7 @@ export class SignUpService {
     );
 
     if (!isTokenValid) {
-      throw new EmailVerificationTokenInvalidException();
+      throw new InvalidTokenException();
     }
 
     // Create the user and its password from the registration data
@@ -139,7 +139,6 @@ export class SignUpService {
 
 import {
   ConflictException,
-  GoneException,
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
@@ -156,14 +155,8 @@ export class RegistrationNotFoundException extends NotFoundException {
   }
 }
 
-export class EmailVerificationTokenExpiredException extends GoneException {
+export class InvalidTokenException extends UnauthorizedException {
   constructor() {
-    super('Email verification token has expired');
-  }
-}
-
-export class EmailVerificationTokenInvalidException extends UnauthorizedException {
-  constructor() {
-    super('Email verification token is invalid');
+    super('Invalid token');
   }
 }

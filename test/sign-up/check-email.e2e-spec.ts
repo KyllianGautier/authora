@@ -2,9 +2,12 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { UserEntity } from '../../src/entity/user.entity';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../setup';
+import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
+import { createRegistration } from '../utils/create-registration';
+import { createUser } from '../utils/create-user';
 
+// Checks if an email is available for registration.
+// Returns a vague message in both cases to avoid leaking whether an email is registered.
 describe('POST /sign-up/check-email', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
@@ -52,10 +55,11 @@ describe('POST /sign-up/check-email', () => {
     });
 
     it('should return 200 when email is already used by a registration', async () => {
-      await request(app.getHttpServer())
-        .post('/sign-up')
-        .send({ email: 'taken@example.com', password: 'password123' })
-        .expect(201);
+      await createRegistration(
+        dataSource,
+        'taken@example.com',
+        'password123'
+      );
 
       const response = await request(app.getHttpServer())
         .post('/sign-up/check-email')
@@ -68,8 +72,7 @@ describe('POST /sign-up/check-email', () => {
     });
 
     it('should return 200 when email is already used by a user', async () => {
-      const userRepo = dataSource.getRepository(UserEntity);
-      await userRepo.save(userRepo.create({ email: 'existing@example.com' }));
+      await createUser(dataSource, 'existing@example.com');
 
       const response = await request(app.getHttpServer())
         .post('/sign-up/check-email')
@@ -82,8 +85,7 @@ describe('POST /sign-up/check-email', () => {
     });
 
     it('should normalize email to lowercase', async () => {
-      const userRepo = dataSource.getRepository(UserEntity);
-      await userRepo.save(userRepo.create({ email: 'user@example.com' }));
+      await createUser(dataSource, 'user@example.com');
 
       const response = await request(app.getHttpServer())
         .post('/sign-up/check-email')
@@ -96,19 +98,54 @@ describe('POST /sign-up/check-email', () => {
     });
   });
 
+  // Three-dimensional rate limiting: combined (same IP+email, limit 5),
+  // identity (same email from different IPs, limit 10), origin (same IP with different emails, limit 30).
   describe('throttling', () => {
-    it('should return 429 when rate limit is exceeded', async () => {
+    it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
           .post('/sign-up/check-email')
-          .send({ email: 'throttle@example.com' });
+          .send({ email: 'combined@example.com' });
       }
 
       const response = await request(app.getHttpServer())
         .post('/sign-up/check-email')
-        .send({ email: 'throttle@example.com' });
+        .send({ email: 'combined@example.com' });
 
       expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when identity rate limit is exceeded', async () => {
+      for (let i = 0; i < 10; i++) {
+        await request(app.getHttpServer())
+          .post('/sign-up/check-email')
+          .set('X-Forwarded-For', `10.0.0.${i}`)
+          .send({ email: 'identity@example.com' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/sign-up/check-email')
+        .set('X-Forwarded-For', '10.0.0.99')
+        .send({ email: 'identity@example.com' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when origin rate limit is exceeded', async () => {
+      for (let i = 0; i < 30; i++) {
+        await request(app.getHttpServer())
+          .post('/sign-up/check-email')
+          .send({ email: `origin-${i}@example.com` });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/sign-up/check-email')
+        .send({ email: 'origin-final@example.com' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
     });
   });
 });

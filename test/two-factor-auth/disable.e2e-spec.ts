@@ -12,6 +12,8 @@ import { createRefreshToken } from '../utils/create-refresh-token';
 import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 
+// Disables 2FA for a user after verifying password + TOTP code.
+// Removes the TwoFactorAuth record and revokes all active refresh tokens and one-time tokens.
 describe('POST /2fa/disable', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
@@ -26,6 +28,7 @@ describe('POST /2fa/disable', () => {
     await consumeEmailQueue();
   });
 
+  // Generates a time-based TOTP code from the secret stored in the DB factory
   function generateTotpCode(secret: string): string {
     return speakeasy.totp({
       secret,
@@ -189,6 +192,7 @@ describe('POST /2fa/disable', () => {
       expect(response.body.message).toBe('Invalid credentials');
     });
 
+    // A pending (unverified) 2FA setup cannot be "disabled" — it was never enabled
     it('should return 401 when two-factor auth is set up but not verified', async () => {
       const user = await createUserWithPassword(
         dataSource,
@@ -286,6 +290,7 @@ describe('POST /2fa/disable', () => {
       );
     });
 
+    // Disabling 2FA is a security-sensitive action: all sessions must be invalidated
     it('should revoke all refresh tokens after disabling', async () => {
       const user = await createUserWithPassword(
         dataSource,
@@ -318,6 +323,7 @@ describe('POST /2fa/disable', () => {
       expect(activeTokens).toHaveLength(0);
     });
 
+    // Pending one-time tokens (e.g., account deletion) must also be invalidated
     it('should revoke all one-time tokens after disabling', async () => {
       const user = await createUserWithPassword(
         dataSource,
@@ -351,6 +357,8 @@ describe('POST /2fa/disable', () => {
     });
   });
 
+  // Three-dimensional rate limiting: combined (same IP+email, limit 5),
+  // identity (same email from different IPs, limit 10), origin (same IP with different emails, limit 30).
   describe('throttling', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {

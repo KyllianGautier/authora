@@ -12,6 +12,8 @@ import { createUserWithPassword } from '../utils/create-user-with-password';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
 import { hashVerify } from '../utils/hash';
 
+// Changes the user's password after verifying current credentials.
+// Revokes the old password, creates a new one, and invalidates all refresh tokens and one-time tokens.
 describe('POST /auth/change-password', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
@@ -196,6 +198,7 @@ describe('POST /auth/change-password', () => {
 
       expect(response.body).toEqual({});
 
+      // Old password should be revoked (kept for reuse prevention), new one active
       const passwords = await dataSource.getRepository(PasswordEntity).find({
         where: { user: { email: 'user@example.com' } },
         order: { createdAt: 'ASC' }
@@ -212,6 +215,7 @@ describe('POST /auth/change-password', () => {
       expect(newPasswordMatches).toBe(true);
     });
 
+    // Password reuse prevention: even revoked passwords are checked against the new one
     it('should return 400 when new password was already used', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'currentPassword');
 
@@ -244,6 +248,7 @@ describe('POST /auth/change-password', () => {
       expect(response.body).toEqual({});
     });
 
+    // Changing password is a security-sensitive action: all sessions must be invalidated
     it('should revoke all refresh tokens after password change', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
 
@@ -267,6 +272,7 @@ describe('POST /auth/change-password', () => {
       expect(activeTokens).toHaveLength(0);
     });
 
+    // Pending one-time tokens (e.g., account deletion) must also be invalidated
     it('should revoke all one-time tokens after password change', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
 
@@ -291,6 +297,8 @@ describe('POST /auth/change-password', () => {
     });
   });
 
+  // Three-dimensional rate limiting: combined (same IP+email, limit 5),
+  // identity (same email from different IPs, limit 10), origin (same IP with different emails, limit 30).
   describe('throttling', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
