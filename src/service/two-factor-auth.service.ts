@@ -4,7 +4,9 @@ import { DisableTwoFactorAuthInputDto } from '../dto/input/disable-two-factor-au
 import { SetupTwoFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
 import { VerifyTwoFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
 import { SetupTwoFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
+import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
+import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
 
@@ -13,6 +15,8 @@ export class TwoFactorAuthService {
   constructor(
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
+    private readonly _refreshTokenEntityService: RefreshTokenEntityService,
+    private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
     private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService
   ) {}
 
@@ -96,6 +100,10 @@ export class TwoFactorAuthService {
       user,
       dto.code
     );
+
+    // Revoke all sessions and one-time tokens
+    await this._refreshTokenEntityService.revokeAllForUser(user);
+    await this._oneTimeTokenEntityService.revokeAllForUser(user);
   }
 }
 

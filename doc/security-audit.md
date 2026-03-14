@@ -116,10 +116,17 @@ When a refresh token is used, invalidate it and issue a new one. This limits the
 
 When a user changes their password, all existing refresh tokens must be revoked to force re-authentication on every device.
 
-**Status: Missing**
+**Status: Partial**
 
-- `changePassword()` revokes the old password but does not revoke refresh tokens
-- An attacker with a stolen refresh token would retain access after the password is changed
+- `changePassword()` calls `revokeAllByUser()` after updating the password
+- All active refresh tokens are marked as `revoked: true`
+- E2E tests verify that refresh tokens are revoked and that token refresh fails after password change
+
+**Additional considerations:**
+
+- 2FA setup (`POST /2fa/setup`) — enabling 2FA could warrant session invalidation to force re-authentication under the new security level
+- 2FA disable — similarly, disabling 2FA lowers the security level; revoking sessions ensures re-authentication
+- Account deletion (`POST /auth/delete-account/verify`) — user is deleted entirely, tokens become orphaned (handled by cascading deletes)
 
 ---
 

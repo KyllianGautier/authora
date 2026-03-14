@@ -91,6 +91,13 @@ export class OneTimeTokenEntityService {
     }
   }
 
+  async revokeAllForUser(user: UserEntity): Promise<void> {
+    await this._repository.update(
+      { user: { id: user.id }, revoked: false },
+      { revoked: true }
+    );
+  }
+
   private _computeExpiresAt(type: OneTimeTokenType): Date {
     const expirationSeconds = this._configService.get<number>(
       EXPIRATION_CONFIG_KEYS[type]

@@ -7,6 +7,7 @@ import { EmailService } from './email.service';
 import { HashService } from './hash.service';
 import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
+import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class AuthService {
   constructor(
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
+    private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
     private readonly _emailService: EmailService,
     private readonly _hashService: HashService
@@ -53,6 +55,10 @@ export class AuthService {
 
     // Revoke the current password and create the new one
     await this._passwordEntityService.updateUserPassword(user, dto.newPassword);
+
+    // Invalidate all active sessions and one-time tokens
+    await this._refreshTokenEntityService.revokeAllForUser(user);
+    await this._oneTimeTokenEntityService.revokeAllForUser(user);
   }
 
   async deleteAccount(dto: DeleteAccountInputDto): Promise<void> {

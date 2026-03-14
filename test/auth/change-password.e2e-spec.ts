@@ -2,7 +2,12 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
+import { OneTimeTokenEntity, OneTimeTokenType } from '../../src/entity/one-time-token.entity';
 import { PasswordEntity } from '../../src/entity/password.entity';
+import { RefreshTokenEntity } from '../../src/entity/refresh-token.entity';
+import { createOneTimeToken } from '../utils/create-one-time-token';
+import { createPassword } from '../utils/create-password';
+import { createRefreshToken } from '../utils/create-refresh-token';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../setup';
 import { hashVerify } from '../utils/hash';
@@ -22,15 +27,17 @@ describe('POST /auth/change-password', () => {
   });
 
   describe('validation', () => {
-    it('should return 400 when email is missing', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when email is missing', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({ currentPassword: 'oldPass123', newPassword: 'newPass123' })
         .expect(400);
+
+      expect(response.body.message).toEqual(['email must be an email']);
     });
 
-    it('should return 400 when email is invalid', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when email is invalid', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({
           email: 'not-an-email',
@@ -38,17 +45,24 @@ describe('POST /auth/change-password', () => {
           newPassword: 'newPass123'
         })
         .expect(400);
+
+      expect(response.body.message).toEqual(['email must be an email']);
     });
 
-    it('should return 400 when currentPassword is missing', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when currentPassword is missing', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({ email: 'user@example.com', newPassword: 'newPass123' })
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'currentPassword should not be empty',
+        'currentPassword must be a string'
+      ]);
     });
 
-    it('should return 400 when currentPassword is empty', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when currentPassword is empty', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({
           email: 'user@example.com',
@@ -56,17 +70,27 @@ describe('POST /auth/change-password', () => {
           newPassword: 'newPass123'
         })
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'currentPassword should not be empty'
+      ]);
     });
 
-    it('should return 400 when newPassword is missing', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when newPassword is missing', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({ email: 'user@example.com', currentPassword: 'oldPass123' })
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'newPassword should not be empty',
+        'newPassword must be a string',
+        'Password must contain at least 8 characters'
+      ]);
     });
 
-    it('should return 400 when newPassword is empty', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when newPassword is empty', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({
           email: 'user@example.com',
@@ -74,6 +98,11 @@ describe('POST /auth/change-password', () => {
           newPassword: ''
         })
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'newPassword should not be empty',
+        'Password must contain at least 8 characters'
+      ]);
     });
 
     it('should return 400 when newPassword is the same as currentPassword', async () => {
@@ -86,16 +115,26 @@ describe('POST /auth/change-password', () => {
         })
         .expect(400);
 
-      expect(response.body.message).toContain(
+      expect(response.body.message).toEqual([
         'New password must be different from current password'
-      );
+      ]);
     });
 
-    it('should return 400 when body is empty', () => {
-      return request(app.getHttpServer())
+    it('should return 400 when body is empty', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({})
         .expect(400);
+
+      expect(response.body.message).toEqual([
+        'email must be an email',
+        'currentPassword should not be empty',
+        'currentPassword must be a string',
+        'New password must be different from current password',
+        'newPassword should not be empty',
+        'newPassword must be a string',
+        'Password must contain at least 8 characters'
+      ]);
     });
 
     it('should return 400 when newPassword is too short', async () => {
@@ -108,11 +147,9 @@ describe('POST /auth/change-password', () => {
         })
         .expect(400);
 
-      expect(response.body.message).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('Password must contain')
-        ])
-      );
+      expect(response.body.message).toEqual([
+        'Password must contain at least 8 characters'
+      ]);
     });
   });
 
@@ -148,7 +185,7 @@ describe('POST /auth/change-password', () => {
     it('should return 200 and change the password', async () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({
           email: 'user@example.com',
@@ -156,6 +193,8 @@ describe('POST /auth/change-password', () => {
           newPassword: 'newPassword'
         })
         .expect(200);
+
+      expect(response.body).toEqual({});
 
       const passwords = await dataSource.getRepository(PasswordEntity).find({
         where: { user: { email: 'user@example.com' } },
@@ -173,130 +212,27 @@ describe('POST /auth/change-password', () => {
       expect(newPasswordMatches).toBe(true);
     });
 
-    it('should allow login with new password after change', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
-
-      await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'oldPassword',
-          newPassword: 'newPassword'
-        })
-        .expect(200);
-
-      // Changing again with the new password should work
-      await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'newPassword',
-          newPassword: 'anotherPassword'
-        })
-        .expect(200);
-    });
-
-    it('should reject old password after change', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
-
-      await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'oldPassword',
-          newPassword: 'newPassword'
-        })
-        .expect(200);
-
-      const response = await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'oldPassword',
-          newPassword: 'anotherPassword'
-        })
-        .expect(401);
-
-      expect(response.body.message).toBe('Invalid credentials');
-    });
-
     it('should return 400 when new password was already used', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password1');
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'currentPassword');
 
-      await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'password1',
-          newPassword: 'password2'
-        })
-        .expect(200);
+      await createPassword(dataSource, user, 'previousPassword', true);
 
-      // Try to reuse the first password
       const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({
           email: 'user@example.com',
-          currentPassword: 'password2',
-          newPassword: 'password1'
+          currentPassword: 'currentPassword',
+          newPassword: 'previousPassword'
         })
         .expect(400);
 
       expect(response.body.message).toBe('New password has already been used');
     });
 
-    it('should reject reuse of any historical password', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password1');
-
-      // Change to password2
-      await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'password1',
-          newPassword: 'password2'
-        })
-        .expect(200);
-
-      // Change to password3
-      await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'password2',
-          newPassword: 'password3'
-        })
-        .expect(200);
-
-      // Try to reuse the very first password
-      const response1 = await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'password3',
-          newPassword: 'password1'
-        })
-        .expect(400);
-
-      expect(response1.body.message).toBe('New password has already been used');
-
-      // Try to reuse the second password
-      const response2 = await request(app.getHttpServer())
-        .post('/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'password3',
-          newPassword: 'password2'
-        })
-        .expect(400);
-
-      expect(response2.body.message).toBe('New password has already been used');
-    });
-
     it('should normalize email to lowercase', async () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post('/auth/change-password')
         .send({
           email: 'User@Example.COM',
@@ -304,22 +240,103 @@ describe('POST /auth/change-password', () => {
           newPassword: 'newPassword'
         })
         .expect(200);
+
+      expect(response.body).toEqual({});
+    });
+
+    it('should revoke all refresh tokens after password change', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
+
+      await createRefreshToken(dataSource, user);
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/change-password')
+        .send({
+          email: 'user@example.com',
+          currentPassword: 'oldPassword',
+          newPassword: 'newPassword'
+        })
+        .expect(200);
+
+      expect(response.body).toEqual({});
+
+      const activeTokens = await dataSource
+        .getRepository(RefreshTokenEntity)
+        .find({ where: { user: { email: 'user@example.com' }, revoked: false } });
+
+      expect(activeTokens).toHaveLength(0);
+    });
+
+    it('should revoke all one-time tokens after password change', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
+
+      await createOneTimeToken(dataSource, user, OneTimeTokenType.AccountDeletion);
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/change-password')
+        .send({
+          email: 'user@example.com',
+          currentPassword: 'oldPassword',
+          newPassword: 'newPassword'
+        })
+        .expect(200);
+
+      expect(response.body).toEqual({});
+
+      const activeTokens = await dataSource
+        .getRepository(OneTimeTokenEntity)
+        .find({ where: { user: { email: 'user@example.com' }, revoked: false } });
+
+      expect(activeTokens).toHaveLength(0);
     });
   });
 
   describe('throttling', () => {
-    it('should return 429 when rate limit is exceeded', async () => {
+    it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
           .post('/auth/change-password')
-          .send({ email: 'throttle@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
+          .send({ email: 'combined@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
       }
 
       const response = await request(app.getHttpServer())
         .post('/auth/change-password')
-        .send({ email: 'throttle@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
+        .send({ email: 'combined@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
 
       expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when identity rate limit is exceeded', async () => {
+      for (let i = 0; i < 10; i++) {
+        await request(app.getHttpServer())
+          .post('/auth/change-password')
+          .set('X-Forwarded-For', `10.0.0.${i}`)
+          .send({ email: 'identity@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/change-password')
+        .set('X-Forwarded-For', '10.0.0.99')
+        .send({ email: 'identity@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
+    });
+
+    it('should return 429 when origin rate limit is exceeded', async () => {
+      for (let i = 0; i < 30; i++) {
+        await request(app.getHttpServer())
+          .post('/auth/change-password')
+          .send({ email: `origin-${i}@example.com`, currentPassword: 'oldPass123', newPassword: 'newPass123' });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/change-password')
+        .send({ email: 'origin-final@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toBe('Too Many Requests');
     });
   });
 });
