@@ -2,13 +2,13 @@ import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs
 import { Delay } from '../decorator/delay.decorator';
 import {
   ApiConflictResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
+import { DisableTwoFactorAuthInputDto } from '../dto/input/disable-two-factor-auth.input.dto';
 import { SetupTwoFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
 import { VerifyTwoFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
 import { SetupTwoFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
@@ -51,13 +51,28 @@ export class TwoFactorAuthController {
   @ApiUnauthorizedResponse({
     description: 'Invalid credentials or verification code'
   })
-  @ApiNotFoundResponse({
-    description: 'Two-factor authentication setup not found'
-  })
   async verify(
     @Body() dto: VerifyTwoFactorAuthInputDto
   ): Promise<VerifyTwoFactorAuthOutputDto> {
     const recoveryCodes = await this._twoFactorAuthService.verify(dto);
     return { recoveryCodes };
+  }
+
+  @Post('disable')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Disable two-factor authentication' })
+  @ApiOkResponse({
+    description: 'Two-factor authentication disabled'
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid credentials'
+  })
+  async disable(
+    @Body() dto: DisableTwoFactorAuthInputDto
+  ): Promise<{ message: string }> {
+    await this._twoFactorAuthService.disable(dto);
+    return { message: 'Two-factor authentication disabled' };
   }
 }

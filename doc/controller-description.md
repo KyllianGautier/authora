@@ -63,11 +63,23 @@ Output a qrcode and a manual code.
 
 Enable the two factor authentication for a user.
 
-Input Dto contains the email, the password and a 6-digits code from a 2fa authentication app.
+Input Dto contains the email, the password and a 6-digits code from a TOTP authentication app.
 
 It will enable the two factor authentication, and generate ten recovery codes. The pattern of recovery code is XXXX-XXXX (X can be 0-9A-Z).
 
 It returns the 6-digits code list once.
+
+
+### POST /2fa/disable
+
+Disable the two factor authentication for a user.
+
+Input Dto contains the email, the password and a 6-digits code from a TOTP authentication app.
+
+It will remove the two factor auth for the user. The session and the OTT for the user will be revoked.
+
+Output Unauthorized: Invalid credentials
+Output 200: Two factor authentication disabled
 
 
 ### POST /2fa validate

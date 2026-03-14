@@ -118,7 +118,7 @@ describe('POST /2fa/setup', () => {
         .findOne({ where: { user: { email: 'user@example.com' } } });
 
       expect(twoFactorAuth).not.toBeNull();
-      expect(twoFactorAuth!.isEnabled).toBe(false);
+      expect(twoFactorAuth!.isVerified).toBe(false);
       expect(twoFactorAuth!.secret).toBe(response.body.manualCode);
       expect(twoFactorAuth!.recoveryCodeHashes).toEqual([]);
     });
@@ -164,7 +164,7 @@ describe('POST /2fa/setup', () => {
         twoFactorAuthRepo.create({
           user,
           secret: 'some-secret',
-          isEnabled: true,
+          isVerified: true,
           recoveryCodeHashes: ['hash1']
         })
       );

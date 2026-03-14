@@ -20,8 +20,8 @@ export class TwoFactorAuthEntity {
   @Column({ name: 'secret', type: 'varchar' })
   secret: string;
 
-  @Column({ name: 'is_enabled', type: 'boolean', default: false })
-  isEnabled: boolean;
+  @Column({ name: 'is_verified', type: 'boolean', default: false })
+  isVerified: boolean;
 
   @Column({ name: 'recovery_code_hashes', type: 'varchar', array: true })
   recoveryCodeHashes: string[];
