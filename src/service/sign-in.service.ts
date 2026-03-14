@@ -92,7 +92,7 @@ export class SignInService {
 
     // Find the active refresh token for this user
     const refreshToken =
-      await this._refreshTokenEntityService.findActiveByUser(user.id);
+      await this._refreshTokenEntityService.findActiveForUser(user);
 
     if (refreshToken === null) {
       throw new UnauthorizedException('Invalid refresh token');

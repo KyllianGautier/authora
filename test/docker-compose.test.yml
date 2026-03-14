@@ -25,7 +25,7 @@ services:
     tmpfs:
       - /var/lib/rabbitmq
     healthcheck:
-      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'check_port_connectivity']
       interval: 1s
       timeout: 5s
       retries: 30

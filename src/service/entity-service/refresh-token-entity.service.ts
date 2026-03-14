@@ -43,10 +43,8 @@ export class RefreshTokenEntityService {
     return clearToken;
   }
 
-  async findActiveByUser(userId: string): Promise<RefreshTokenEntity | null> {
-    return this._repository.findOne({
-      where: { user: { id: userId }, revoked: false }
-    });
+  async findActiveForUser(user: UserEntity): Promise<RefreshTokenEntity | null> {
+    return this._repository.findOne({ where: { user: { id: user.id }, revoked: false }});
   }
 
   async verify(
@@ -57,6 +55,10 @@ export class RefreshTokenEntityService {
       return false;
     }
     return this._hashService.verify(refreshToken.tokenHash, clearToken);
+  }
+
+  async revokeAllForUser(user: UserEntity): Promise<void> {
+    await this._repository.update({ user, revoked: false }, { revoked: true });
   }
 
   async rotate(

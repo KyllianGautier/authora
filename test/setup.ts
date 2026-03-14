@@ -44,6 +44,7 @@ export async function getTestApp(): Promise<INestApplication<App>> {
 
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
   await app.init();
 
   initialized = true;
