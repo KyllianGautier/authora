@@ -25,7 +25,7 @@ describe('POST /sign-up/check-email', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({})
         .expect(400);
 
@@ -34,7 +34,7 @@ describe('POST /sign-up/check-email', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({ email: 'not-an-email' })
         .expect(400);
 
@@ -45,7 +45,7 @@ describe('POST /sign-up/check-email', () => {
   describe('behavior', () => {
     it('should return 200 when email is available', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({ email: 'available@example.com' })
         .expect(200);
 
@@ -62,7 +62,7 @@ describe('POST /sign-up/check-email', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({ email: 'taken@example.com' })
         .expect(200);
 
@@ -75,7 +75,7 @@ describe('POST /sign-up/check-email', () => {
       await createUser(dataSource, 'existing@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({ email: 'existing@example.com' })
         .expect(200);
 
@@ -88,7 +88,7 @@ describe('POST /sign-up/check-email', () => {
       await createUser(dataSource, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({ email: 'User@Example.COM' })
         .expect(200);
 
@@ -104,12 +104,12 @@ describe('POST /sign-up/check-email', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up/check-email')
+          .post('/api/v1/sign-up/check-email')
           .send({ email: 'combined@example.com' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({ email: 'combined@example.com' });
 
       expect(response.status).toBe(429);
@@ -119,13 +119,13 @@ describe('POST /sign-up/check-email', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up/check-email')
+          .post('/api/v1/sign-up/check-email')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com' });
 
@@ -136,12 +136,12 @@ describe('POST /sign-up/check-email', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up/check-email')
+          .post('/api/v1/sign-up/check-email')
           .send({ email: `origin-${i}@example.com` });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/check-email')
+        .post('/api/v1/sign-up/check-email')
         .send({ email: 'origin-final@example.com' });
 
       expect(response.status).toBe(429);

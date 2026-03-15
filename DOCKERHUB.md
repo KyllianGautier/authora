@@ -70,7 +70,7 @@ Then start the stack:
 docker compose up -d
 ```
 
-The API is available at `http://localhost:3000`. Swagger documentation is served at `/api`.
+The API is available at `http://localhost:3000`. Swagger documentation is served at `/api/v1/swagger`.
 
 ## Environment variables
 
@@ -141,20 +141,20 @@ All variables with a default value are optional.
 
 ## API endpoints
 
-| Method | Path                                 | Description                      |
-|--------|--------------------------------------|----------------------------------|
-| POST   | `/sign-up`                           | Create a registration            |
-| POST   | `/sign-up/resend-verification-email` | Resend email verification token  |
-| POST   | `/sign-up/check-email`               | Check if an email is available   |
-| POST   | `/sign-up/verify`                    | Verify email and create user     |
-| POST   | `/sign-in`                           | Sign in                          |
-| POST   | `/sign-in/refresh`                   | Refresh access token             |
-| POST   | `/auth/change-password`              | Change user password             |
-| POST   | `/auth/delete-account`               | Request account deletion         |
-| POST   | `/auth/delete-account/verify`        | Verify and delete account        |
-| POST   | `/2fa/setup`                         | Setup two-factor authentication  |
-| POST   | `/2fa/verify`                        | Enable two-factor authentication |
-| POST   | `/2fa/disable`                       | Disable two-factor authentication |
+| Method | Path                                         | Description                       |
+|--------|----------------------------------------------|-----------------------------------|
+| POST   | `/api/v1/sign-up`                            | Create a registration             |
+| POST   | `/api/v1/sign-up/resend-verification-email`  | Resend email verification token   |
+| POST   | `/api/v1/sign-up/check-email`                | Check if an email is available    |
+| POST   | `/api/v1/sign-up/verify`                     | Verify email and create user      |
+| POST   | `/api/v1/sign-in`                            | Sign in                           |
+| POST   | `/api/v1/sign-in/refresh`                    | Refresh access token              |
+| POST   | `/api/v1/auth/change-password`               | Change user password              |
+| POST   | `/api/v1/auth/delete-account`                | Request account deletion          |
+| POST   | `/api/v1/auth/delete-account/verify`         | Verify and delete account         |
+| POST   | `/api/v1/2fa/setup`                          | Setup two-factor authentication   |
+| POST   | `/api/v1/2fa/verify`                         | Enable two-factor authentication  |
+| POST   | `/api/v1/2fa/disable`                        | Disable two-factor authentication |
 
 ## RabbitMQ messages
 

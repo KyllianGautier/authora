@@ -36,7 +36,7 @@ describe('POST /2fa/verify', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({ password: 'password123', code: '123456' })
         .expect(400);
 
@@ -45,7 +45,7 @@ describe('POST /2fa/verify', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'not-an-email',
           password: 'password123',
@@ -58,7 +58,7 @@ describe('POST /2fa/verify', () => {
 
     it('should return 400 when password is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({ email: 'user@example.com', code: '123456' })
         .expect(400);
 
@@ -70,7 +70,7 @@ describe('POST /2fa/verify', () => {
 
     it('should return 400 when password is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({ email: 'user@example.com', password: '', code: '123456' })
         .expect(400);
 
@@ -81,7 +81,7 @@ describe('POST /2fa/verify', () => {
 
     it('should return 400 when code is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({ email: 'user@example.com', password: 'password123' })
         .expect(400);
 
@@ -93,7 +93,7 @@ describe('POST /2fa/verify', () => {
 
     it('should return 400 when code is too short', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -108,7 +108,7 @@ describe('POST /2fa/verify', () => {
 
     it('should return 400 when code is too long', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -123,7 +123,7 @@ describe('POST /2fa/verify', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({})
         .expect(400);
 
@@ -140,7 +140,7 @@ describe('POST /2fa/verify', () => {
   describe('behavior', () => {
     it('should return 401 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'unknown@example.com',
           password: 'password123',
@@ -159,7 +159,7 @@ describe('POST /2fa/verify', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'user@example.com',
           password: 'wrongPassword',
@@ -178,7 +178,7 @@ describe('POST /2fa/verify', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -199,7 +199,7 @@ describe('POST /2fa/verify', () => {
       await createTwoFactorAuth(dataSource, user, false);
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -222,7 +222,7 @@ describe('POST /2fa/verify', () => {
       const code = generateTotpCode(twoFactorAuth.secret);
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -268,7 +268,7 @@ describe('POST /2fa/verify', () => {
       const code = generateTotpCode(twoFactorAuth.secret);
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({
           email: 'User@Example.COM',
           password: 'password123',
@@ -286,12 +286,12 @@ describe('POST /2fa/verify', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/2fa/verify')
+          .post('/api/v1/2fa/verify')
           .send({ email: 'combined@example.com', password: 'password123', code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({ email: 'combined@example.com', password: 'password123', code: '000000' });
 
       expect(response.status).toBe(429);
@@ -301,13 +301,13 @@ describe('POST /2fa/verify', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/2fa/verify')
+          .post('/api/v1/2fa/verify')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com', password: 'password123', code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com', password: 'password123', code: '000000' });
 
@@ -318,12 +318,12 @@ describe('POST /2fa/verify', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/2fa/verify')
+          .post('/api/v1/2fa/verify')
           .send({ email: `origin-${i}@example.com`, password: 'password123', code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/verify')
+        .post('/api/v1/2fa/verify')
         .send({ email: 'origin-final@example.com', password: 'password123', code: '000000' });
 
       expect(response.status).toBe(429);

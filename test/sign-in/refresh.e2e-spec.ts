@@ -58,7 +58,7 @@ describe('POST /sign-in/refresh', () => {
   describe('validation', () => {
     it('should return 401 when Authorization header is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .expect(401);
 
       expect(response.body.message).toBe('Missing access token');
@@ -66,7 +66,7 @@ describe('POST /sign-in/refresh', () => {
 
     it('should return 401 when Authorization header has no Bearer prefix', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', 'some-token')
         .expect(401);
 
@@ -81,7 +81,7 @@ describe('POST /sign-in/refresh', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', `Bearer ${expiredToken}`)
         .expect(401);
 
@@ -90,7 +90,7 @@ describe('POST /sign-in/refresh', () => {
 
     it('should return 401 when access token is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', 'Bearer invalid-jwt')
         .set('Cookie', 'refreshToken=some-token')
         .expect(401);
@@ -111,7 +111,7 @@ describe('POST /sign-in/refresh', () => {
       const validToken = makeValidToken(user.id, user.email);
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', `Bearer ${validToken}`)
         .set('Cookie', `refreshToken=${FAKE_REFRESH_TOKEN}`)
         .expect(400);
@@ -127,7 +127,7 @@ describe('POST /sign-in/refresh', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', `Bearer ${expiredToken}`)
         .set('Cookie', `refreshToken=${FAKE_REFRESH_TOKEN}`)
         .expect(401);
@@ -146,7 +146,7 @@ describe('POST /sign-in/refresh', () => {
       const expiredToken = makeExpiredToken(user.id, user.email);
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', `Bearer ${expiredToken}`)
         .set('Cookie', 'refreshToken=wrong-token')
         .expect(401);
@@ -171,7 +171,7 @@ describe('POST /sign-in/refresh', () => {
       const expiredToken = makeExpiredToken(user.id, user.email);
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', `Bearer ${expiredToken}`)
         .set('Cookie', `refreshToken=${FAKE_REFRESH_TOKEN}`)
         .expect(401);
@@ -198,7 +198,7 @@ describe('POST /sign-in/refresh', () => {
       const expiredToken = makeExpiredToken(user.id, user.email);
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', `Bearer ${expiredToken}`)
         .set('Cookie', `refreshToken=${FAKE_REFRESH_TOKEN}`)
         .expect(401);
@@ -217,7 +217,7 @@ describe('POST /sign-in/refresh', () => {
       const expiredToken = makeExpiredToken(user.id, user.email);
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', `Bearer ${expiredToken}`)
         .set('Cookie', `refreshToken=${FAKE_REFRESH_TOKEN}`)
         .expect(200);
@@ -275,13 +275,13 @@ describe('POST /sign-in/refresh', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/sign-in/refresh')
+          .post('/api/v1/sign-in/refresh')
           .set('Authorization', 'Bearer fake-token')
           .set('Cookie', 'refreshToken=fake-token');
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', 'Bearer fake-token')
         .set('Cookie', 'refreshToken=fake-token');
 
@@ -292,13 +292,13 @@ describe('POST /sign-in/refresh', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/sign-in/refresh')
+          .post('/api/v1/sign-in/refresh')
           .set('Authorization', 'Bearer fake-token')
           .set('Cookie', 'refreshToken=fake-token');
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/refresh')
+        .post('/api/v1/sign-in/refresh')
         .set('Authorization', 'Bearer fake-token')
         .set('Cookie', 'refreshToken=fake-token');
 

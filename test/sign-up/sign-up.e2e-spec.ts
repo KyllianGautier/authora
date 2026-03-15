@@ -26,7 +26,7 @@ describe('POST /sign-up', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ password: 'password123' })
         .expect(400);
 
@@ -35,7 +35,7 @@ describe('POST /sign-up', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'not-an-email', password: 'password123' })
         .expect(400);
 
@@ -44,7 +44,7 @@ describe('POST /sign-up', () => {
 
     it('should return 400 when password is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'user@example.com' })
         .expect(400);
 
@@ -57,7 +57,7 @@ describe('POST /sign-up', () => {
 
     it('should return 400 when password is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'user@example.com', password: '' })
         .expect(400);
 
@@ -69,7 +69,7 @@ describe('POST /sign-up', () => {
 
     it('should return 400 when password is too short', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'user@example.com', password: 'short' })
         .expect(400);
 
@@ -80,7 +80,7 @@ describe('POST /sign-up', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({})
         .expect(400);
 
@@ -96,7 +96,7 @@ describe('POST /sign-up', () => {
   describe('behavior', () => {
     it('should return 201, create a registration and send a verification email', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'new@example.com', password: 'password123' })
         .expect(201);
 
@@ -136,7 +136,7 @@ describe('POST /sign-up', () => {
 
     it('should normalize email to lowercase', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'Upper@Example.COM', password: 'password123' })
         .expect(201);
 
@@ -157,7 +157,7 @@ describe('POST /sign-up', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'duplicate@example.com', password: 'password456' })
         .expect(409);
 
@@ -170,7 +170,7 @@ describe('POST /sign-up', () => {
       await createUser(dataSource, 'existing@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'existing@example.com', password: 'password123' })
         .expect(409);
 
@@ -187,7 +187,7 @@ describe('POST /sign-up', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'User@Example.COM', password: 'password456' })
         .expect(409);
 
@@ -200,7 +200,7 @@ describe('POST /sign-up', () => {
       await createUser(dataSource, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'User@Example.COM', password: 'password123' })
         .expect(409);
 
@@ -217,12 +217,12 @@ describe('POST /sign-up', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up')
+          .post('/api/v1/sign-up')
           .send({ email: 'combined@example.com', password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'combined@example.com', password: 'password123' });
 
       expect(response.status).toBe(429);
@@ -233,13 +233,13 @@ describe('POST /sign-up', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up')
+          .post('/api/v1/sign-up')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com', password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com', password: 'password123' });
 
@@ -251,12 +251,12 @@ describe('POST /sign-up', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up')
+          .post('/api/v1/sign-up')
           .send({ email: `origin-${i}@example.com`, password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up')
+        .post('/api/v1/sign-up')
         .send({ email: 'origin-final@example.com', password: 'password123' });
 
       expect(response.status).toBe(429);
