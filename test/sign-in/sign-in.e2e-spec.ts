@@ -34,7 +34,7 @@ describe('POST /sign-in', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({ password: 'password123', rememberMe: false })
         .expect(400);
 
@@ -43,7 +43,7 @@ describe('POST /sign-in', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({ email: 'not-an-email', password: 'password123', rememberMe: false })
         .expect(400);
 
@@ -52,7 +52,7 @@ describe('POST /sign-in', () => {
 
     it('should return 400 when password is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({ email: 'user@example.com', rememberMe: false })
         .expect(400);
 
@@ -64,7 +64,7 @@ describe('POST /sign-in', () => {
 
     it('should return 400 when password is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({ email: 'user@example.com', password: '', rememberMe: false })
         .expect(400);
 
@@ -75,7 +75,7 @@ describe('POST /sign-in', () => {
 
     it('should return 400 when rememberMe is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({ email: 'user@example.com', password: 'password123' })
         .expect(400);
 
@@ -86,7 +86,7 @@ describe('POST /sign-in', () => {
 
     it('should return 400 when rememberMe is not a boolean', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -101,7 +101,7 @@ describe('POST /sign-in', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({})
         .expect(400);
 
@@ -117,7 +117,7 @@ describe('POST /sign-in', () => {
   describe('behavior', () => {
     it('should return 401 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'unknown@example.com',
           password: 'password123',
@@ -136,7 +136,7 @@ describe('POST /sign-in', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'user@example.com',
           password: 'wrongPassword',
@@ -155,7 +155,7 @@ describe('POST /sign-in', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -211,7 +211,7 @@ describe('POST /sign-in', () => {
       await createRefreshToken(dataSource, user);
 
       await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -242,7 +242,7 @@ describe('POST /sign-in', () => {
       const beforeSignIn = new Date();
 
       await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -277,7 +277,7 @@ describe('POST /sign-in', () => {
       const beforeSignIn = new Date();
 
       await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -310,7 +310,7 @@ describe('POST /sign-in', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({
           email: 'User@Example.COM',
           password: 'password123',
@@ -328,12 +328,12 @@ describe('POST /sign-in', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/sign-in')
+          .post('/api/v1/sign-in')
           .send({ email: 'combined@example.com', password: 'password123', rememberMe: false });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({ email: 'combined@example.com', password: 'password123', rememberMe: false });
 
       expect(response.status).toBe(429);
@@ -343,13 +343,13 @@ describe('POST /sign-in', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/sign-in')
+          .post('/api/v1/sign-in')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com', password: 'password123', rememberMe: false });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com', password: 'password123', rememberMe: false });
 
@@ -360,12 +360,12 @@ describe('POST /sign-in', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/sign-in')
+          .post('/api/v1/sign-in')
           .send({ email: `origin-${i}@example.com`, password: 'password123', rememberMe: false });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in')
+        .post('/api/v1/sign-in')
         .send({ email: 'origin-final@example.com', password: 'password123', rememberMe: false });
 
       expect(response.status).toBe(429);

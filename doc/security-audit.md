@@ -125,9 +125,9 @@ When a user changes their password, all existing refresh tokens must be revoked 
 
 **Additional considerations:**
 
-- 2FA setup (`POST /2fa/setup`) — enabling 2FA could warrant session invalidation to force re-authentication under the new security level
+- 2FA setup (`POST /api/v1/2fa/setup`) — enabling 2FA could warrant session invalidation to force re-authentication under the new security level
 - 2FA disable — similarly, disabling 2FA lowers the security level; revoking sessions ensures re-authentication
-- Account deletion (`POST /auth/delete-account/verify`) — user is deleted entirely, tokens become orphaned (handled by cascading deletes)
+- Account deletion (`POST /api/v1/auth/delete-account/verify`) — user is deleted entirely, tokens become orphaned (handled by cascading deletes)
 
 ---
 

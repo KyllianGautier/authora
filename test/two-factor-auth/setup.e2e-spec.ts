@@ -26,7 +26,7 @@ describe('POST /2fa/setup', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ password: 'password123' })
         .expect(400);
 
@@ -35,7 +35,7 @@ describe('POST /2fa/setup', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'not-an-email', password: 'password123' })
         .expect(400);
 
@@ -44,7 +44,7 @@ describe('POST /2fa/setup', () => {
 
     it('should return 400 when password is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'user@example.com' })
         .expect(400);
 
@@ -56,7 +56,7 @@ describe('POST /2fa/setup', () => {
 
     it('should return 400 when password is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'user@example.com', password: '' })
         .expect(400);
 
@@ -67,7 +67,7 @@ describe('POST /2fa/setup', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({})
         .expect(400);
 
@@ -82,7 +82,7 @@ describe('POST /2fa/setup', () => {
   describe('behavior', () => {
     it('should return 401 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'unknown@example.com', password: 'password123' })
         .expect(401);
 
@@ -97,7 +97,7 @@ describe('POST /2fa/setup', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'user@example.com', password: 'wrongPassword' })
         .expect(401);
 
@@ -112,7 +112,7 @@ describe('POST /2fa/setup', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'user@example.com', password: 'password123' })
         .expect(200);
 
@@ -142,7 +142,7 @@ describe('POST /2fa/setup', () => {
       await createTwoFactorAuth(dataSource, user, true);
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'user@example.com', password: 'password123' })
         .expect(409);
 
@@ -159,7 +159,7 @@ describe('POST /2fa/setup', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'User@Example.COM', password: 'password123' })
         .expect(200);
 
@@ -174,12 +174,12 @@ describe('POST /2fa/setup', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/2fa/setup')
+          .post('/api/v1/2fa/setup')
           .send({ email: 'combined@example.com', password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'combined@example.com', password: 'password123' });
 
       expect(response.status).toBe(429);
@@ -189,13 +189,13 @@ describe('POST /2fa/setup', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/2fa/setup')
+          .post('/api/v1/2fa/setup')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com', password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com', password: 'password123' });
 
@@ -206,12 +206,12 @@ describe('POST /2fa/setup', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/2fa/setup')
+          .post('/api/v1/2fa/setup')
           .send({ email: `origin-${i}@example.com`, password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/2fa/setup')
+        .post('/api/v1/2fa/setup')
         .send({ email: 'origin-final@example.com', password: 'password123' });
 
       expect(response.status).toBe(429);

@@ -2,7 +2,7 @@
 
 ## Sing-up controller
 
-### POST /sign-up
+### POST /api/v1/sign-up
 
 Create a registration.
 
@@ -13,7 +13,7 @@ It returns an error if the email is already used in registration or user
 At the end, it sends a message throw the rabbitmq queue in order to communicate values to allow external service to send an email with email and a validation token.
 
 
-### POST /sign-up/resend-verification-email
+### POST /api/v1/sign-up/resend-verification-email
 
 Send a new email verification token.
 
@@ -24,7 +24,7 @@ It will create a new email verification token in the registration.
 At the end, it sends a message throw the rabbitmq queue in order to communicate values to allow external service to send an email with email the new validation token.
 
 
-### POST /sign-up/verify
+### POST /api/v1/sign-up/verify
 
 Delete the registration and create a new user.
 
@@ -33,7 +33,7 @@ Input Dto contains the email and the email verification token.
 Output Dto returns a user infos (email and createdAt).
 
 
-### POST /sign-up/check-email
+### POST /api/v1/sign-up/check-email
 
 Check if an email is available.
 
@@ -48,7 +48,7 @@ Returns always a status 200 with a neutral message:
 
 ## Two Factor Auth controller
 
-### POST /2fa/setup
+### POST /api/v1/2fa/setup
 
 Create a two factor authentication with a secret for a user.
 
@@ -59,7 +59,7 @@ It will create a two factor authentication for the user and generate a verificat
 Output a qrcode and a manual code.
 
 
-### POST /2fa/verify
+### POST /api/v1/2fa/verify
 
 Enable the two factor authentication for a user.
 
@@ -70,7 +70,7 @@ It will enable the two factor authentication, and generate ten recovery codes. T
 It returns the 6-digits code list once.
 
 
-### POST /2fa/disable
+### POST /api/v1/2fa/disable
 
 Disable the two factor authentication for a user.
 
@@ -82,12 +82,12 @@ Output Unauthorized: Invalid credentials
 Output 200: Two factor authentication disabled
 
 
-### POST /2fa validate
+### POST /api/v1/2fa/validate
 
 
 ## Auth controller
 
-### POST /auth/change-password
+### POST /api/v1/auth/change-password
 
 Change the current user password.
 
@@ -98,7 +98,7 @@ It changes the previous password in revoked, and create a new one as the new cur
 Output a confirmation.
 
 
-### POST /auth/delete-account
+### POST /api/v1/auth/delete-account
 
 Ask for a user deletion action.
 
@@ -109,7 +109,7 @@ It creates a new verification token and send it by email.
 Output a confirmation.
 
 
-### POST /auth/delete-account/verify
+### POST /api/v1/auth/delete-account/verify
 
 Delete a user.
 
@@ -122,7 +122,7 @@ Output a confirmation.
 
 ## Sign-in controller
 
-### POST /sign-in (v1)
+### POST /api/v1/sign-in (v1)
 
 Sign-in the user.
 
@@ -142,7 +142,7 @@ Output 2fa validation: validation token
 
 ---
 
-### POST /sign-in (v2)
+### POST /api/v1/sign-in (v2)
 
 Sign-in the user.
 
@@ -162,7 +162,7 @@ Output 202 (SignInTwoFactorAuthOutputDto): validation token
 
 ---
 
-### POST /sign-in (v3)
+### POST /api/v1/sign-in (v3)
 
 Sign-in the user.
 
@@ -176,7 +176,7 @@ Remember me value:
 Output (SignInAccessOutputDto): access token, expiring date and refresh token
 
 
-### POST /sign-in/refresh
+### POST /api/v1/sign-in/refresh
 
 Sign-in the user using the refresh token.
 

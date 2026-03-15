@@ -25,7 +25,7 @@ describe('POST /sign-up/resend-verification-email', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .send({})
         .expect(400);
 
@@ -34,7 +34,7 @@ describe('POST /sign-up/resend-verification-email', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .send({ email: 'not-an-email' })
         .expect(400);
 
@@ -45,7 +45,7 @@ describe('POST /sign-up/resend-verification-email', () => {
   describe('behavior', () => {
     it('should return 404 when no registration exists', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .send({ email: 'unknown@example.com' })
         .expect(404);
 
@@ -67,7 +67,7 @@ describe('POST /sign-up/resend-verification-email', () => {
         .findOneBy({ email: 'user@example.com' });
 
       await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .send({ email: 'user@example.com' })
         .expect(200);
 
@@ -102,7 +102,7 @@ describe('POST /sign-up/resend-verification-email', () => {
       );
 
       await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .send({ email: 'User@Example.COM' })
         .expect(200);
 
@@ -119,12 +119,12 @@ describe('POST /sign-up/resend-verification-email', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up/resend-verification-email')
+          .post('/api/v1/sign-up/resend-verification-email')
           .send({ email: 'combined@example.com' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .send({ email: 'combined@example.com' });
 
       expect(response.status).toBe(429);
@@ -134,13 +134,13 @@ describe('POST /sign-up/resend-verification-email', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up/resend-verification-email')
+          .post('/api/v1/sign-up/resend-verification-email')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com' });
 
@@ -151,12 +151,12 @@ describe('POST /sign-up/resend-verification-email', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/sign-up/resend-verification-email')
+          .post('/api/v1/sign-up/resend-verification-email')
           .send({ email: `origin-${i}@example.com` });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-up/resend-verification-email')
+        .post('/api/v1/sign-up/resend-verification-email')
         .send({ email: 'origin-final@example.com' });
 
       expect(response.status).toBe(429);
