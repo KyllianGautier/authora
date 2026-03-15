@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@kylliangautier/authora-admin": "^0.0.0-main.92d6066",
+    "@kylliangautier/authora-ui": "^0.0.0",
     "@nest-lab/throttler-storage-redis": "^1.2.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.3",
