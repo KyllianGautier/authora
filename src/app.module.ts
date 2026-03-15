@@ -85,10 +85,16 @@ import { SERVICES } from './service';
         };
       }
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'node_modules', '@kylliangautier', 'authora-admin'),
-      serveRoot: '/admin'
-    }),
+    ServeStaticModule.forRoot(
+      {
+        rootPath: join(__dirname, '..', '..', 'node_modules', '@kylliangautier', 'authora-admin'),
+        serveRoot: '/admin'
+      },
+      {
+        rootPath: join(__dirname, '..', '..', 'node_modules', '@kylliangautier', 'authora-ui'),
+        serveRoot: '/ui'
+      }
+    ),
     ClientsModule.registerAsync([
       {
         name: EMAIL_QUEUE,
