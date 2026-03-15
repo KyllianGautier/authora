@@ -1,10 +1,12 @@
 import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -82,6 +84,10 @@ import { SERVICES } from './service';
           storage: new ThrottlerStorageRedisService(redisUrl)
         };
       }
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '..', 'node_modules', '@kylliangautier', 'authora-admin'),
+      serveRoot: '/admin'
     }),
     ClientsModule.registerAsync([
       {
