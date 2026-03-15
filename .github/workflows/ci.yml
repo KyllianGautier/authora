@@ -63,38 +63,6 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: authora
-          POSTGRES_PASSWORD: authora
-          POSTGRES_DB: authora_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U authora"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-      rabbitmq:
-        image: rabbitmq:4-alpine
-        ports:
-          - 5672:5672
-        options: >-
-          --health-cmd "rabbitmq-diagnostics -q check_running"
-          --health-interval 5s
-          --health-timeout 10s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v6
 
@@ -103,12 +71,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: actions/download-artifact@v5
-        with:
-          name: dist
-          path: dist
-
-      - run: npm ci --omit=dev
+      - run: npm ci
 
       - name: Generate RSA keys
         run: |
@@ -116,13 +79,8 @@ jobs:
           openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/private.pem
           openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 
-      - name: Start app and extract OpenAPI spec
-        run: |
-          node dist/src/main &
-          APP_PID=$!
-          sleep 3
-          curl -sf http://localhost:3000/api-json -o openapi.json
-          kill $APP_PID
+      - name: Generate OpenAPI spec
+        run: npm run generate:openapi
         env:
           PG_HOST: 127.0.0.1
           PG_USERNAME: authora
@@ -131,9 +89,10 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_PRIVATE_KEY_PATH: ./keys/private.pem
           JWT_PUBLIC_KEY_PATH: ./keys/public.pem
+          AUTHORA_BASE_URL: http://localhost:3000
 
       - name: Generate static HTML docs
-        run: npx @redocly/cli build-docs openapi.json -o docs/index.html
+        run: npx @redocly/cli build-docs docs/openapi.json -o docs/index.html
 
       - uses: actions/upload-pages-artifact@v4
         with:
