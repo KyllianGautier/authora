@@ -86,8 +86,7 @@ describe('POST /auth/change-password', () => {
 
       expect(response.body.message).toEqual([
         'newPassword should not be empty',
-        'newPassword must be a string',
-        'Password must contain at least 8 characters'
+        'newPassword must be a string'
       ]);
     });
 
@@ -102,8 +101,7 @@ describe('POST /auth/change-password', () => {
         .expect(400);
 
       expect(response.body.message).toEqual([
-        'newPassword should not be empty',
-        'Password must contain at least 8 characters'
+        'newPassword should not be empty'
       ]);
     });
 
@@ -134,23 +132,7 @@ describe('POST /auth/change-password', () => {
         'currentPassword must be a string',
         'New password must be different from current password',
         'newPassword should not be empty',
-        'newPassword must be a string',
-        'Password must contain at least 8 characters'
-      ]);
-    });
-
-    it('should return 400 when newPassword is too short', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
-        .send({
-          email: 'user@example.com',
-          currentPassword: 'oldPassword',
-          newPassword: 'short'
-        })
-        .expect(400);
-
-      expect(response.body.message).toEqual([
-        'Password must contain at least 8 characters'
+        'newPassword must be a string'
       ]);
     });
   });

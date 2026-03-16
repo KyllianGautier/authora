@@ -191,7 +191,29 @@ Output 401: refresh token expired or revoked
 Output 200: same return than sign-in (access token, expiring date and the new refresh token by httpOnly cookie)
 
 
-### POST /sign-in/magic-link
+### POST /api/v1/sign-in/forgot-password
+
+Request a password reset.
+
+Input Dto contains email.
+
+If the user exists, it creates a one-time token and sends a password reset email via RabbitMQ.
+
+Returns always a status 200 with a neutral message to prevent email enumeration.
+
+
+### POST /api/v1/sign-in/forgot-password/verify
+
+Reset the user password.
+
+Input Dto contains email, token and new password.
+
+It verifies the one-time token, then changes the user password. The previous password is revoked and the new one is set as current. The token is consumed after use. All refresh tokens and one-time tokens for the user are revoked to invalidate any existing sessions.
+
+Output a confirmation.
+
+
+### POST /api/v1/sign-in/magic-link
 
 Ask for a magic-link.
 
@@ -202,7 +224,7 @@ It generates a OTT and send it by email. The `redirectTo` URL and `locale` are i
 Output 202: If the account exists, the magic link will be sent via email
 
 
-### POST /sign-in/magic-link/validate
+### POST /api/v1/sign-in/magic-link/validate
 
 Verify the magic link and sign-in the user.
 

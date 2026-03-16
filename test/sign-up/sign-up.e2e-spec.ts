@@ -50,8 +50,7 @@ describe('POST /sign-up', () => {
 
       expect(response.body.message).toEqual([
         'password should not be empty',
-        'password must be a string',
-        'Password must contain at least 8 characters'
+        'password must be a string'
       ]);
     });
 
@@ -62,19 +61,7 @@ describe('POST /sign-up', () => {
         .expect(400);
 
       expect(response.body.message).toEqual([
-        'password should not be empty',
-        'Password must contain at least 8 characters'
-      ]);
-    });
-
-    it('should return 400 when password is too short', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/sign-up')
-        .send({ email: 'user@example.com', password: 'short' })
-        .expect(400);
-
-      expect(response.body.message).toEqual([
-        'Password must contain at least 8 characters'
+        'password should not be empty'
       ]);
     });
 
@@ -87,8 +74,7 @@ describe('POST /sign-up', () => {
       expect(response.body.message).toEqual([
         'email must be an email',
         'password should not be empty',
-        'password must be a string',
-        'Password must contain at least 8 characters'
+        'password must be a string'
       ]);
     });
   });

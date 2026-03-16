@@ -1,31 +1,23 @@
+import {Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException, UseGuards} from '@nestjs/common';
+import {Delay} from '../decorator/delay.decorator';
 import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Req,
-  Res,
-  UnauthorizedException,
-  UseGuards
-} from '@nestjs/common';
-import { Delay } from '../decorator/delay.decorator';
-import {
-  ApiAcceptedResponse,
-  ApiBadRequestResponse,
-  ApiGoneResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-  ApiUnauthorizedResponse
+    ApiAcceptedResponse,
+    ApiBadRequestResponse,
+    ApiGoneResponse,
+    ApiOkResponse,
+    ApiOperation,
+    ApiTags,
+    ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
-import { AuthThrottleGuard } from '../config/auth-throttle.guard';
-import { MagicLinkInputDto } from '../dto/input/magic-link.input.dto';
-import { SignInInputDto } from '../dto/input/sign-in.input.dto';
-import { ValidateMagicLinkInputDto } from '../dto/input/validate-magic-link.input.dto';
-import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
-import { SignInService } from '../service/sign-in.service';
+import type {Request, Response} from 'express';
+import {AuthThrottleGuard} from '../config/auth-throttle.guard';
+import {ForgotPasswordInputDto} from '../dto/input/forgot-password.input.dto';
+import {ForgotPasswordVerifyInputDto} from '../dto/input/forgot-password-verify.input.dto';
+import {MagicLinkInputDto} from '../dto/input/magic-link.input.dto';
+import {SignInInputDto} from '../dto/input/sign-in.input.dto';
+import {ValidateMagicLinkInputDto} from '../dto/input/validate-magic-link.input.dto';
+import {SignInOutputDto} from '../dto/output/sign-in.output.dto';
+import {SignInService} from '../service/sign-in.service';
 
 @ApiTags('Sign-in')
 @Controller('sign-in')
@@ -133,6 +125,41 @@ export class SignInController {
     this._setRefreshTokenCookie(res, refreshToken);
 
     return body;
+  }
+
+  @Post('forgot-password')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset' })
+  @ApiOkResponse({ description: 'Password reset email sent if account exists' })
+  async forgotPassword(
+    @Body() dto: ForgotPasswordInputDto
+  ): Promise<{ message: string }> {
+    await this._signInService.forgotPassword(dto);
+
+    return {
+      message:
+        'If the account exists, the password reset email will be sent'
+    };
+  }
+
+  @Post('forgot-password/verify')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with token' })
+  @ApiOkResponse({ description: 'Password reset successfully' })
+  @ApiUnauthorizedResponse({ description: 'Invalid token' })
+  @ApiBadRequestResponse({
+    description: 'New password has already been used'
+  })
+  async forgotPasswordVerify(
+    @Body() dto: ForgotPasswordVerifyInputDto
+  ): Promise<{ message: string }> {
+    await this._signInService.forgotPasswordVerify(dto);
+
+    return { message: 'Password reset successfully' };
   }
 
   private _setRefreshTokenCookie(res: Response, refreshToken: string): void {

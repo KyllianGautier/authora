@@ -21,6 +21,9 @@ export const envValidationSchema = Joi.object({
   // Redis
   REDIS_URL: Joi.string().uri().required(),
 
+  // Authora UI
+  AUTHORA_BASE_URL: Joi.string().uri().required(),
+
   // Security
   HASH_MEMORY_COST: Joi.number().integer().min(1).default(65536),
   HASH_TIME_COST: Joi.number().integer().min(1).default(3),
@@ -53,6 +56,10 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(1)
     .default(86400),
+  FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS: Joi.number()
+    .integer()
+    .min(1)
+    .default(3600),
   JWT_PRIVATE_KEY_PATH: filePath.required(),
   JWT_PUBLIC_KEY_PATH: filePath.required(),
   JWT_ACCESS_TOKEN_EXPIRATION_SECONDS: Joi.number()
