@@ -1,6 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
-import { IsStrongPassword } from '../validator/is-strong-password.decorator';
+import {
+  HasDigit,
+  HasLowercase,
+  HasMinLength,
+  HasSpecialChar,
+  HasUppercase,
+  NoCommonPassword,
+  NoKeyboardSequence,
+  NoRepeatedChars,
+  NoSequentialChars,
+  NoUserInfo
+} from '../validator/password';
 
 export class SignUpInputDto {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
@@ -10,6 +21,15 @@ export class SignUpInputDto {
   @ApiProperty({ description: 'Clear text password', example: 'P@ssw0rd!' })
   @IsString()
   @IsNotEmpty()
-  @IsStrongPassword({ emailField: 'email' })
+  @HasMinLength()
+  @HasDigit()
+  @HasSpecialChar()
+  @HasLowercase()
+  @HasUppercase()
+  @NoSequentialChars()
+  @NoRepeatedChars()
+  @NoKeyboardSequence()
+  @NoUserInfo({ emailField: 'email' })
+  @NoCommonPassword()
   password: string;
 }

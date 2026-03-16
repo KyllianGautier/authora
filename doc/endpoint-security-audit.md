@@ -16,4 +16,6 @@
 | POST /api/v1/2fa/setup                              | Yes   | Yes      | Credential brute-force                                                        | Protected |
 | POST /api/v1/2fa/verify                             | Yes   | Yes      | TOTP code brute-force                                                         | Protected |
 | POST /api/v1/2fa/disable                            | Yes   | Yes      | Credential brute-force, TOTP code brute-force                                 | Protected |
+| GET  /api/v1/password/rules                         | No    | No       | Public config, no sensitive data                                              | N/A       |
+| POST /api/v1/password/check-strength                | No    | No       | Public validation, no sensitive data                                          | N/A       |
 | GET  /api/v1/status                                 | No    | No       | Public health check, no sensitive data                                        | N/A       |

@@ -129,7 +129,7 @@ Password strength rules are enforced on sign-up and password change. All can be 
 
 - **Sequential characters** — detects 4+ ascending or descending consecutive letters (`abcd`, `dcba`) or digits (`1234`, `9876`). Case-insensitive.
 - **Repeated characters** — detects 3+ identical consecutive characters (`aaa`, `111`). Case-insensitive.
-- **Keyboard sequences** — detects 4+ consecutive keys on QWERTY or AZERTY keyboard rows (`qwer`, `asdf`, `qsdf`), including reversed sequences and the number row.
+- **Keyboard sequences** — detects 4+ consecutive keys on QWERTY (EN/ES), AZERTY (FR), and QWERTZ (DE) keyboard rows (`qwer`, `asdf`, `azer`, `qsdf`, `ertz`, `yxcv`), including reversed sequences and the number row.
 - **User info** — checks that the password does not contain parts of the user's email. The local part is split by `.`, `-`, `_`, `+` separators, and each domain label (excluding the TLD) is checked. Only parts of 3+ characters are matched. Case-insensitive.
 - **Common passwords** — checks the password against the [Have I Been Pwned](https://haveibeenpwned.com/Passwords) API using k-anonymity (only the first 5 characters of the SHA-1 hash are sent). If the API is unreachable, the password is accepted (fail-open).
 
@@ -156,6 +156,8 @@ Password strength rules are enforced on sign-up and password change. All can be 
 | POST   | `/api/v1/2fa/setup`                          | Setup two-factor authentication   |
 | POST   | `/api/v1/2fa/verify`                         | Enable two-factor authentication  |
 | POST   | `/api/v1/2fa/disable`                        | Disable two-factor authentication |
+| GET    | `/api/v1/password/rules`                     | Get password strength rules       |
+| POST   | `/api/v1/password/check-strength`            | Check password strength           |
 
 ## RabbitMQ messages
 

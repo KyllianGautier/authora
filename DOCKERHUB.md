@@ -155,6 +155,8 @@ All variables with a default value are optional.
 | POST   | `/api/v1/2fa/setup`                          | Setup two-factor authentication   |
 | POST   | `/api/v1/2fa/verify`                         | Enable two-factor authentication  |
 | POST   | `/api/v1/2fa/disable`                        | Disable two-factor authentication |
+| GET    | `/api/v1/password/rules`                     | Get password strength rules       |
+| POST   | `/api/v1/password/check-strength`            | Check password strength           |
 
 ## RabbitMQ messages
 
