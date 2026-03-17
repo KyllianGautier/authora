@@ -62,6 +62,7 @@ All variables with a default value are optional.
 |------------|----------------------------------------|---------------|
 | `NODE_ENV` | `development`, `production`, or `test` | `development` |
 | `PORT`     | HTTP server port                       | `3000`        |
+| `AUTHORA_BASE_URL` | Base URL for Authora UI links in emails | **required** |
 
 ### External services
 
@@ -87,6 +88,7 @@ All variables with a default value are optional.
 | `TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS`     | 2FA verify token lifetime                                             | `86400` (1 day)     |
 | `TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS`   | 2FA validate token lifetime                                           | `86400` (1 day)     |
 | `TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS`  | 2FA disabling token TTL                                               | `86400` (1 day)     |
+| `FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS`            | Forgot password token TTL                                             | `3600` (1 hour)     |
 | `JWT_PRIVATE_KEY_PATH`                                | Path to RS256 private key PEM file                                    | **required**        |
 | `JWT_PUBLIC_KEY_PATH`                                 | Path to RS256 public key PEM file                                     | **required**        |
 | `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`                 | Access token lifetime                                                 | `900` (15 min)      |

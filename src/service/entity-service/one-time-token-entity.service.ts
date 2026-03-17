@@ -23,6 +23,8 @@ const EXPIRATION_CONFIG_KEYS: Record<OneTimeTokenType, string> = {
     'TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS',
   [OneTimeTokenType.TwoFactorAuthDisabling]:
     'TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS',
+  [OneTimeTokenType.ForgotPassword]:
+    'FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS',
   [OneTimeTokenType.MagicLink]: 'MAGIC_LINK_TOKEN_EXPIRATION_SECONDS'
 };
 

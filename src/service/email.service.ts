@@ -6,15 +6,45 @@ import { EMAIL_QUEUE } from '../config/constants';
 
 @Injectable()
 export class EmailService {
+
+  private readonly _baseUrl: string;
+
   constructor(
     @Inject(EMAIL_QUEUE) private readonly _emailClient: ClientProxy,
     private readonly _configService: ConfigService
-  ) {}
+  ) {
+    this._baseUrl = this._configService.getOrThrow<string>('AUTHORA_BASE_URL');
+  }
 
   async sendSignUpVerification(email: string, token: string): Promise<void> {
     await lastValueFrom(
       this._emailClient.emit('sign-up-verification', { email, token })
     );
+  }
+
+  async sendForgotPassword(email: string, token: string): Promise<void> {
+    const authoraUiForgotPasswordLink =
+      this._buildAuthoraUIForgotPasswordUrl(email, token);
+
+    await lastValueFrom(
+      this._emailClient.emit('forgot-password', {
+        email,
+        token,
+        authoraUiForgotPasswordLink
+      })
+    );
+  }
+
+  private _buildAuthoraUIForgotPasswordUrl(
+    email: string,
+    token: string
+  ): string {
+    const url = new URL('/ui/en/forgot-password/verify', this._baseUrl);
+
+    url.searchParams.set('email', email);
+    url.searchParams.set('token', token);
+
+    return url.toString();
   }
 
   async sendAccountDeletionVerification(
@@ -57,12 +87,9 @@ export class EmailService {
     redirectTo?: string,
     locale?: string
   ): string {
-    const baseUrl =
-      this._configService.getOrThrow<string>('AUTHORA_BASE_URL');
-
     const url = new URL(
       `/ui/${ locale ?? 'en' }/sign-in/magic-link/validate`,
-      baseUrl
+      this._baseUrl
     );
 
     url.searchParams.set('email', email);

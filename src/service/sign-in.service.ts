@@ -1,16 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException
-} from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { MagicLinkInputDto } from '../dto/input/magic-link.input.dto';
 import { SignInInputDto } from '../dto/input/sign-in.input.dto';
-import { ValidateMagicLinkInputDto } from '../dto/input/validate-magic-link.input.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
-import { OneTimeTokenType } from '../entity/one-time-token.entity';
 import { EmailService } from './email.service';
+import { HashService } from './hash.service';
 import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
@@ -29,6 +23,7 @@ export class SignInService {
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
     private readonly _emailService: EmailService,
+    private readonly _hashService: HashService,
     private readonly _jwtService: JwtService,
     private readonly _configService: ConfigService
   ) {}
@@ -137,6 +132,64 @@ export class SignInService {
     };
   }
 
+  async forgotPassword(dto: ForgotPasswordInputDto): Promise<void> {
+    const email = dto.email.toLowerCase();
+
+    const user = await this._userEntityService.findByEmail(email);
+
+    if (user === null) {
+      return;
+    }
+
+    const token = await this._oneTimeTokenEntityService.create(
+      user,
+      OneTimeTokenType.ForgotPassword
+    );
+
+    await this._emailService.sendForgotPassword(email, token);
+  }
+
+  async forgotPasswordVerify(
+    dto: ForgotPasswordVerifyInputDto
+  ): Promise<void> {
+    const email = dto.email.toLowerCase();
+
+    const user =
+      await this._userEntityService.findByEmailWithPasswords(email);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
+    }
+
+    // Verify the forgot password token
+    await this._oneTimeTokenEntityService.verifyToken(
+      user,
+      dto.token,
+      OneTimeTokenType.ForgotPassword
+    );
+
+    // Check that the new password has not been used before
+    const isNewPasswordAlreadyUsed = await Promise.all(
+      user.passwords.map((password) =>
+        this._hashService.verify(password.passwordHash, dto.newPassword)
+      )
+    );
+
+    if (isNewPasswordAlreadyUsed.some((match) => match)) {
+      throw new PasswordAlreadyUsedException();
+    }
+
+    // Revoke the current password and create the new one
+    await this._passwordEntityService.updateUserPassword(
+      user,
+      dto.newPassword
+    );
+
+    // Invalidate all active sessions and one-time tokens
+    await this._refreshTokenEntityService.revokeAllForUser(user);
+    await this._oneTimeTokenEntityService.revokeAllForUser(user);
+  }
+
   async magicLink(dto: MagicLinkInputDto): Promise<void> {
     const email = dto.email.toLowerCase();
 
@@ -221,5 +274,11 @@ export class SignInService {
 export class InvalidCredentialsException extends UnauthorizedException {
   constructor() {
     super('Invalid credentials');
+  }
+}
+
+export class PasswordAlreadyUsedException extends BadRequestException {
+  constructor() {
+    super('New password has already been used');
   }
 }

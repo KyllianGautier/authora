@@ -13,6 +13,7 @@ export enum OneTimeTokenType {
   TwoFactorAuthValidate = 'TWO_FACTOR_AUTH_VALIDATE',
   TwoFactorAuthDisabling = 'TWO_FACTOR_AUTH_DISABLING',
   AccountDeletion = 'ACCOUNT_DELETION',
+  ForgotPassword = 'FORGOT_PASSWORD',
   MagicLink = 'MAGIC_LINK'
 }
 
