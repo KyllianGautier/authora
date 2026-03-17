@@ -82,6 +82,7 @@ describe('POST /sign-in/forgot-password/verify', () => {
         .expect(400);
 
       expect(response.body.message).toEqual([
+        'Password must contain at least 8 characters',
         'newPassword should not be empty',
         'newPassword must be a string'
       ]);
@@ -94,6 +95,7 @@ describe('POST /sign-in/forgot-password/verify', () => {
         .expect(400);
 
       expect(response.body.message).toEqual([
+        'Password must contain at least 8 characters',
         'newPassword should not be empty'
       ]);
     });
@@ -108,6 +110,7 @@ describe('POST /sign-in/forgot-password/verify', () => {
         'email must be an email',
         'token should not be empty',
         'token must be a string',
+        'Password must contain at least 8 characters',
         'newPassword should not be empty',
         'newPassword must be a string'
       ]);

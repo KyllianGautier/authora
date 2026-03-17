@@ -85,6 +85,7 @@ describe('POST /auth/change-password', () => {
         .expect(400);
 
       expect(response.body.message).toEqual([
+        'Password must contain at least 8 characters',
         'newPassword should not be empty',
         'newPassword must be a string'
       ]);
@@ -101,6 +102,7 @@ describe('POST /auth/change-password', () => {
         .expect(400);
 
       expect(response.body.message).toEqual([
+        'Password must contain at least 8 characters',
         'newPassword should not be empty'
       ]);
     });
@@ -130,6 +132,7 @@ describe('POST /auth/change-password', () => {
         'email must be an email',
         'currentPassword should not be empty',
         'currentPassword must be a string',
+        'Password must contain at least 8 characters',
         'New password must be different from current password',
         'newPassword should not be empty',
         'newPassword must be a string'

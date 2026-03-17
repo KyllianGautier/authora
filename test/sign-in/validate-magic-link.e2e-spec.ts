@@ -19,7 +19,7 @@ async function requestMagicLinkToken(
   email: string
 ): Promise<string> {
   await request(app.getHttpServer())
-    .post('/sign-in/magic-link')
+    .post('/api/v1/sign-in/magic-link')
     .send({ email });
 
   const messages = await consumeEmailQueue();
@@ -43,35 +43,35 @@ describe('POST /sign-in/magic-link/validate', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', () => {
       return request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ token: 'some-token' })
         .expect(400);
     });
 
     it('should return 400 when email is invalid', () => {
       return request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'not-an-email', token: 'some-token' })
         .expect(400);
     });
 
     it('should return 400 when token is missing', () => {
       return request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com' })
         .expect(400);
     });
 
     it('should return 400 when token is empty', () => {
       return request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token: '' })
         .expect(400);
     });
 
     it('should return 400 when body is empty', () => {
       return request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({})
         .expect(400);
     });
@@ -80,7 +80,7 @@ describe('POST /sign-in/magic-link/validate', () => {
   describe('behavior', () => {
     it('should return 401 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'unknown@example.com', token: 'invalid-token' })
         .expect(401);
 
@@ -93,22 +93,22 @@ describe('POST /sign-in/magic-link/validate', () => {
       await requestMagicLinkToken(app, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token: 'wrong-token' })
         .expect(401);
 
-      expect(response.body.message).toBe('One-time token is invalid');
+      expect(response.body.message).toBe('Invalid token');
     });
 
-    it('should return 404 when no magic-link token exists for user', async () => {
+    it('should return 401 when no magic-link token exists for user', async () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token: 'some-token' })
-        .expect(404);
+        .expect(401);
 
-      expect(response.body.message).toBe('One-time token not found');
+      expect(response.body.message).toBe('Invalid token');
     });
 
     it('should return 200 with accessToken, type and expiresIn', async () => {
@@ -117,7 +117,7 @@ describe('POST /sign-in/magic-link/validate', () => {
       const token = await requestMagicLinkToken(app, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token })
         .expect(200);
 
@@ -137,7 +137,7 @@ describe('POST /sign-in/magic-link/validate', () => {
       const token = await requestMagicLinkToken(app, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token })
         .expect(200);
 
@@ -155,7 +155,7 @@ describe('POST /sign-in/magic-link/validate', () => {
       const token = await requestMagicLinkToken(app, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token })
         .expect(200);
 
@@ -168,7 +168,7 @@ describe('POST /sign-in/magic-link/validate', () => {
       const token = await requestMagicLinkToken(app, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token })
         .expect(200);
 
@@ -191,7 +191,7 @@ describe('POST /sign-in/magic-link/validate', () => {
       const token = await requestMagicLinkToken(app, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'user@example.com', token })
         .expect(200);
 
@@ -217,7 +217,7 @@ describe('POST /sign-in/magic-link/validate', () => {
       const token = await requestMagicLinkToken(app, 'user@example.com');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'User@Example.COM', token })
         .expect(200);
 
@@ -229,12 +229,12 @@ describe('POST /sign-in/magic-link/validate', () => {
     it('should return 429 when rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/sign-in/magic-link/validate')
+          .post('/api/v1/sign-in/magic-link/validate')
           .send({ email: 'throttle@example.com', token: 'some-token' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link/validate')
+        .post('/api/v1/sign-in/magic-link/validate')
         .send({ email: 'throttle@example.com', token: 'some-token' });
 
       expect(response.status).toBe(429);

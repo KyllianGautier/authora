@@ -86,10 +86,10 @@ export class SignUpService {
     ]);
 
     if (emailInRegistration || emailInUser) {
-      return { message: 'You can continue the registration process if this email is valid.' };
+      return { message: 'If the email can be used, you will be able to sign-up.' };
     }
 
-    return { message: 'If the email can be used, you will be able to sign-up.' };
+    return { message: 'You can continue the registration process if this email is valid.' };
   }
 
   async verifyEmail(dto: VerifyEmailInputDto): Promise<VerifyEmailOutputDto> {

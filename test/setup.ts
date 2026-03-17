@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as amqplib from 'amqplib';
@@ -42,6 +42,8 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   // Enable DI resolution for custom class-validator validators (e.g. @IsStrongPassword)
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
+  app.setGlobalPrefix('api', { exclude: [] });
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.getHttpAdapter().getInstance().set('trust proxy', true);

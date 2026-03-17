@@ -1,7 +1,12 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { OneTimeTokenType } from '../entity/one-time-token.entity';
+import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
+import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verify.input.dto';
+import { MagicLinkInputDto } from '../dto/input/magic-link.input.dto';
 import { SignInInputDto } from '../dto/input/sign-in.input.dto';
+import { ValidateMagicLinkInputDto } from '../dto/input/validate-magic-link.input.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
 import { EmailService } from './email.service';
 import { HashService } from './hash.service';

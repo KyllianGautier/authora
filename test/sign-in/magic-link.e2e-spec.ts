@@ -27,21 +27,21 @@ describe('POST /sign-in/magic-link', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', () => {
       return request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({})
         .expect(400);
     });
 
     it('should return 400 when email is invalid', () => {
       return request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'not-an-email' })
         .expect(400);
     });
 
     it('should return 400 when redirectTo is not a valid URL', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com', redirectTo: 'not-a-url' })
         .expect(400);
 
@@ -54,7 +54,7 @@ describe('POST /sign-in/magic-link', () => {
 
     it('should return 400 when locale is not a valid locale', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com', locale: '!!invalid!!' })
         .expect(400);
 
@@ -71,7 +71,7 @@ describe('POST /sign-in/magic-link', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com' })
         .expect(202);
 
@@ -82,7 +82,7 @@ describe('POST /sign-in/magic-link', () => {
 
     it('should return 202 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'unknown@example.com' })
         .expect(202);
 
@@ -95,7 +95,7 @@ describe('POST /sign-in/magic-link', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com' })
         .expect(202);
 
@@ -114,7 +114,7 @@ describe('POST /sign-in/magic-link', () => {
 
     it('should not send an email when user does not exist', async () => {
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'unknown@example.com' })
         .expect(202);
 
@@ -131,7 +131,7 @@ describe('POST /sign-in/magic-link', () => {
       );
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com' })
         .expect(202);
 
@@ -151,12 +151,12 @@ describe('POST /sign-in/magic-link', () => {
       );
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com' })
         .expect(202);
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com' })
         .expect(202);
 
@@ -171,7 +171,7 @@ describe('POST /sign-in/magic-link', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com', redirectTo: 'https://myapp.com/dashboard' })
         .expect(202);
 
@@ -187,7 +187,7 @@ describe('POST /sign-in/magic-link', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com', locale: 'fr' })
         .expect(202);
 
@@ -203,7 +203,7 @@ describe('POST /sign-in/magic-link', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com' })
         .expect(202);
 
@@ -219,7 +219,7 @@ describe('POST /sign-in/magic-link', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'user@example.com' })
         .expect(202);
 
@@ -233,7 +233,7 @@ describe('POST /sign-in/magic-link', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'User@Example.COM' })
         .expect(202);
 
@@ -248,12 +248,12 @@ describe('POST /sign-in/magic-link', () => {
     it('should return 429 when rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/sign-in/magic-link')
+          .post('/api/v1/sign-in/magic-link')
           .send({ email: 'throttle@example.com' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/sign-in/magic-link')
+        .post('/api/v1/sign-in/magic-link')
         .send({ email: 'throttle@example.com' });
 
       expect(response.status).toBe(429);
