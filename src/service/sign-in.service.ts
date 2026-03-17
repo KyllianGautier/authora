@@ -5,8 +5,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { MagicLinkInputDto } from '../dto/input/magic-link.input.dto';
 import { SignInInputDto } from '../dto/input/sign-in.input.dto';
+import { ValidateMagicLinkInputDto } from '../dto/input/validate-magic-link.input.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
+import { OneTimeTokenType } from '../entity/one-time-token.entity';
+import { EmailService } from './email.service';
+import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
@@ -22,6 +27,8 @@ export class SignInService {
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
+    private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
+    private readonly _emailService: EmailService,
     private readonly _jwtService: JwtService,
     private readonly _configService: ConfigService
   ) {}
@@ -127,6 +134,68 @@ export class SignInService {
     return {
       body: { accessToken: newAccessToken, type: 'Bearer', expiresIn },
       refreshToken: newRefreshToken
+    };
+  }
+
+  async magicLink(dto: MagicLinkInputDto): Promise<void> {
+    const email = dto.email.toLowerCase();
+
+    const user = await this._userEntityService.findByEmail(email);
+
+    // Silently ignore if user does not exist to avoid enumeration
+    if (user === null) {
+      return;
+    }
+
+    const token = await this._oneTimeTokenEntityService.create(
+      user,
+      OneTimeTokenType.MagicLink
+    );
+
+    await this._emailService.sendMagicLink(email, token, dto.redirectTo, dto.locale);
+  }
+
+  async validateMagicLink(
+    dto: ValidateMagicLinkInputDto
+  ): Promise<SignInResult> {
+    const email = dto.email.toLowerCase();
+
+    const user = await this._userEntityService.findByEmail(email);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
+    }
+
+    await this._oneTimeTokenEntityService.verifyToken(
+      user,
+      dto.token,
+      OneTimeTokenType.MagicLink
+    );
+
+    // Generate the access token
+    const expiresIn = this._configService.getOrThrow<number>(
+      'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
+    );
+
+    const accessToken = await this._jwtService.signAsync({
+      sub: user.id,
+      email: user.email
+    });
+
+    // Generate the refresh token with magic link expiration
+    const refreshTokenExpirationSeconds =
+      this._configService.getOrThrow<number>(
+        'MAGIC_LINK_REFRESH_TOKEN_EXPIRATION_SECONDS'
+      );
+
+    const refreshToken = await this._refreshTokenEntityService.create(
+      user,
+      refreshTokenExpirationSeconds
+    );
+
+    return {
+      body: { accessToken, type: 'Bearer', expiresIn },
+      refreshToken
     };
   }
 

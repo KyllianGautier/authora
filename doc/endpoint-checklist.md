@@ -1,6 +1,34 @@
-# Endpoint implementation checklist
+# Endpoint Implementation Checklist
 
-This checklist is intended to be used as a guide for implementing new endpoints in the API. It covers the essential steps and considerations to ensure that the endpoint is implemented correctly and efficiently.
+This checklist is a guide for implementing new endpoints in the API.
+
+---
+
+## 1. Define the Endpoint
+
+Clearly define the endpoint in `controller-description.md`:
+- Expected input parameters
+- Output format
+- Relevant business logic
+
+---
+
+## 2. Implement the Endpoint
+
+### Architecture
+
+- **Controller** — defines the endpoint
+- **Service** — one service per controller, each method corresponds to an endpoint and handles all business logic
+- **Entity services** (`src/service/entity-service/`) — dedicated service per entity for basic operations (create/update/delete are internal, only actions are exposed)
+
+### Controller
+
+- [ ] Add Swagger documentation: `@ApiOperation()` with summary, `@ApiOkResponse()`, `@ApiBadRequestResponse()`, `@ApiUnauthorizedResponse()`, `@ApiConflictResponse()`, `@ApiGoneResponse()`, etc.
+- [ ] Add `@Delay()` decorator if the endpoint is enumeration-attack sensitive
+- [ ] Add `@UseGuards(AuthThrottleGuard)` if the endpoint is enumeration-attack sensitive
+- [ ] If the endpoint involves refresh tokens, use `@Res({ passthrough: true })` to set cookies with `httpOnly: true`, `secure: true`, `sameSite: 'strict'`
+
+### Service
 
 - [ ] Normalize emails to lowercase before any operation
 - [ ] Define custom exceptions (extending NestJS base exceptions) at the bottom of the service file

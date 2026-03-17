@@ -18,6 +18,10 @@ export class UserEntityService {
     return this._repository.findOneBy({ id });
   }
 
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    return this._repository.findOneBy({ email });
+  }
+
   async findByEmailWithPasswords(email: string): Promise<UserEntity | null> {
     return this._repository.findOne({
       where: { email },
