@@ -1,6 +1,7 @@
+import { SignInOutput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SignInOutputDto {
+export class SignInOutputDto implements SignInOutput {
   @ApiProperty({ description: 'JWT access token' })
   accessToken: string;
 

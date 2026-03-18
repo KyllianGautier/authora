@@ -1,7 +1,8 @@
+import { SignUpOutput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { RegistrationEntity } from '../../entity/registration.entity';
 
-export class SignUpOutputDto {
+export class SignUpOutputDto implements SignUpOutput {
   @ApiProperty({ description: 'User unique identifier' })
   id: string;
 

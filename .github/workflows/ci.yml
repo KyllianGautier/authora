@@ -160,6 +160,8 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            NPM_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Docker Hub description
         if: github.ref_name == 'main'

@@ -1,6 +1,7 @@
+import { SetupTwoFactorAuthOutput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SetupTwoFactorAuthOutputDto {
+export class SetupTwoFactorAuthOutputDto implements SetupTwoFactorAuthOutput {
   @ApiProperty({
     description: 'QR code as a data URL for scanning with a 2FA app',
     example: 'data:image/png;base64,...'

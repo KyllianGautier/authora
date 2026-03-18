@@ -1,3 +1,4 @@
+import { ForgotPasswordVerifyInput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import {
@@ -13,7 +14,7 @@ import {
   NoUserInfo
 } from '../validator/password';
 
-export class ForgotPasswordVerifyInputDto {
+export class ForgotPasswordVerifyInputDto implements ForgotPasswordVerifyInput {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
   @IsEmail()
   email: string;

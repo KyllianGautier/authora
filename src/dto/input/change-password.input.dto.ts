@@ -1,3 +1,4 @@
+import { ChangePasswordInput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { IsDifferentFrom } from '../validator/is-different-from.decorator';
@@ -14,7 +15,7 @@ import {
   NoUserInfo
 } from '../validator/password';
 
-export class ChangePasswordInputDto {
+export class ChangePasswordInputDto implements ChangePasswordInput {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
   @IsEmail()
   email: string;

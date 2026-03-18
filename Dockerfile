@@ -4,8 +4,12 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+ARG NPM_TOKEN
+
+COPY package.json package-lock.json .npmrc* ./
+RUN echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc && \
+    npm ci --omit=dev && \
+    rm -f .npmrc
 
 COPY dist ./dist
 

@@ -1,7 +1,8 @@
+import { MagicLinkInput } from '@kylliangautier/authora-types';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsLocale, IsOptional, IsUrl } from 'class-validator';
 
-export class MagicLinkInputDto {
+export class MagicLinkInputDto implements MagicLinkInput {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
   @IsEmail()
   email: string;

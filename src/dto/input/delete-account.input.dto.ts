@@ -1,7 +1,8 @@
+import { DeleteAccountInput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
-export class DeleteAccountInputDto {
+export class DeleteAccountInputDto implements DeleteAccountInput {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
   @IsEmail()
   email: string;

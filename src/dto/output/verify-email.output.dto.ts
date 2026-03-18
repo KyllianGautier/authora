@@ -1,7 +1,8 @@
+import { VerifyEmailOutput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserEntity } from '../../entity/user.entity';
 
-export class VerifyEmailOutputDto {
+export class VerifyEmailOutputDto implements VerifyEmailOutput {
   @ApiProperty({ description: 'Email address of the user' })
   email: string;
 
