@@ -4,7 +4,7 @@ import { ENTITY_SERVICES } from './entity-service';
 import { HashService } from './hash.service';
 import { REDIS_MODEL_SERVICES } from './redis-model-service';
 import { JobService } from './job.service';
-import { SessionService } from './session.service';
+import { SignIn2Service } from './sign-in-2.service';
 import { SignInService } from './sign-in.service';
 import { SignUpService } from './sign-up.service';
 import { TwoFactorAuthService } from './two-factor-auth.service';
@@ -16,7 +16,7 @@ export const SERVICES = [
   EmailService,
   HashService,
   JobService,
-  SessionService,
+  SignIn2Service,
   SignInService,
   SignUpService,
   TwoFactorAuthService
