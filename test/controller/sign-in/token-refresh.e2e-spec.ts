@@ -3,8 +3,12 @@ import * as jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { JWT_ACCESS_TOKEN_EXPIRATION_SEC } from '../../../src/config/constants';
+import {
+  JWT_ACCESS_TOKEN_EXPIRATION_SEC,
+  TOKEN_REUSE_MAX_COMPROMISED_FAMILIES
+} from '../../../src/config/constants';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
+import { LockReason, UserEntity } from '../../../src/entity/user.entity';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import {
   resetTestState,
@@ -298,6 +302,73 @@ describe('POST /auth/sign-in/token/refresh', () => {
 
       const active = tokens.filter((t) => !t.revoked);
       expect(active).toHaveLength(0);
+    });
+
+    it(`should lock the user after ${TOKEN_REUSE_MAX_COMPROMISED_FAMILIES} reuse detections`, async () => {
+      const user = await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
+
+      for (let i = 0; i < TOKEN_REUSE_MAX_COMPROMISED_FAMILIES; i++) {
+        const { accessToken, refreshToken } = await signInUser(app, user.id);
+
+        // Rotate to create a revoked token
+        const refreshRes = await request(app.getHttpServer())
+          .post(`${BASE}/token/refresh`)
+          .set('Authorization', `Bearer ${accessToken}`)
+          .set('Cookie', `refreshToken=${refreshToken}`)
+          .expect(200);
+
+        const newAt = refreshRes.body.accessToken as string;
+
+        // Replay the revoked token
+        await request(app.getHttpServer())
+          .post(`${BASE}/token/refresh`)
+          .set('Authorization', `Bearer ${newAt}`)
+          .set('Cookie', `refreshToken=${refreshToken}`)
+          .expect(401);
+      }
+
+      const lockedUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(lockedUser!.isLocked).toBe(true);
+      expect(lockedUser!.lockReason).toBe(LockReason.SuspiciousActivity);
+    });
+
+    it('should not lock the user below the reuse threshold', async () => {
+      const user = await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
+
+      for (let i = 0; i < TOKEN_REUSE_MAX_COMPROMISED_FAMILIES - 1; i++) {
+        const { accessToken, refreshToken } = await signInUser(app, user.id);
+
+        const refreshRes = await request(app.getHttpServer())
+          .post(`${BASE}/token/refresh`)
+          .set('Authorization', `Bearer ${accessToken}`)
+          .set('Cookie', `refreshToken=${refreshToken}`)
+          .expect(200);
+
+        const newAt = refreshRes.body.accessToken as string;
+
+        await request(app.getHttpServer())
+          .post(`${BASE}/token/refresh`)
+          .set('Authorization', `Bearer ${newAt}`)
+          .set('Cookie', `refreshToken=${refreshToken}`)
+          .expect(401);
+      }
+
+      const notLockedUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(notLockedUser!.isLocked).toBe(false);
     });
 
     it('should not affect tokens from a different family', async () => {

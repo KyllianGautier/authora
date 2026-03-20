@@ -10,11 +10,9 @@ import {
   OTT_TWO_FACTOR_AUTH_VALIDATE_TTL_SEC,
   OTT_TWO_FACTOR_AUTH_VERIFY_TTL_SEC
 } from '../../config/constants';
+import { OTT_EXCHANGE_KEY, OTT_KEY } from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
 import { OneTimeTokenType } from '../../redis-model/one-time-token.model';
-
-const OTT_PREFIX = 'ott:';
-const OTT_EXCHANGE_PREFIX = 'ott_exchange:';
 
 const TTL_SECONDS: Record<OneTimeTokenType, number> = {
   [OneTimeTokenType.AccountDeletion]: OTT_ACCOUNT_DELETION_TTL_SEC,
@@ -35,14 +33,14 @@ export class OneTimeTokenRedisService {
     const tokenHash = this._sha256(clearToken);
     const ttl = this._getTtlSeconds(type);
 
-    const key = this._buildKey(userId, type);
+    const key = OTT_KEY(userId, type);
 
     // If an existing token of the same type exists, clean up its exchange index
     if (type === OneTimeTokenType.Exchange) {
       const existingHash = await this._redis.get(key);
 
       if (existingHash !== null) {
-        await this._redis.del(OTT_EXCHANGE_PREFIX + existingHash);
+        await this._redis.del(OTT_EXCHANGE_KEY(existingHash));
       }
     }
 
@@ -52,7 +50,7 @@ export class OneTimeTokenRedisService {
     // For exchange tokens, store a reverse index for lookup by token
     if (type === OneTimeTokenType.Exchange) {
       await this._redis.set(
-        OTT_EXCHANGE_PREFIX + tokenHash,
+        OTT_EXCHANGE_KEY(tokenHash),
         userId,
         'EX',
         ttl
@@ -67,7 +65,7 @@ export class OneTimeTokenRedisService {
     clearToken: string,
     type: OneTimeTokenType
   ): Promise<void> {
-    const key = this._buildKey(userId, type);
+    const key = OTT_KEY(userId, type);
     const storedHash = await this._redis.get(key);
 
     if (storedHash === null) {
@@ -86,7 +84,7 @@ export class OneTimeTokenRedisService {
 
   async consumeExchangeToken(clearToken: string): Promise<string> {
     const tokenHash = this._sha256(clearToken);
-    const exchangeKey = OTT_EXCHANGE_PREFIX + tokenHash;
+    const exchangeKey = OTT_EXCHANGE_KEY(tokenHash);
 
     const userId = await this._redis.get(exchangeKey);
 
@@ -95,7 +93,7 @@ export class OneTimeTokenRedisService {
     }
 
     // Consume both keys atomically
-    const ottKey = this._buildKey(userId, OneTimeTokenType.Exchange);
+    const ottKey = OTT_KEY(userId, OneTimeTokenType.Exchange);
 
     await this._redis.del(exchangeKey, ottKey);
 
@@ -106,14 +104,14 @@ export class OneTimeTokenRedisService {
     const keys: string[] = [];
 
     for (const type of Object.values(OneTimeTokenType)) {
-      const key = this._buildKey(userId, type);
+      const key = OTT_KEY(userId, type);
 
       // For exchange tokens, also clean up the reverse index
       if (type === OneTimeTokenType.Exchange) {
         const existingHash = await this._redis.get(key);
 
         if (existingHash !== null) {
-          keys.push(OTT_EXCHANGE_PREFIX + existingHash);
+          keys.push(OTT_EXCHANGE_KEY(existingHash));
         }
       }
 
@@ -123,10 +121,6 @@ export class OneTimeTokenRedisService {
     if (keys.length > 0) {
       await this._redis.del(...keys);
     }
-  }
-
-  private _buildKey(userId: string, type: OneTimeTokenType): string {
-    return OTT_PREFIX + userId + ':' + type;
   }
 
   private _sha256(value: string): string {

@@ -3,7 +3,10 @@ import * as speakeasy from 'speakeasy';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../../setup';
+import { MFA_AUTH_COOLDOWN_SEC, MFA_AUTH_MAX_ATTEMPTS } from '../../../src/config/constants';
+import { DateTime } from 'luxon';
+import { LockReason, UserEntity } from '../../../src/entity/user.entity';
+import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
@@ -162,6 +165,167 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
       const redisSession = await getAuthSession(app, session.id);
       expect(redisSession).not.toBeNull();
       expect(redisSession!.mfaVerified).toBe(true);
+    });
+  });
+
+  describe('temporary lock', () => {
+    it(`should return 429 after ${MFA_AUTH_MAX_ATTEMPTS} failed TOTP attempts`, async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTwoFactorAuth(dataSource, user, true);
+
+      for (let i = 0; i < MFA_AUTH_MAX_ATTEMPTS; i++) {
+        const session = await createAuthSession(app, {
+          userId: user.id,
+          primaryAuthVerified: true
+        });
+
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/mfa/totp/validate')
+          .set('X-Forwarded-For', `10.0.${i}.1`)
+          .send({ sessionId: session.id, code: '000000' })
+          .expect(401);
+      }
+
+      resetThrottler();
+      const session = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: session.id, code: '000000' })
+        .expect(429);
+
+      expect(response.body.message).toBe('Too many attempts, try again later');
+    });
+
+    it('should reset the attempt counter after a successful TOTP validation', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+
+      // Fail a few times (below threshold)
+      for (let i = 0; i < MFA_AUTH_MAX_ATTEMPTS - 1; i++) {
+        const session = await createAuthSession(app, {
+          userId: user.id,
+          primaryAuthVerified: true
+        });
+
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/mfa/totp/validate')
+          .set('X-Forwarded-For', `10.0.${i}.1`)
+          .send({ sessionId: session.id, code: '000000' })
+          .expect(401);
+      }
+
+      // Successful validation resets the counter
+      resetThrottler();
+      const session = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true
+      });
+
+      const code = speakeasy.totp({
+        secret: twoFactorAuth.secret,
+        encoding: 'base32'
+      });
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: session.id, code })
+        .expect(200);
+
+      // Can fail again without being locked
+      for (let i = 0; i < MFA_AUTH_MAX_ATTEMPTS - 1; i++) {
+        const s = await createAuthSession(app, {
+          userId: user.id,
+          primaryAuthVerified: true
+        });
+
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/mfa/totp/validate')
+          .set('X-Forwarded-For', `10.1.${i}.1`)
+          .send({ sessionId: s.id, code: '000000' })
+          .expect(401);
+      }
+
+      // Still not locked
+      resetThrottler();
+      const s = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true
+      });
+
+      const newCode = speakeasy.totp({
+        secret: twoFactorAuth.secret,
+        encoding: 'base32'
+      });
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: s.id, code: newCode })
+        .expect(200);
+    });
+
+    it('should not permanently lock the user after many MFA failures', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTwoFactorAuth(dataSource, user, true);
+
+      // Do 3 batches of MFA_AUTH_MAX_ATTEMPTS, simulating cooldown expiry between batches
+      for (let batch = 0; batch < 3; batch++) {
+        if (batch > 0) {
+          // Simulate cooldown expiry
+          await dataSource.getRepository(UserEntity).update(user.id, {
+            lastFailedMfaAt: DateTime.utc()
+              .minus({ seconds: MFA_AUTH_COOLDOWN_SEC + 1 })
+              .toJSDate()
+          });
+        }
+
+        for (let i = 0; i < MFA_AUTH_MAX_ATTEMPTS; i++) {
+          resetThrottler();
+          const session = await createAuthSession(app, {
+            userId: user.id,
+            primaryAuthVerified: true
+          });
+
+          await request(app.getHttpServer())
+            .post('/api/v1/auth/sign-in/mfa/totp/validate')
+            .set('X-Forwarded-For', `10.${batch}.${i}.1`)
+            .send({ sessionId: session.id, code: '000000' });
+        }
+      }
+
+      // User should NOT be permanently locked
+      const dbUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(dbUser!.isLocked).toBe(false);
+      expect(dbUser!.lockReason).toBeNull();
+    });
+
+    it('should return 401 when user is permanently locked for another reason', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTwoFactorAuth(dataSource, user, true);
+
+      await dataSource.getRepository(UserEntity).update(user.id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockReason: LockReason.SuspiciousActivity
+      });
+
+      const session = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: session.id, code: '000000' })
+        .expect(401);
+
+      expect(response.body.message).toBe('Invalid credentials');
     });
   });
 

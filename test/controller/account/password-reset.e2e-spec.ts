@@ -2,9 +2,11 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
+import { LockReason } from '../../../src/entity/user.entity';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { PasswordEntity } from '../../../src/entity/password.entity';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
+import { UserEntity } from '../../../src/entity/user.entity';
 import {
   resetTestState,
   consumeEmailQueue,
@@ -178,6 +180,100 @@ describe('POST /account/password/reset', () => {
         .expect(200);
 
       expect(response.body.message).toBe('Password reset successfully');
+    });
+  });
+
+  describe('account unlock', () => {
+    it('should unlock the account when locked for TOO_MANY_ATTEMPTS', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
+
+      // Lock the user
+      await dataSource.getRepository(UserEntity).update(user.id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockReason: LockReason.TooManyAttempts
+      });
+
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/account/password/reset')
+        .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN, newPassword: VALID_PASSWORD })
+        .expect(200);
+
+      const updatedUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(updatedUser!.isLocked).toBe(false);
+      expect(updatedUser!.lockedAt).toBeNull();
+      expect(updatedUser!.lockReason).toBeNull();
+    });
+
+    it('should NOT unlock the account when locked for SUSPICIOUS_ACTIVITY', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
+
+      await dataSource.getRepository(UserEntity).update(user.id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockReason: LockReason.SuspiciousActivity
+      });
+
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/account/password/reset')
+        .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN, newPassword: VALID_PASSWORD })
+        .expect(200);
+
+      const updatedUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(updatedUser!.isLocked).toBe(true);
+      expect(updatedUser!.lockReason).toBe(LockReason.SuspiciousActivity);
+    });
+
+    it('should NOT unlock the account when locked for ADMIN_MANUAL', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
+
+      await dataSource.getRepository(UserEntity).update(user.id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockReason: LockReason.AdminManual
+      });
+
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/account/password/reset')
+        .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN, newPassword: VALID_PASSWORD })
+        .expect(200);
+
+      const updatedUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(updatedUser!.isLocked).toBe(true);
+      expect(updatedUser!.lockReason).toBe(LockReason.AdminManual);
+    });
+
+    it('should not change anything when user is not locked', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/account/password/reset')
+        .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN, newPassword: VALID_PASSWORD })
+        .expect(200);
+
+      const updatedUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(updatedUser!.isLocked).toBe(false);
+      expect(updatedUser!.lockedAt).toBeNull();
+      expect(updatedUser!.lockReason).toBeNull();
     });
   });
 

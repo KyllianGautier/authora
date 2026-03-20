@@ -9,6 +9,8 @@ import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
 import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verify.input.dto';
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
+import { UNLOCK_ON_PASSWORD_RESET } from '../config/constants';
+import { LockReason } from '../entity/user.entity';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { EmailService } from './email.service';
 import { HashService } from './hash.service';
@@ -113,6 +115,16 @@ export class AccountService {
       user,
       dto.newPassword
     );
+
+    // Unlock the account if it was locked due to too many failed attempts
+    if (
+      UNLOCK_ON_PASSWORD_RESET &&
+      user.isLocked &&
+      user.lockReason === LockReason.TooManyAttempts
+    ) {
+      await this._userEntityService.unlock(user);
+      await this._refreshTokenEntityService.resetReuseCounter(user.id);
+    }
 
     await this._refreshTokenEntityService.revokeAllForUser(user);
     await this._oneTimeTokenRedisService.revokeAllForUser(user.id);

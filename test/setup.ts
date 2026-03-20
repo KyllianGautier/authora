@@ -55,6 +55,13 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   return app;
 }
 
+// Reset only the throttler state (useful within tests that make many requests)
+export function resetThrottler(): void {
+  const storage = app.get(ThrottlerStorage);
+  storage.onApplicationShutdown();
+  storage.storage.clear();
+}
+
 // Truncate all tables and reset throttler state between tests
 export async function resetTestState(): Promise<void> {
   const dataSource = app.get(DataSource);
@@ -70,12 +77,18 @@ export async function resetTestState(): Promise<void> {
   storage.onApplicationShutdown();
   storage.storage.clear();
 
-  // Flush auth sessions and one-time tokens from Redis
+  // Flush auth sessions, one-time tokens, and token reuse counters from Redis
   const redis = app.get<Redis>(REDIS_CLIENT);
   const keys = await redis.keys('auth_session:*');
   const ottKeys = await redis.keys('ott:*');
   const ottExchangeKeys = await redis.keys('ott_exchange:*');
-  const allKeys = [...keys, ...ottKeys, ...ottExchangeKeys];
+  const tokenReuseKeys = await redis.keys('token_reuse:*');
+  const allKeys = [
+    ...keys,
+    ...ottKeys,
+    ...ottExchangeKeys,
+    ...tokenReuseKeys
+  ];
   if (allKeys.length > 0) {
     await redis.del(...allKeys);
   }

@@ -1,24 +1,31 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes, randomUUID } from 'crypto';
+import Redis from 'ioredis';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
+import {
+  TOKEN_REUSE_MAX_COMPROMISED_FAMILIES,
+  TOKEN_REUSE_WINDOW_SEC
+} from '../../config/constants';
+import { TOKEN_REUSE_KEY } from '../../config/redis-keys';
+import { REDIS_CLIENT } from '../../config/redis.provider';
 import { RefreshTokenEntity } from '../../entity/refresh-token.entity';
-import { UserEntity } from '../../entity/user.entity';
+import { LockReason, UserEntity } from '../../entity/user.entity';
 import { HashService } from '../hash.service';
+import { UserEntityService } from './user-entity.service';
 
 @Injectable()
 export class RefreshTokenEntityService {
   constructor(
     @InjectRepository(RefreshTokenEntity)
     private readonly _repository: Repository<RefreshTokenEntity>,
-    private readonly _hashService: HashService
+    private readonly _hashService: HashService,
+    private readonly _userEntityService: UserEntityService,
+    @Inject(REDIS_CLIENT) private readonly _redis: Redis
   ) {}
 
-  async create(
-    user: UserEntity,
-    expirationSeconds: number
-  ): Promise<string> {
+  async create(user: UserEntity, expirationSeconds: number): Promise<string> {
     // Revoke previous refresh tokens for this user
     await this._repository.update(
       { user: { id: user.id }, revoked: false },
@@ -62,10 +69,7 @@ export class RefreshTokenEntityService {
     });
 
     for (const token of tokens) {
-      const match = await this._hashService.verify(
-        token.tokenHash,
-        clearToken
-      );
+      const match = await this._hashService.verify(token.tokenHash, clearToken);
       if (match) {
         return token;
       }
@@ -76,8 +80,13 @@ export class RefreshTokenEntityService {
 
   async verify(
     refreshToken: RefreshTokenEntity,
-    clearToken: string
+    clearToken: string,
+    user: UserEntity
   ): Promise<boolean> {
+    if (refreshToken.revoked) {
+      await this._handleTokenReuse(refreshToken, user);
+    }
+
     if (DateTime.fromJSDate(refreshToken.expiredAt) < DateTime.utc()) {
       return false;
     }
@@ -86,6 +95,10 @@ export class RefreshTokenEntityService {
 
   async revokeAllForUser(user: UserEntity): Promise<void> {
     await this._repository.update({ user, revoked: false }, { revoked: true });
+  }
+
+  async resetReuseCounter(userId: string): Promise<void> {
+    await this._redis.del(TOKEN_REUSE_KEY(userId));
   }
 
   async revokeFamily(family: string): Promise<void> {
@@ -116,5 +129,32 @@ export class RefreshTokenEntityService {
     );
 
     return clearToken;
+  }
+
+  private async _handleTokenReuse(
+    token: RefreshTokenEntity,
+    user: UserEntity
+  ): Promise<void> {
+    await this.revokeFamily(token.family);
+
+    // Track token reuse count
+    const key = TOKEN_REUSE_KEY(user.id);
+    const count = await this._redis.incr(key);
+
+    if (count === 1) {
+      await this._redis.expire(key, TOKEN_REUSE_WINDOW_SEC);
+    }
+
+    if (count >= TOKEN_REUSE_MAX_COMPROMISED_FAMILIES) {
+      await this._userEntityService.lock(user, LockReason.SuspiciousActivity);
+    }
+
+    throw new TokenReuseDetectedException();
+  }
+}
+
+export class TokenReuseDetectedException extends UnauthorizedException {
+  constructor() {
+    super('Token reuse detected');
   }
 }

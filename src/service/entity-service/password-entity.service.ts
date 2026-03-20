@@ -42,7 +42,10 @@ export class PasswordEntityService {
       return false;
     }
 
-    return this._hashService.verify(currentPassword.passwordHash, clearPassword);
+    return this._hashService.verify(
+      currentPassword.passwordHash,
+      clearPassword
+    );
   }
 
   async updateUserPassword(

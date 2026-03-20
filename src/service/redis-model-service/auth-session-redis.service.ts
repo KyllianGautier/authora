@@ -3,11 +3,12 @@ import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import Redis from 'ioredis';
 import { AUTH_SESSION_TTL_SEC } from '../../config/constants';
+import {
+  AUTH_SESSION_KEY,
+  AUTH_SESSION_USER_KEY
+} from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
 import { AuthSession, MfaPolicy } from '../../redis-model/auth-session.model';
-
-const SESSION_PREFIX = 'auth_session:';
-const USER_SESSION_PREFIX = 'auth_session:user:';
 
 export interface CreateAuthSessionOptions {
   tenantId: string;
@@ -50,12 +51,12 @@ export class AuthSessionRedisService {
       expiresAt: now.plus({ seconds: this._ttlSeconds }).toISO()
     };
 
-    const key = SESSION_PREFIX + session.id;
+    const key = AUTH_SESSION_KEY(session.id);
 
     await this._redis.set(key, JSON.stringify(session), 'EX', this._ttlSeconds);
 
     if (session.userId !== undefined) {
-      const userKey = USER_SESSION_PREFIX + session.userId;
+      const userKey = AUTH_SESSION_USER_KEY(session.userId);
       await this._redis.set(userKey, session.id, 'EX', this._ttlSeconds);
     }
 
@@ -63,7 +64,7 @@ export class AuthSessionRedisService {
   }
 
   async findById(id: string): Promise<AuthSession | null> {
-    const data = await this._redis.get(SESSION_PREFIX + id);
+    const data = await this._redis.get(AUTH_SESSION_KEY(id));
 
     if (data === null) {
       return null;
@@ -73,7 +74,7 @@ export class AuthSessionRedisService {
   }
 
   async findActiveForUserId(userId: string): Promise<AuthSession | null> {
-    const sessionId = await this._redis.get(USER_SESSION_PREFIX + userId);
+    const sessionId = await this._redis.get(AUTH_SESSION_USER_KEY(userId));
 
     if (sessionId === null) {
       return null;
@@ -83,7 +84,7 @@ export class AuthSessionRedisService {
   }
 
   async verify(session: AuthSession): Promise<void> {
-    const exists = await this._redis.exists(SESSION_PREFIX + session.id);
+    const exists = await this._redis.exists(AUTH_SESSION_KEY(session.id));
 
     if (!exists) {
       throw new InvalidAuthSessionException();
@@ -91,7 +92,7 @@ export class AuthSessionRedisService {
   }
 
   async update(session: AuthSession): Promise<void> {
-    const key = SESSION_PREFIX + session.id;
+    const key = AUTH_SESSION_KEY(session.id);
     const ttl = await this._redis.ttl(key);
 
     if (ttl <= 0) {
@@ -102,10 +103,10 @@ export class AuthSessionRedisService {
   }
 
   async delete(session: AuthSession): Promise<void> {
-    await this._redis.del(SESSION_PREFIX + session.id);
+    await this._redis.del(AUTH_SESSION_KEY(session.id));
 
     if (session.userId !== undefined) {
-      await this._redis.del(USER_SESSION_PREFIX + session.userId);
+      await this._redis.del(AUTH_SESSION_USER_KEY(session.userId));
     }
   }
 }
