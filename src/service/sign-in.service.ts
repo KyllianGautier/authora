@@ -14,7 +14,9 @@ import {
   PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD
 } from '../config/constants';
 import { LockReason } from '../entity/user.entity';
+import { AuthFailureReason } from '../entity/sign-in-attempt.entity';
 import { TwoFactorAuthCodeInvalidException } from './entity-service/two-factor-auth-entity.service';
+import { SignInAttemptEntityService } from './entity-service/sign-in-attempt-entity.service';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
@@ -42,6 +44,7 @@ export class SignInService {
     private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService,
+    private readonly _signInAttemptEntityService: SignInAttemptEntityService,
     private readonly _emailService: EmailService,
     private readonly _jwtService: JwtService,
     @InjectRepository(TwoFactorAuthEntity)
@@ -59,7 +62,9 @@ export class SignInService {
 
   async primaryAuthPassword(
     sessionId: string,
-    dto: SessionPasswordInputDto
+    dto: SessionPasswordInputDto,
+    ip: string,
+    userAgent: string
   ): Promise<AuthSession> {
     const session = await this._getSession(sessionId);
 
@@ -72,10 +77,16 @@ export class SignInService {
     }
 
     if (user.isLocked) {
+      await this._signInAttemptEntityService.create(
+        user, ip, userAgent, false, AuthFailureReason.AccountLocked
+      );
       throw new InvalidCredentialsException();
     }
 
     if (this._userEntityService.isPasswordTemporarilyLocked(user)) {
+      await this._signInAttemptEntityService.create(
+        user, ip, userAgent, false, AuthFailureReason.TooManyAttempts
+      );
       throw new TooManyAttemptsException();
     }
 
@@ -90,11 +101,16 @@ export class SignInService {
         await this._userEntityService.lock(user, LockReason.TooManyAttempts);
       }
 
+      await this._signInAttemptEntityService.create(
+        user, ip, userAgent, false, AuthFailureReason.InvalidPasswordAuth
+      );
       throw new InvalidCredentialsException();
     }
 
     // Reset failed attempts on successful login
     await this._userEntityService.resetPasswordAttempts(user);
+
+    await this._signInAttemptEntityService.create(user, ip, userAgent, true);
 
     // Update the session with user info and primary auth status
     session.userId = user.id;
@@ -169,7 +185,9 @@ export class SignInService {
 
   async mfaAuthTotpValidate(
     sessionId: string,
-    dto: SessionTotpValidateInputDto
+    dto: SessionTotpValidateInputDto,
+    ip: string,
+    userAgent: string
   ): Promise<AuthSession> {
     const session = await this._getSession(sessionId);
 
@@ -188,10 +206,16 @@ export class SignInService {
     }
 
     if (user.isLocked) {
+      await this._signInAttemptEntityService.create(
+        user, ip, userAgent, false, AuthFailureReason.AccountLocked
+      );
       throw new InvalidCredentialsException();
     }
 
     if (this._userEntityService.isMfaTemporarilyLocked(user)) {
+      await this._signInAttemptEntityService.create(
+        user, ip, userAgent, false, AuthFailureReason.TooManyMfaAttempts
+      );
       throw new TooManyAttemptsException();
     }
 
@@ -200,6 +224,9 @@ export class SignInService {
     } catch (error) {
       if (error instanceof TwoFactorAuthCodeInvalidException) {
         await this._userEntityService.recordFailedMfaAttempt(user);
+        await this._signInAttemptEntityService.create(
+          user, ip, userAgent, false, AuthFailureReason.InvalidMfaAuth
+        );
       }
 
       throw error;
@@ -207,6 +234,8 @@ export class SignInService {
 
     // Reset failed attempts on successful validation
     await this._userEntityService.resetMfaAttempts(user);
+
+    await this._signInAttemptEntityService.create(user, ip, userAgent, true);
 
     session.mfaVerified = true;
     await this._authSessionRedisService.update(session);

@@ -8,6 +8,7 @@ import {
   PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD,
   PRIMARY_AUTH_MAX_ATTEMPTS
 } from '../../../src/config/constants';
+import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
 import { LockReason, UserEntity } from '../../../src/entity/user.entity';
 import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
@@ -118,7 +119,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     });
 
     it('should return 401 when password is wrong', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
@@ -133,6 +134,15 @@ describe('POST /auth/sign-in/primary/password', () => {
       expect(redisSession).not.toBeNull();
       expect(redisSession!.primaryAuthVerified).toBe(false);
       expect(redisSession!.userId).toBeUndefined();
+
+      // Verify sign-in attempt is recorded
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].success).toBe(false);
+      expect(attempts[0].failureReason).toBe(AuthFailureReason.InvalidPasswordAuth);
     });
 
     it('should return 200 with nextStep complete after valid password', async () => {
@@ -154,6 +164,17 @@ describe('POST /auth/sign-in/primary/password', () => {
       expect(redisSession!.primaryAuthVerified).toBe(true);
       expect(redisSession!.rememberMe).toBe(false);
       expect(redisSession!.mfaSetup).toBe(false);
+
+      // Verify sign-in attempt is recorded
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].success).toBe(true);
+      expect(attempts[0].failureReason).toBeNull();
+      expect(attempts[0].ip).toBeDefined();
+      expect(attempts[0].userAgent).toBeDefined();
     });
 
     it('should store rememberMe in the session', async () => {
@@ -184,7 +205,7 @@ describe('POST /auth/sign-in/primary/password', () => {
 
   describe('temporary lock', () => {
     it(`should return 429 after ${PRIMARY_AUTH_MAX_ATTEMPTS} failed attempts`, async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS; i++) {
         resetThrottler();
@@ -204,6 +225,21 @@ describe('POST /auth/sign-in/primary/password', () => {
         .expect(429);
 
       expect(response.body.message).toBe('Too many attempts, try again later');
+
+      // Verify sign-in attempts: N failed (InvalidPasswordAuth) + 1 too-many
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } }, order: { createdAt: 'ASC' } });
+
+      expect(attempts).toHaveLength(PRIMARY_AUTH_MAX_ATTEMPTS + 1);
+
+      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS; i++) {
+        expect(attempts[i].success).toBe(false);
+        expect(attempts[i].failureReason).toBe(AuthFailureReason.InvalidPasswordAuth);
+      }
+
+      expect(attempts[PRIMARY_AUTH_MAX_ATTEMPTS].success).toBe(false);
+      expect(attempts[PRIMARY_AUTH_MAX_ATTEMPTS].failureReason).toBe(AuthFailureReason.TooManyAttempts);
     });
 
     it('should allow login after cooldown expires', async () => {
@@ -315,6 +351,15 @@ describe('POST /auth/sign-in/primary/password', () => {
         .expect(401);
 
       expect(response.body.message).toBe('Invalid credentials');
+
+      // Verify sign-in attempt is recorded with AccountLocked reason
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].success).toBe(false);
+      expect(attempts[0].failureReason).toBe(AuthFailureReason.AccountLocked);
     });
 
     it('should return 403 for all lock reasons', async () => {

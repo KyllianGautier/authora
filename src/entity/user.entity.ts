@@ -7,6 +7,8 @@ import {
 } from 'typeorm';
 import { PasswordEntity } from './password.entity';
 import { RefreshTokenEntity } from './refresh-token.entity';
+import { SignInAttemptEntity } from './sign-in-attempt.entity';
+
 
 
 export enum LockReason {
@@ -48,6 +50,11 @@ export class UserEntity {
     orphanedRowAction: 'delete'
   })
   refreshTokens: RefreshTokenEntity[];
+
+  @OneToMany(() => SignInAttemptEntity, (signInAttempt) => signInAttempt.user, {
+    orphanedRowAction: 'delete'
+  })
+  signInAttempts: SignInAttemptEntity[];
 
   @Column({ name: 'is_locked', type: 'boolean', default: false })
   isLocked: boolean;
