@@ -57,6 +57,14 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(1)
     .default(3600),
+  AUTH_SESSION_TTL_SEC: Joi.number()
+    .integer()
+    .min(1)
+    .default(600),
+  EXCHANGE_TOKEN_EXPIRATION_SECONDS: Joi.number()
+    .integer()
+    .min(1)
+    .default(300),
   JWT_PRIVATE_KEY_PATH: filePath.required(),
   JWT_PUBLIC_KEY_PATH: filePath.required(),
   JWT_ACCESS_TOKEN_EXPIRATION_SECONDS: Joi.number()

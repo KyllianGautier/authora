@@ -1,8 +1,8 @@
-import { VerifyTwoFactorAuthInput } from '@kylliangautier/authora-types';
+import { VerifyMultiFactorAuthInput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 
-export class VerifyTwoFactorAuthInputDto implements VerifyTwoFactorAuthInput {
+export class VerifyMultiFactorAuthInputDto implements VerifyMultiFactorAuthInput {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
   @IsEmail()
   email: string;

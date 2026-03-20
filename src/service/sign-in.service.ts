@@ -14,6 +14,7 @@ import { OneTimeTokenEntityService } from './entity-service/one-time-token-entit
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
+import { AuthSessionRedisService } from './redis-model-service/auth-session-redis.service';
 
 export interface SignInResult {
   body: SignInOutputDto;
@@ -27,6 +28,7 @@ export class SignInService {
     private readonly _passwordEntityService: PasswordEntityService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
+    private readonly _authSessionRedisService: AuthSessionRedisService,
     private readonly _emailService: EmailService,
     private readonly _hashService: HashService,
     private readonly _jwtService: JwtService,
@@ -73,8 +75,18 @@ export class SignInService {
       refreshTokenExpirationSeconds
     );
 
+    // Create an auth session to track the sign-in state
+    const session = await this._authSessionRedisService.create({
+      tenantId: 'default',
+      userId: user.id,
+      mode: 'first-party',
+      primaryAuthVerified: true,
+      rememberMe: dto.rememberMe ?? false,
+      mfaPolicy: 'DISABLED'
+    });
+
     return {
-      body: { accessToken, type: 'Bearer', expiresIn },
+      body: { accessToken, type: 'Bearer', expiresIn, authSessionId: session.id },
       refreshToken
     };
   }
@@ -131,8 +143,16 @@ export class SignInService {
       user
     );
 
+    // Find the existing auth session for the user
+    const session = await this._authSessionRedisService.findActiveForUserId(user.id);
+
     return {
-      body: { accessToken: newAccessToken, type: 'Bearer', expiresIn },
+      body: {
+        accessToken: newAccessToken,
+        type: 'Bearer',
+        expiresIn,
+        authSessionId: session?.id ?? ''
+      },
       refreshToken: newRefreshToken
     };
   }
@@ -251,8 +271,18 @@ export class SignInService {
       refreshTokenExpirationSeconds
     );
 
+    // Create an auth session to track the magic link sign-in state
+    const session = await this._authSessionRedisService.create({
+      tenantId: 'default',
+      userId: user.id,
+      mode: 'first-party',
+      primaryAuthVerified: true,
+      rememberMe: false,
+      mfaPolicy: 'DISABLED'
+    });
+
     return {
-      body: { accessToken, type: 'Bearer', expiresIn },
+      body: { accessToken, type: 'Bearer', expiresIn, authSessionId: session.id },
       refreshToken
     };
   }
