@@ -29,38 +29,10 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(1)
     .default(86400),
-  ACCOUNT_DELETION_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(3600),
-  TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(86400),
-  TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(86400),
-  TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(86400),
-  MAGIC_LINK_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(300),
-  FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(3600),
   AUTH_SESSION_TTL_SEC: Joi.number()
     .integer()
     .min(1)
     .default(600),
-  EXCHANGE_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(300),
   JWT_ISSUER: Joi.string().default('authora'),
   JWT_PRIVATE_KEY_PATH: filePath.required(),
   JWT_PUBLIC_KEY_PATH: filePath.required(),

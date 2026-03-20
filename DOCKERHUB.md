@@ -104,11 +104,6 @@ All variables with a default value are optional.
 | `HASH_TIME_COST`                                     | Password hashing time cost (iterations)                               | `3`                 |
 | `HASH_PARALLELISM`                                   | Password hashing parallelism (threads)                                | `4`                 |
 | `EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS`        | Sign-up token lifetime                                                | `86400` (1 day)     |
-| `ACCOUNT_DELETION_TOKEN_EXPIRATION_SECONDS`          | Account deletion token TTL                                            | `3600` (1 hour)     |
-| `TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS`    | 2FA verify token lifetime                                             | `86400` (1 day)     |
-| `TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS`  | 2FA validate token lifetime                                           | `86400` (1 day)     |
-| `TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS` | 2FA disabling token TTL                                               | `86400` (1 day)     |
-| `FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS`           | Forgot password token TTL                                             | `3600` (1 hour)     |
 | `JWT_PRIVATE_KEY_PATH`                               | Path to RS256 private key PEM file                                    | **required**        |
 | `JWT_PUBLIC_KEY_PATH`                                | Path to RS256 public key PEM file                                     | **required**        |
 | `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`                | Access token lifetime                                                 | `900` (15 min)      |

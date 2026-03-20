@@ -93,7 +93,7 @@ export class AccountService {
       throw new InvalidCredentialsException();
     }
 
-    await this._oneTimeTokenRedisService.verifyToken(
+    await this._oneTimeTokenRedisService.consume(
       user.id,
       dto.token,
       OneTimeTokenType.ForgotPassword
@@ -159,7 +159,7 @@ export class AccountService {
       throw new AccountDeletionNotFoundException(email);
     }
 
-    await this._oneTimeTokenRedisService.verifyToken(
+    await this._oneTimeTokenRedisService.consume(
       user.id,
       dto.token,
       OneTimeTokenType.AccountDeletion

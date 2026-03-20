@@ -127,7 +127,7 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
-    await this._oneTimeTokenRedisService.verifyToken(
+    await this._oneTimeTokenRedisService.consume(
       user.id,
       dto.token,
       OneTimeTokenType.MagicLink
@@ -211,7 +211,7 @@ export class SignInService {
     exchangeToken: string
   ): Promise<SignInOutputDto & { refreshToken: string }> {
     const userId =
-      await this._oneTimeTokenRedisService.verifyExchangeToken(exchangeToken);
+      await this._oneTimeTokenRedisService.consumeExchangeToken(exchangeToken);
 
     const user = await this._userEntityService.findById(userId);
 

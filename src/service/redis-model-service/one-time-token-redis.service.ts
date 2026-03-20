@@ -1,5 +1,4 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../../config/redis.provider';
@@ -8,27 +7,19 @@ import { OneTimeTokenType } from '../../redis-model/one-time-token.model';
 const OTT_PREFIX = 'ott:';
 const OTT_EXCHANGE_PREFIX = 'ott_exchange:';
 
-const EXPIRATION_CONFIG_KEYS: Record<OneTimeTokenType, string> = {
-  [OneTimeTokenType.AccountDeletion]:
-    'ACCOUNT_DELETION_TOKEN_EXPIRATION_SECONDS',
-  [OneTimeTokenType.TwoFactorAuthVerify]:
-    'TWO_FACTOR_AUTH_VERIFY_TOKEN_EXPIRATION_SECONDS',
-  [OneTimeTokenType.TwoFactorAuthValidate]:
-    'TWO_FACTOR_AUTH_VALIDATE_TOKEN_EXPIRATION_SECONDS',
-  [OneTimeTokenType.TwoFactorAuthDisabling]:
-    'TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS',
-  [OneTimeTokenType.ForgotPassword]:
-    'FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS',
-  [OneTimeTokenType.MagicLink]: 'MAGIC_LINK_TOKEN_EXPIRATION_SECONDS',
-  [OneTimeTokenType.Exchange]: 'EXCHANGE_TOKEN_EXPIRATION_SECONDS'
+const TTL_SECONDS: Record<OneTimeTokenType, number> = {
+  [OneTimeTokenType.AccountDeletion]: 3600,
+  [OneTimeTokenType.TwoFactorAuthVerify]: 86400,
+  [OneTimeTokenType.TwoFactorAuthValidate]: 86400,
+  [OneTimeTokenType.TwoFactorAuthDisabling]: 86400,
+  [OneTimeTokenType.ForgotPassword]: 3600,
+  [OneTimeTokenType.MagicLink]: 300,
+  [OneTimeTokenType.Exchange]: 300
 };
 
 @Injectable()
 export class OneTimeTokenRedisService {
-  constructor(
-    @Inject(REDIS_CLIENT) private readonly _redis: Redis,
-    private readonly _configService: ConfigService
-  ) {}
+  constructor(@Inject(REDIS_CLIENT) private readonly _redis: Redis) {}
 
   async create(userId: string, type: OneTimeTokenType): Promise<string> {
     const clearToken = randomBytes(32).toString('hex');
@@ -62,7 +53,7 @@ export class OneTimeTokenRedisService {
     return clearToken;
   }
 
-  async verifyToken(
+  async consume(
     userId: string,
     clearToken: string,
     type: OneTimeTokenType
@@ -84,7 +75,7 @@ export class OneTimeTokenRedisService {
     await this._redis.del(key);
   }
 
-  async verifyExchangeToken(clearToken: string): Promise<string> {
+  async consumeExchangeToken(clearToken: string): Promise<string> {
     const tokenHash = this._sha256(clearToken);
     const exchangeKey = OTT_EXCHANGE_PREFIX + tokenHash;
 
@@ -134,9 +125,7 @@ export class OneTimeTokenRedisService {
   }
 
   private _getTtlSeconds(type: OneTimeTokenType): number {
-    return this._configService.getOrThrow<number>(
-      EXPIRATION_CONFIG_KEYS[type]
-    );
+    return TTL_SECONDS[type];
   }
 }
 
