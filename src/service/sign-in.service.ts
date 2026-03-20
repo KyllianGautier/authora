@@ -1,4 +1,6 @@
 import {
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   UnauthorizedException
@@ -8,8 +10,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   JWT_ACCESS_TOKEN_EXPIRATION_SEC,
-  JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC
+  JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC,
+  PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD
 } from '../config/constants';
+import { LockReason } from '../entity/user.entity';
+import { TwoFactorAuthCodeInvalidException } from './entity-service/two-factor-auth-entity.service';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
@@ -66,12 +71,30 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
+    if (user.isLocked) {
+      throw new InvalidCredentialsException();
+    }
+
+    if (this._userEntityService.isPasswordTemporarilyLocked(user)) {
+      throw new TooManyAttemptsException();
+    }
+
     const isPasswordValid =
       await this._passwordEntityService.verifyUserPassword(user, dto.password);
 
     if (!isPasswordValid) {
+      const attempts =
+        await this._userEntityService.recordFailedPasswordAttempt(user);
+
+      if (attempts >= PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD) {
+        await this._userEntityService.lock(user, LockReason.TooManyAttempts);
+      }
+
       throw new InvalidCredentialsException();
     }
+
+    // Reset failed attempts on successful login
+    await this._userEntityService.resetPasswordAttempts(user);
 
     // Update the session with user info and primary auth status
     session.userId = user.id;
@@ -164,7 +187,26 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
-    await this._twoFactorAuthEntityService.validateTotpForUser(user, dto.code);
+    if (user.isLocked) {
+      throw new InvalidCredentialsException();
+    }
+
+    if (this._userEntityService.isMfaTemporarilyLocked(user)) {
+      throw new TooManyAttemptsException();
+    }
+
+    try {
+      await this._twoFactorAuthEntityService.validateTotpForUser(user, dto.code);
+    } catch (error) {
+      if (error instanceof TwoFactorAuthCodeInvalidException) {
+        await this._userEntityService.recordFailedMfaAttempt(user);
+      }
+
+      throw error;
+    }
+
+    // Reset failed attempts on successful validation
+    await this._userEntityService.resetMfaAttempts(user);
 
     session.mfaVerified = true;
     await this._authSessionRedisService.update(session);
@@ -290,17 +332,11 @@ export class SignInService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    // Reuse detection: if the token was already revoked, an attacker is
-    // replaying a stolen token → revoke the entire family
-    if (matchedToken.revoked) {
-      await this._refreshTokenEntityService.revokeFamily(matchedToken.family);
-      throw new UnauthorizedException('Token reuse detected');
-    }
-
-    // Check expiration
+    // Verify the token (also handles reuse detection)
     const isValid = await this._refreshTokenEntityService.verify(
       matchedToken,
-      clearRefreshToken
+      clearRefreshToken,
+      user
     );
 
     if (!isValid) {
@@ -363,7 +399,8 @@ export class SignInService {
 
     const isValid = await this._refreshTokenEntityService.verify(
       activeToken,
-      clearRefreshToken
+      clearRefreshToken,
+      user
     );
 
     if (!isValid) {
@@ -406,6 +443,12 @@ export class SignInService {
 export class InvalidCredentialsException extends UnauthorizedException {
   constructor() {
     super('Invalid credentials');
+  }
+}
+
+export class TooManyAttemptsException extends HttpException {
+  constructor() {
+    super('Too many attempts, try again later', HttpStatus.TOO_MANY_REQUESTS);
   }
 }
 

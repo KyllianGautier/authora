@@ -2,7 +2,14 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { resetTestState, consumeEmailQueue, getTestApp } from '../../setup';
+import { DateTime } from 'luxon';
+import {
+  PRIMARY_AUTH_COOLDOWN_SEC,
+  PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD,
+  PRIMARY_AUTH_MAX_ATTEMPTS
+} from '../../../src/config/constants';
+import { LockReason, UserEntity } from '../../../src/entity/user.entity';
+import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { getAuthSession } from '../utils/get-auth-session';
@@ -172,6 +179,179 @@ describe('POST /auth/sign-in/primary/password', () => {
         .expect(200);
 
       expect(response.body.nextStep).toBe('complete');
+    });
+  });
+
+  describe('temporary lock', () => {
+    it(`should return 429 after ${PRIMARY_AUTH_MAX_ATTEMPTS} failed attempts`, async () => {
+      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+
+      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS; i++) {
+        resetThrottler();
+        const session = await createAuthSession(app);
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/primary/password')
+          .set('X-Forwarded-For', `10.0.${i}.1`)
+          .send({ sessionId: session.id, email: 'user@example.com', password: 'wrong' })
+          .expect(401);
+      }
+
+      resetThrottler();
+      const session = await createAuthSession(app);
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(429);
+
+      expect(response.body.message).toBe('Too many attempts, try again later');
+    });
+
+    it('should allow login after cooldown expires', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+
+      // Simulate a temp lock that has expired
+      await dataSource.getRepository(UserEntity).update(user.id, {
+        failedPasswordAttempts: PRIMARY_AUTH_MAX_ATTEMPTS,
+        lastFailedPasswordAt: DateTime.utc()
+          .minus({ seconds: PRIMARY_AUTH_COOLDOWN_SEC + 1 })
+          .toJSDate()
+      });
+
+      const session = await createAuthSession(app);
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      expect(response.body.nextStep).toBe('complete');
+    });
+
+    it('should reset the attempt counter after a successful login', async () => {
+      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+
+      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS - 1; i++) {
+        resetThrottler();
+        const session = await createAuthSession(app);
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/primary/password')
+          .set('X-Forwarded-For', `10.0.${i}.1`)
+          .send({ sessionId: session.id, email: 'user@example.com', password: 'wrong' })
+          .expect(401);
+      }
+
+      // Successful login resets the counter
+      resetThrottler();
+      const session = await createAuthSession(app);
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      // Can fail again without being locked
+      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS - 1; i++) {
+        resetThrottler();
+        const s = await createAuthSession(app);
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/primary/password')
+          .set('X-Forwarded-For', `10.1.${i}.1`)
+          .send({ sessionId: s.id, email: 'user@example.com', password: 'wrong' })
+          .expect(401);
+      }
+
+      resetThrottler();
+      const s = await createAuthSession(app);
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: s.id, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+    });
+  });
+
+  describe('permanent lock', () => {
+    it(`should permanently lock after ${PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD} failed attempts`, async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+
+      // Do attempts in batches, simulating cooldown expiry between batches via DB
+      for (let i = 0; i < PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD; i++) {
+        if (i >= PRIMARY_AUTH_MAX_ATTEMPTS) {
+          // Simulate cooldown expiry by backdating lastFailedPasswordAt
+          await dataSource.getRepository(UserEntity).update(user.id, {
+            lastFailedPasswordAt: DateTime.utc()
+              .minus({ seconds: PRIMARY_AUTH_COOLDOWN_SEC + 1 })
+              .toJSDate()
+          });
+        }
+        resetThrottler();
+        const session = await createAuthSession(app);
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/primary/password')
+          .set('X-Forwarded-For', `10.0.${i}.1`)
+          .send({ sessionId: session.id, email: 'user@example.com', password: 'wrong' });
+      }
+
+      const lockedUser = await dataSource
+        .getRepository(UserEntity)
+        .findOneBy({ id: user.id });
+
+      expect(lockedUser!.isLocked).toBe(true);
+      expect(lockedUser!.lockedAt).not.toBeNull();
+      expect(lockedUser!.lockReason).toBe(LockReason.TooManyAttempts);
+    });
+
+    it('should return 401 with correct password when user is permanently locked', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+
+      // Lock the user directly in DB
+      await dataSource.getRepository(UserEntity).update(user.id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockReason: LockReason.TooManyAttempts
+      });
+
+      const session = await createAuthSession(app);
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(401);
+
+      expect(response.body.message).toBe('Invalid credentials');
+    });
+
+    it('should return 403 for all lock reasons', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+
+      for (const reason of Object.values(LockReason) as LockReason[]) {
+        await dataSource.getRepository(UserEntity).update(user.id, {
+          isLocked: true,
+          lockedAt: new Date(),
+          lockReason: reason
+        });
+
+        const session = await createAuthSession(app);
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/auth/sign-in/primary/password')
+          .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+          .expect(401);
+
+        expect(response.body.message).toBe('Invalid credentials');
+      }
+    });
+
+    it('should not affect other users', async () => {
+      const alice = await createUserWithPassword(dataSource, 'alice@example.com', 'password123');
+      await createUserWithPassword(dataSource, 'bob@example.com', 'password456');
+
+      await dataSource.getRepository(UserEntity).update(alice.id, {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockReason: LockReason.TooManyAttempts
+      });
+
+      const session = await createAuthSession(app);
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'bob@example.com', password: 'password456' })
+        .expect(200);
     });
   });
 

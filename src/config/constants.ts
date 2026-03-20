@@ -30,3 +30,17 @@ export const OTT_TWO_FACTOR_AUTH_DISABLING_TTL_SEC = 86_400;
 export const OTT_FORGOT_PASSWORD_TTL_SEC = 3_600;
 export const OTT_MAGIC_LINK_TTL_SEC = 300;
 export const OTT_EXCHANGE_TTL_SEC = 300;
+
+// Primary authentication lock
+export const PRIMARY_AUTH_MAX_ATTEMPTS = 5;
+export const PRIMARY_AUTH_COOLDOWN_SEC = 900;
+export const PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD = 10;
+export const UNLOCK_ON_PASSWORD_RESET = true;
+
+// MFA authentication lock
+export const MFA_AUTH_MAX_ATTEMPTS = 3;
+export const MFA_AUTH_COOLDOWN_SEC = 300;
+
+// Token reuse detection
+export const TOKEN_REUSE_MAX_COMPROMISED_FAMILIES = 3;
+export const TOKEN_REUSE_WINDOW_SEC = 86_400;
