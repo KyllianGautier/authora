@@ -22,37 +22,9 @@ export const envValidationSchema = Joi.object({
   REDIS_URL: Joi.string().uri().required(),
 
   // Security
-  HASH_MEMORY_COST: Joi.number().integer().min(1).default(65536),
-  HASH_TIME_COST: Joi.number().integer().min(1).default(3),
-  HASH_PARALLELISM: Joi.number().integer().min(1).default(4),
-  EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(86400),
-  AUTH_SESSION_TTL_SEC: Joi.number()
-    .integer()
-    .min(1)
-    .default(600),
   JWT_ISSUER: Joi.string().default('authora'),
   JWT_PRIVATE_KEY_PATH: filePath.required(),
   JWT_PUBLIC_KEY_PATH: filePath.required(),
-  JWT_ACCESS_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(900),
-  JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(86400),
-  JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(2592000)
-    .greater(Joi.ref('JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS')),
-  THROTTLE_TTL_SECONDS: Joi.number().integer().min(1).default(60),
-  THROTTLE_ORIGIN_LIMIT: Joi.number().integer().min(1).default(30),
-  THROTTLE_IDENTITY_LIMIT: Joi.number().integer().min(1).default(10),
-  THROTTLE_COMBINED_LIMIT: Joi.number().integer().min(1).default(5),
 
   // Password strength
   PASSWORD_MIN_LENGTH: Joi.number().integer().min(8).default(8),
@@ -64,13 +36,5 @@ export const envValidationSchema = Joi.object({
   PASSWORD_FORBID_REPEATED_CHARS: Joi.boolean().default(false),
   PASSWORD_FORBID_KEYBOARD_SEQUENCE: Joi.boolean().default(false),
   PASSWORD_FORBID_USER_INFO: Joi.boolean().default(true),
-  PASSWORD_FORBID_COMMON_PASSWORD: Joi.boolean().default(false),
-
-  // Delay
-  ENDPOINT_DELAY_MIN_MS: Joi.number().integer().min(0).default(200),
-  ENDPOINT_DELAY_MAX_MS: Joi.number()
-    .integer()
-    .min(0)
-    .default(400)
-    .greater(Joi.ref('ENDPOINT_DELAY_MIN_MS'))
+  PASSWORD_FORBID_COMMON_PASSWORD: Joi.boolean().default(false)
 });

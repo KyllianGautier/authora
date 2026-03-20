@@ -3,8 +3,9 @@ import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import Redis from 'ioredis';
 import { App } from 'supertest/types';
-import { AuthSession, MfaPolicy } from '../../../src/redis-model/auth-session.model';
+import { AUTH_SESSION_TTL_SEC } from '../../../src/config/constants';
 import { REDIS_CLIENT } from '../../../src/config/redis.provider';
+import { AuthSession, MfaPolicy } from '../../../src/redis-model/auth-session.model';
 
 const SESSION_PREFIX = 'auth_session:';
 const USER_SESSION_PREFIX = 'auth_session:user:';
@@ -39,14 +40,14 @@ export async function createAuthSession(
     mfaVerified: options?.mfaVerified ?? false,
     deviceTrusted: options?.deviceTrusted ?? false,
     createdAt: now.toISO(),
-    expiresAt: now.plus({ seconds: Number(process.env.AUTH_SESSION_TTL_SEC) }).toISO()
+    expiresAt: now.plus({ seconds: AUTH_SESSION_TTL_SEC }).toISO()
   };
 
   await redis.set(
     SESSION_PREFIX + session.id,
     JSON.stringify(session),
     'EX',
-    Number(process.env.AUTH_SESSION_TTL_SEC)
+    AUTH_SESSION_TTL_SEC
   );
 
   if (session.userId !== undefined) {
@@ -54,7 +55,7 @@ export async function createAuthSession(
       USER_SESSION_PREFIX + session.userId,
       session.id,
       'EX',
-      Number(process.env.AUTH_SESSION_TTL_SEC)
+      AUTH_SESSION_TTL_SEC
     );
   }
 

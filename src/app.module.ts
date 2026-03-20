@@ -10,7 +10,14 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { EMAIL_QUEUE } from './config/constants';
+import {
+  EMAIL_QUEUE,
+  JWT_ACCESS_TOKEN_EXPIRATION_SEC,
+  THROTTLE_COMBINED_LIMIT,
+  THROTTLE_IDENTITY_LIMIT,
+  THROTTLE_ORIGIN_LIMIT,
+  THROTTLE_TTL_MS
+} from './config/constants';
 import { envValidationSchema } from './config/env.validation';
 import { redisProvider } from './config/redis.provider';
 import { CONTROLLERS } from './controller';
@@ -59,9 +66,7 @@ import { SERVICES } from './service';
         signOptions: {
           algorithm: 'RS256',
           issuer: config.getOrThrow<string>('JWT_ISSUER'),
-          expiresIn: config.getOrThrow<number>(
-            'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
-          )
+          expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC
         },
         verifyOptions: {
           algorithms: ['RS256'],
@@ -71,22 +76,16 @@ import { SERVICES } from './service';
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const ttl = config.getOrThrow<number>('THROTTLE_TTL_SECONDS') * 1000;
-        const originLimit = config.getOrThrow<number>('THROTTLE_ORIGIN_LIMIT');
-        const identityLimit = config.getOrThrow<number>('THROTTLE_IDENTITY_LIMIT');
-        const combinedLimit = config.getOrThrow<number>('THROTTLE_COMBINED_LIMIT');
-        const redisUrl = config.getOrThrow<string>('REDIS_URL');
-
-        return {
-          throttlers: [
-            { name: 'origin', ttl, limit: originLimit },
-            { name: 'identity', ttl, limit: identityLimit },
-            { name: 'combined', ttl, limit: combinedLimit }
-          ],
-          storage: new ThrottlerStorageRedisService(redisUrl)
-        };
-      }
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          { name: 'origin', ttl: THROTTLE_TTL_MS, limit: THROTTLE_ORIGIN_LIMIT },
+          { name: 'identity', ttl: THROTTLE_TTL_MS, limit: THROTTLE_IDENTITY_LIMIT },
+          { name: 'combined', ttl: THROTTLE_TTL_MS, limit: THROTTLE_COMBINED_LIMIT }
+        ],
+        storage: new ThrottlerStorageRedisService(
+          config.getOrThrow<string>('REDIS_URL')
+        )
+      })
     }),
     ServeStaticModule.forRoot(
       {

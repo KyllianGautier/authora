@@ -3,10 +3,13 @@ import {
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  JWT_ACCESS_TOKEN_EXPIRATION_SEC,
+  JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC
+} from '../config/constants';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
@@ -36,7 +39,6 @@ export class SignInService {
     private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService,
     private readonly _emailService: EmailService,
     private readonly _jwtService: JwtService,
-    private readonly _configService: ConfigService,
     @InjectRepository(TwoFactorAuthEntity)
     private readonly _twoFactorAuthRepository: Repository<TwoFactorAuthEntity>
   ) {}
@@ -220,10 +222,6 @@ export class SignInService {
     }
 
     // Generate the access token
-    const expiresIn = this._configService.getOrThrow<number>(
-      'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
-    );
-
     const accessToken = await this._jwtService.signAsync(
       { sub: user.id, email: user.email },
       { keyid: 'CHANGE_IT' }
@@ -231,14 +229,9 @@ export class SignInService {
 
     // Generate the refresh token
     // TODO: use rememberMe from the consumed session to pick short/long expiration
-    const refreshTokenExpirationSeconds =
-      this._configService.getOrThrow<number>(
-        'JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS'
-      );
-
     const refreshToken = await this._refreshTokenEntityService.create(
       user,
-      refreshTokenExpirationSeconds
+      JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC
     );
 
     // Create an auth session to track the sign-in state
@@ -253,7 +246,7 @@ export class SignInService {
     return {
       accessToken,
       type: 'Bearer',
-      expiresIn,
+      expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC,
       authSessionId: session.id,
       refreshToken
     };
@@ -321,10 +314,6 @@ export class SignInService {
     );
 
     // Generate a new access token
-    const expiresIn = this._configService.getOrThrow<number>(
-      'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
-    );
-
     const newAccessToken = await this._jwtService.signAsync(
       { sub: user.id, email: user.email },
       { keyid: 'CHANGE_IT' }
@@ -333,7 +322,7 @@ export class SignInService {
     return {
       accessToken: newAccessToken,
       type: 'Bearer',
-      expiresIn,
+      expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC,
       authSessionId: '',
       refreshToken: newRefreshToken
     };

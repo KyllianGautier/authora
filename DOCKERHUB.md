@@ -100,19 +100,8 @@ All variables with a default value are optional.
 
 | Variable                                             | Description                                                           | Default             |
 |------------------------------------------------------|-----------------------------------------------------------------------|---------------------|
-| `HASH_MEMORY_COST`                                   | Password hashing memory cost in KiB                                   | `65536` (64 MB)     |
-| `HASH_TIME_COST`                                     | Password hashing time cost (iterations)                               | `3`                 |
-| `HASH_PARALLELISM`                                   | Password hashing parallelism (threads)                                | `4`                 |
-| `EMAIL_VERIFICATION_TOKEN_EXPIRATION_SECONDS`        | Sign-up token lifetime                                                | `86400` (1 day)     |
 | `JWT_PRIVATE_KEY_PATH`                               | Path to RS256 private key PEM file                                    | **required**        |
 | `JWT_PUBLIC_KEY_PATH`                                | Path to RS256 public key PEM file                                     | **required**        |
-| `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`                | Access token lifetime                                                 | `900` (15 min)      |
-| `JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS`         | Refresh token lifetime (rememberMe: false)                            | `86400` (1 day)     |
-| `JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS`          | Refresh token lifetime (rememberMe: true), must be greater than short | `2592000` (30 days) |
-| `THROTTLE_TTL_SECONDS`                               | Rate limit window                                                     | `60` (1 min)        |
-| `THROTTLE_ORIGIN_LIMIT`                              | Max requests per IP per window                                        | `30`                |
-| `THROTTLE_IDENTITY_LIMIT`                            | Max requests per email per window                                     | `10`                |
-| `THROTTLE_COMBINED_LIMIT`                            | Max requests per IP+email per window                                  | `5`                 |
 
 ### Password strength
 

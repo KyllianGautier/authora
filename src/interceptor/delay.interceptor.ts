@@ -4,24 +4,15 @@ import {
   Injectable,
   NestInterceptor
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { delay } from 'rxjs/operators';
+import { ENDPOINT_DELAY_MAX_MS, ENDPOINT_DELAY_MIN_MS } from '../config/constants';
 import { DELAY_KEY } from '../decorator/delay.decorator';
 
 @Injectable()
 export class DelayInterceptor implements NestInterceptor {
-  private readonly _minMs: number;
-  private readonly _maxMs: number;
-
-  constructor(
-    private readonly _reflector: Reflector,
-    private readonly _configService: ConfigService
-  ) {
-    this._minMs = this._configService.getOrThrow<number>('ENDPOINT_DELAY_MIN_MS');
-    this._maxMs = this._configService.getOrThrow<number>('ENDPOINT_DELAY_MAX_MS');
-  }
+  constructor(private readonly _reflector: Reflector) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const hasDelay = this._reflector.getAllAndOverride<boolean>(DELAY_KEY, [
@@ -33,7 +24,9 @@ export class DelayInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const delayMs = Math.random() * (this._maxMs - this._minMs) + this._minMs;
+    const delayMs =
+      Math.random() * (ENDPOINT_DELAY_MAX_MS - ENDPOINT_DELAY_MIN_MS) +
+      ENDPOINT_DELAY_MIN_MS;
 
     return next.handle().pipe(delay(delayMs));
   }

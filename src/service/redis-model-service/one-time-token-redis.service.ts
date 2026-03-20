@@ -1,6 +1,15 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import Redis from 'ioredis';
+import {
+  OTT_ACCOUNT_DELETION_TTL_SEC,
+  OTT_EXCHANGE_TTL_SEC,
+  OTT_FORGOT_PASSWORD_TTL_SEC,
+  OTT_MAGIC_LINK_TTL_SEC,
+  OTT_TWO_FACTOR_AUTH_DISABLING_TTL_SEC,
+  OTT_TWO_FACTOR_AUTH_VALIDATE_TTL_SEC,
+  OTT_TWO_FACTOR_AUTH_VERIFY_TTL_SEC
+} from '../../config/constants';
 import { REDIS_CLIENT } from '../../config/redis.provider';
 import { OneTimeTokenType } from '../../redis-model/one-time-token.model';
 
@@ -8,13 +17,13 @@ const OTT_PREFIX = 'ott:';
 const OTT_EXCHANGE_PREFIX = 'ott_exchange:';
 
 const TTL_SECONDS: Record<OneTimeTokenType, number> = {
-  [OneTimeTokenType.AccountDeletion]: 3600,
-  [OneTimeTokenType.TwoFactorAuthVerify]: 86400,
-  [OneTimeTokenType.TwoFactorAuthValidate]: 86400,
-  [OneTimeTokenType.TwoFactorAuthDisabling]: 86400,
-  [OneTimeTokenType.ForgotPassword]: 3600,
-  [OneTimeTokenType.MagicLink]: 300,
-  [OneTimeTokenType.Exchange]: 300
+  [OneTimeTokenType.AccountDeletion]: OTT_ACCOUNT_DELETION_TTL_SEC,
+  [OneTimeTokenType.TwoFactorAuthVerify]: OTT_TWO_FACTOR_AUTH_VERIFY_TTL_SEC,
+  [OneTimeTokenType.TwoFactorAuthValidate]: OTT_TWO_FACTOR_AUTH_VALIDATE_TTL_SEC,
+  [OneTimeTokenType.TwoFactorAuthDisabling]: OTT_TWO_FACTOR_AUTH_DISABLING_TTL_SEC,
+  [OneTimeTokenType.ForgotPassword]: OTT_FORGOT_PASSWORD_TTL_SEC,
+  [OneTimeTokenType.MagicLink]: OTT_MAGIC_LINK_TTL_SEC,
+  [OneTimeTokenType.Exchange]: OTT_EXCHANGE_TTL_SEC
 };
 
 @Injectable()

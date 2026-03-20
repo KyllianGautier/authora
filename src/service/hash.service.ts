@@ -1,25 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
+import {
+  HASH_MEMORY_COST,
+  HASH_PARALLELISM,
+  HASH_TIME_COST
+} from '../config/constants';
 
 @Injectable()
 export class HashService {
-  private readonly _memoryCost: number;
-  private readonly _timeCost: number;
-  private readonly _parallelism: number;
-
-  constructor(private readonly _configService: ConfigService) {
-    this._memoryCost = this._configService.getOrThrow<number>('HASH_MEMORY_COST');
-    this._timeCost = this._configService.getOrThrow<number>('HASH_TIME_COST');
-    this._parallelism = this._configService.getOrThrow<number>('HASH_PARALLELISM');
-  }
-
   async hash(value: string): Promise<string> {
     return argon2.hash(value, {
       type: argon2.argon2id,
-      memoryCost: this._memoryCost,
-      timeCost: this._timeCost,
-      parallelism: this._parallelism
+      memoryCost: HASH_MEMORY_COST,
+      timeCost: HASH_TIME_COST,
+      parallelism: HASH_PARALLELISM
     });
   }
 
