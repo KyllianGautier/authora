@@ -58,9 +58,12 @@ export class SignInController {
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async primaryAuthPassword(
-    @Body() dto: SessionPasswordInputDto
+    @Body() dto: SessionPasswordInputDto,
+    @Req() req: Request
   ): Promise<AuthSessionStatusOutputDto> {
-    const session = await this._signInService.primaryAuthPassword(dto.sessionId, dto);
+    const session = await this._signInService.primaryAuthPassword(
+      dto.sessionId, dto, req.ip ?? '', req.headers['user-agent'] ?? ''
+    );
     return AuthSessionStatusOutputDto.fromSession(session);
   }
 
@@ -101,9 +104,12 @@ export class SignInController {
   @ApiUnauthorizedResponse({ description: 'Invalid code or primary auth required' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async mfaAuthTotpValidate(
-    @Body() dto: SessionTotpValidateInputDto
+    @Body() dto: SessionTotpValidateInputDto,
+    @Req() req: Request
   ): Promise<AuthSessionStatusOutputDto> {
-    const session = await this._signInService.mfaAuthTotpValidate(dto.sessionId, dto);
+    const session = await this._signInService.mfaAuthTotpValidate(
+      dto.sessionId, dto, req.ip ?? '', req.headers['user-agent'] ?? ''
+    );
     return AuthSessionStatusOutputDto.fromSession(session);
   }
 

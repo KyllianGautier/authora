@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { MFA_AUTH_COOLDOWN_SEC, MFA_AUTH_MAX_ATTEMPTS } from '../../../src/config/constants';
 import { DateTime } from 'luxon';
+import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
 import { LockReason, UserEntity } from '../../../src/entity/user.entity';
 import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
@@ -138,6 +139,15 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
       const redisSession = await getAuthSession(app, session.id);
       expect(redisSession).not.toBeNull();
       expect(redisSession!.mfaVerified).toBe(false);
+
+      // Verify sign-in attempt is recorded
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].success).toBe(false);
+      expect(attempts[0].failureReason).toBe(AuthFailureReason.InvalidMfaAuth);
     });
 
     it('should return 200 with nextStep complete after valid TOTP code', async () => {
@@ -165,6 +175,15 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
       const redisSession = await getAuthSession(app, session.id);
       expect(redisSession).not.toBeNull();
       expect(redisSession!.mfaVerified).toBe(true);
+
+      // Verify sign-in attempt is recorded
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].success).toBe(true);
+      expect(attempts[0].failureReason).toBeNull();
     });
   });
 
@@ -198,6 +217,21 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
         .expect(429);
 
       expect(response.body.message).toBe('Too many attempts, try again later');
+
+      // Verify sign-in attempts: N failed (InvalidMfaAuth) + 1 too-many
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } }, order: { createdAt: 'ASC' } });
+
+      expect(attempts).toHaveLength(MFA_AUTH_MAX_ATTEMPTS + 1);
+
+      for (let i = 0; i < MFA_AUTH_MAX_ATTEMPTS; i++) {
+        expect(attempts[i].success).toBe(false);
+        expect(attempts[i].failureReason).toBe(AuthFailureReason.InvalidMfaAuth);
+      }
+
+      expect(attempts[MFA_AUTH_MAX_ATTEMPTS].success).toBe(false);
+      expect(attempts[MFA_AUTH_MAX_ATTEMPTS].failureReason).toBe(AuthFailureReason.TooManyMfaAttempts);
     });
 
     it('should reset the attempt counter after a successful TOTP validation', async () => {
@@ -326,6 +360,15 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
         .expect(401);
 
       expect(response.body.message).toBe('Invalid credentials');
+
+      // Verify sign-in attempt is recorded with AccountLocked reason
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].success).toBe(false);
+      expect(attempts[0].failureReason).toBe(AuthFailureReason.AccountLocked);
     });
   });
 
