@@ -61,6 +61,7 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(1)
     .default(300),
+  JWT_ISSUER: Joi.string().default('authora'),
   JWT_PRIVATE_KEY_PATH: filePath.required(),
   JWT_PUBLIC_KEY_PATH: filePath.required(),
   JWT_ACCESS_TOKEN_EXPIRATION_SECONDS: Joi.number()

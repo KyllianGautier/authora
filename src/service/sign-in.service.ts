@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,7 +10,7 @@ import { Repository } from 'typeorm';
 import { OneTimeTokenType } from '../entity/one-time-token.entity';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
-import { AuthSession, MfaPolicy } from '../redis-model/auth-session.model';
+import { AuthSession } from '../redis-model/auth-session.model';
 import { CreateSessionInputDto } from '../dto/input/create-session.input.dto';
 import { SessionPasswordInputDto } from '../dto/input/session-password.input.dto';
 import { SessionMagicLinkInputDto } from '../dto/input/session-magic-link.input.dto';
@@ -104,12 +108,7 @@ export class SignInService {
       OneTimeTokenType.MagicLink
     );
 
-    await this._emailService.sendMagicLink(
-      email,
-      token,
-      sessionId,
-      dto.locale
-    );
+    await this._emailService.sendMagicLink(email, token, sessionId, dto.locale);
   }
 
   async primaryAuthMagicLinkValidate(
@@ -178,7 +177,11 @@ export class SignInService {
       throw new UnauthorizedException('Primary authentication required');
     }
 
-    if (session.mfaPolicy !== 'DISABLED' && !session.mfaVerified && !session.deviceTrusted) {
+    if (
+      session.mfaPolicy !== 'DISABLED' &&
+      !session.mfaVerified &&
+      !session.deviceTrusted
+    ) {
       throw new UnauthorizedException('MFA verification required');
     }
 
@@ -204,7 +207,9 @@ export class SignInService {
     return exchangeToken;
   }
 
-  async token(exchangeToken: string): Promise<SignInOutputDto & { refreshToken: string }> {
+  async token(
+    exchangeToken: string
+  ): Promise<SignInOutputDto & { refreshToken: string }> {
     const user =
       await this._oneTimeTokenEntityService.verifyExchangeToken(exchangeToken);
 
@@ -213,10 +218,10 @@ export class SignInService {
       'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
     );
 
-    const accessToken = await this._jwtService.signAsync({
-      sub: user.id,
-      email: user.email
-    });
+    const accessToken = await this._jwtService.signAsync(
+      { sub: user.id, email: user.email },
+      { keyid: 'CHANGE_IT' }
+    );
 
     // Generate the refresh token
     // TODO: use rememberMe from the consumed session to pick short/long expiration

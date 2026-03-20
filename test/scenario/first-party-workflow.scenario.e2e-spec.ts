@@ -75,11 +75,17 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
       expect(decoded.email).toBe('user@example.com');
+      expect(decoded.iss).toBe('authora');
+
+      const { header } = jwt.decode(tokenRes.body.accessToken, {
+        complete: true
+      }) as jwt.Jwt;
+      expect(header.kid).toBe('CHANGE_IT');
 
       // Verify refresh token cookie
       const cookie = extractCookie(tokenRes, 'refreshToken');
@@ -119,7 +125,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
@@ -170,11 +176,12 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
       expect(decoded.email).toBe('user@example.com');
+      expect(decoded.iss).toBe('authora');
 
       const cookie = extractCookie(tokenRes, 'refreshToken');
       expect(cookie).toBeDefined();
@@ -214,7 +221,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
@@ -430,7 +437,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
@@ -480,7 +487,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
@@ -535,7 +542,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
@@ -587,7 +594,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
@@ -643,7 +650,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
@@ -699,19 +706,21 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded1 = jwt.verify(
         token1.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       const decoded2 = jwt.verify(
         token2.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded1.sub).toBe(alice.id);
       expect(decoded1.email).toBe('alice@example.com');
+      expect(decoded1.iss).toBe('authora');
       expect(decoded2.sub).toBe(bob.id);
       expect(decoded2.email).toBe('bob@example.com');
+      expect(decoded2.iss).toBe('authora');
 
       const cookie1 = extractCookie(token1, 'refreshToken');
       const cookie2 = extractCookie(token2, 'refreshToken');
@@ -788,11 +797,12 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
       expect(decoded.email).toBe('user@example.com');
+      expect(decoded.iss).toBe('authora');
 
       const cookie = extractCookie(tokenRes, 'refreshToken');
       expect(cookie).toBeDefined();
@@ -838,11 +848,12 @@ describe('Scenario: First-party sign-in workflows', () => {
       const decoded = jwt.verify(
         tokenRes.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
       expect(decoded.email).toBe('user@example.com');
+      expect(decoded.iss).toBe('authora');
 
       const cookie = extractCookie(tokenRes, 'refreshToken');
       expect(cookie).toBeDefined();

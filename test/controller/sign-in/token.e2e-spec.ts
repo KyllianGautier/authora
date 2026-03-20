@@ -86,11 +86,17 @@ describe('POST /auth/sign-in/token', () => {
       const decoded = jwt.verify(
         response.body.accessToken,
         getTestPublicKey(),
-        { algorithms: ['RS256'] }
+        { algorithms: ['RS256'], issuer: 'authora' }
       ) as jwt.JwtPayload;
 
       expect(decoded.sub).toBe(user.id);
       expect(decoded.email).toBe('user@example.com');
+      expect(decoded.iss).toBe('authora');
+
+      const { header } = jwt.decode(response.body.accessToken, {
+        complete: true
+      }) as jwt.Jwt;
+      expect(header.kid).toBe('CHANGE_IT');
 
       // Verify the refresh token cookie
       const cookie = extractCookie(response, 'refreshToken');
