@@ -58,12 +58,14 @@ import { SERVICES } from './service';
         ),
         signOptions: {
           algorithm: 'RS256',
+          issuer: config.getOrThrow<string>('JWT_ISSUER'),
           expiresIn: config.getOrThrow<number>(
             'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
           )
         },
         verifyOptions: {
-          algorithms: ['RS256']
+          algorithms: ['RS256'],
+          issuer: config.getOrThrow<string>('JWT_ISSUER')
         }
       })
     }),
@@ -74,7 +76,7 @@ import { SERVICES } from './service';
         const originLimit = config.getOrThrow<number>('THROTTLE_ORIGIN_LIMIT');
         const identityLimit = config.getOrThrow<number>('THROTTLE_IDENTITY_LIMIT');
         const combinedLimit = config.getOrThrow<number>('THROTTLE_COMBINED_LIMIT');
-        const redisUrl = config.getOrThrow<string>('REDIS_URL')
+        const redisUrl = config.getOrThrow<string>('REDIS_URL');
 
         return {
           throttlers: [
