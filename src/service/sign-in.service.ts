@@ -259,6 +259,132 @@ export class SignInService {
     };
   }
 
+  async refreshToken(
+    accessToken: string | undefined,
+    clearRefreshToken: string | undefined
+  ): Promise<SignInOutputDto & { refreshToken: string }> {
+    if (!accessToken || !clearRefreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    // Decode the (potentially expired) access token to get the userId
+    let userId: string;
+    try {
+      const payload = this._jwtService.decode(accessToken);
+      userId = payload.sub as string;
+    } catch {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    if (!userId) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    const user = await this._userEntityService.findById(userId);
+
+    if (user === null) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Look up the token across all tokens (including revoked) to detect reuse
+    const matchedToken =
+      await this._refreshTokenEntityService.findByUserIncludingRevoked(
+        user,
+        clearRefreshToken
+      );
+
+    if (matchedToken === null) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Reuse detection: if the token was already revoked, an attacker is
+    // replaying a stolen token → revoke the entire family
+    if (matchedToken.revoked) {
+      await this._refreshTokenEntityService.revokeFamily(matchedToken.family);
+      throw new UnauthorizedException('Token reuse detected');
+    }
+
+    // Check expiration
+    const isValid = await this._refreshTokenEntityService.verify(
+      matchedToken,
+      clearRefreshToken
+    );
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Rotate the refresh token (revoke old, create new in the same family)
+    const newRefreshToken = await this._refreshTokenEntityService.rotate(
+      matchedToken,
+      user
+    );
+
+    // Generate a new access token
+    const expiresIn = this._configService.getOrThrow<number>(
+      'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
+    );
+
+    const newAccessToken = await this._jwtService.signAsync(
+      { sub: user.id, email: user.email },
+      { keyid: 'CHANGE_IT' }
+    );
+
+    return {
+      accessToken: newAccessToken,
+      type: 'Bearer',
+      expiresIn,
+      authSessionId: '',
+      refreshToken: newRefreshToken
+    };
+  }
+
+  async revokeToken(
+    accessToken: string | undefined,
+    clearRefreshToken: string | undefined
+  ): Promise<void> {
+    if (!accessToken || !clearRefreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    let userId: string;
+    try {
+      const payload = this._jwtService.decode(accessToken);
+      userId = payload.sub as string;
+    } catch {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    if (!userId) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    const user = await this._userEntityService.findById(userId);
+
+    if (user === null) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const activeToken =
+      await this._refreshTokenEntityService.findActiveForUser(user);
+
+    if (activeToken === null) {
+      return;
+    }
+
+    const isValid = await this._refreshTokenEntityService.verify(
+      activeToken,
+      clearRefreshToken
+    );
+
+    if (!isValid) {
+      return;
+    }
+
+    // Revoke the entire family
+    await this._refreshTokenEntityService.revokeFamily(activeToken.family);
+  }
+
   private async _getSession(sessionId: string): Promise<AuthSession> {
     const session = await this._authSessionRedisService.findById(sessionId);
 

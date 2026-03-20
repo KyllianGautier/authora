@@ -22,6 +22,9 @@ export class RefreshTokenEntity {
   @Column({ name: 'token_hash', type: 'varchar' })
   tokenHash: string;
 
+  @Column({ name: 'family', type: 'uuid' })
+  family: string;
+
   @Column({ name: 'revoked', type: 'boolean', default: false })
   revoked: boolean;
 

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Query,
+  Req,
   Res,
   UseGuards
 } from '@nestjs/common';
@@ -19,7 +20,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
 import { CreateSessionInputDto } from '../dto/input/create-session.input.dto';
 import { SessionPasswordInputDto } from '../dto/input/session-password.input.dto';
@@ -144,5 +145,62 @@ export class SignInController {
     });
 
     return body;
+  }
+
+  @Post('token/refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access and refresh tokens' })
+  @ApiOkResponse({ description: 'Tokens refreshed', type: SignInOutputDto })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  async refreshToken(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<SignInOutputDto> {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : undefined;
+    const clearRefreshToken = req.cookies?.refreshToken as string | undefined;
+
+    const { refreshToken, ...body } =
+      await this._signInService.refreshToken(accessToken, clearRefreshToken);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/'
+    });
+
+    return body;
+  }
+
+  @Post('token/revoke')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke refresh token (sign out)' })
+  @ApiOkResponse({ description: 'Token revoked' })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  async revokeToken(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<{ message: string }> {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : undefined;
+    const clearRefreshToken = req.cookies?.refreshToken as string | undefined;
+
+    await this._signInService.revokeToken(accessToken, clearRefreshToken);
+
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/'
+    });
+
+    return { message: 'Token revoked' };
   }
 }
