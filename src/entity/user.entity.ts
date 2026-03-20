@@ -5,7 +5,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn
 } from 'typeorm';
-import { OneTimeTokenEntity } from './one-time-token.entity';
 import { PasswordEntity } from './password.entity';
 import { RefreshTokenEntity } from './refresh-token.entity';
 
@@ -26,12 +25,6 @@ export class UserEntity {
     orphanedRowAction: 'delete'
   })
   refreshTokens: RefreshTokenEntity[];
-
-  @OneToMany(() => OneTimeTokenEntity, (oneTimeToken) => oneTimeToken.user, {
-    eager: true,
-    orphanedRowAction: 'delete'
-  })
-  oneTimeTokens: OneTimeTokenEntity[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

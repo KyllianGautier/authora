@@ -2,13 +2,14 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { OneTimeTokenEntity, OneTimeTokenType } from '../../../src/entity/one-time-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import {
   resetTestState,
   consumeEmailQueue,
   getTestApp
 } from '../../setup';
 import { createUserWithPassword } from '../utils/create-user-with-password';
+import { getOneTimeToken } from '../utils/get-one-time-token';
 
 // Requests a forgot-password email containing a one-time token.
 describe('POST /account/password/forgot', () => {
@@ -47,7 +48,7 @@ describe('POST /account/password/forgot', () => {
 
   describe('behavior', () => {
     it('should return 200 and send email when user exists', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/account/password/forgot')
@@ -65,13 +66,10 @@ describe('POST /account/password/forgot', () => {
       expect(messages[0].data.email).toBe('user@example.com');
       expect(messages[0].data.token).toBeDefined();
 
-      // Verify OTT is stored in DB
-      const otts = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .find({ where: { type: OneTimeTokenType.ForgotPassword } });
+      // Verify OTT is stored in Redis
+      const ott = await getOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
 
-      expect(otts).toHaveLength(1);
-      expect(otts[0].revoked).toBe(false);
+      expect(ott).not.toBeNull();
     });
 
     it('should return 200 without sending email when user does not exist', async () => {
@@ -103,26 +101,30 @@ describe('POST /account/password/forgot', () => {
     });
 
     it('should replace previous forgot-password token', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
 
       await request(app.getHttpServer())
         .post('/api/v1/account/password/forgot')
         .send({ email: 'user@example.com' })
         .expect(202);
 
-      await consumeEmailQueue();
+      const firstMessages = await consumeEmailQueue();
+      const firstToken = firstMessages[0].data.token as string;
 
       await request(app.getHttpServer())
         .post('/api/v1/account/password/forgot')
         .send({ email: 'user@example.com' })
         .expect(202);
 
-      // Only the latest token should exist
-      const otts = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .find({ where: { type: OneTimeTokenType.ForgotPassword } });
+      const secondMessages = await consumeEmailQueue();
+      const secondToken = secondMessages[0].data.token as string;
 
-      expect(otts).toHaveLength(1);
+      // The latest token should be stored in Redis (overwriting the first)
+      const ott = await getOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
+
+      expect(ott).not.toBeNull();
+      // First token should no longer work (replaced)
+      expect(firstToken).not.toBe(secondToken);
     });
   });
 

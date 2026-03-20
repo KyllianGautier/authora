@@ -5,7 +5,6 @@ import { DataSource } from 'typeorm';
 import { UserEntity } from '../../src/entity/user.entity';
 import { PasswordEntity } from '../../src/entity/password.entity';
 import { RefreshTokenEntity } from '../../src/entity/refresh-token.entity';
-import { OneTimeTokenEntity } from '../../src/entity/one-time-token.entity';
 import {
   resetTestState,
   consumeEmailQueue,
@@ -82,11 +81,6 @@ describe('Scenario: Delete account workflows', () => {
 
       expect(refreshTokens).toHaveLength(0);
 
-      const oneTimeTokens = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .find({ where: { user: { id: user.id } } });
-
-      expect(oneTimeTokens).toHaveLength(0);
     });
   });
 

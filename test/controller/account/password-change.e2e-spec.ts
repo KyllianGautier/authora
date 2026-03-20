@@ -2,10 +2,11 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { OneTimeTokenEntity, OneTimeTokenType } from '../../../src/entity/one-time-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { PasswordEntity } from '../../../src/entity/password.entity';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
 import { createOneTimeToken } from '../utils/create-one-time-token';
+import { getOneTimeToken } from '../utils/get-one-time-token';
 import { createPassword } from '../utils/create-password';
 import { createRefreshToken } from '../utils/create-refresh-token';
 import { createUserWithPassword } from '../utils/create-user-with-password';
@@ -261,7 +262,7 @@ describe('POST /account/password/change', () => {
     it('should revoke all one-time tokens after password change', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
 
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.AccountDeletion);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/account/password/change')
@@ -274,11 +275,9 @@ describe('POST /account/password/change', () => {
 
       expect(response.body).toEqual({});
 
-      const activeTokens = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .find({ where: { user: { email: 'user@example.com' }, revoked: false } });
+      const token = await getOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
 
-      expect(activeTokens).toHaveLength(0);
+      expect(token).toBeNull();
     });
   });
 

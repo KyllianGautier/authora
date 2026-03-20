@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { OneTimeTokenType } from '../entity/one-time-token.entity';
+import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
 import { AuthSession } from '../redis-model/auth-session.model';
@@ -19,7 +19,7 @@ import { SessionTotpValidateInputDto } from '../dto/input/session-totp-validate.
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
 import { AuthSessionRedisService } from './redis-model-service/auth-session-redis.service';
 import { EmailService } from './email.service';
-import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
+import { OneTimeTokenRedisService } from './redis-model-service/one-time-token-redis.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
@@ -31,7 +31,7 @@ export class SignInService {
     private readonly _authSessionRedisService: AuthSessionRedisService,
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
-    private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
+    private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService,
     private readonly _emailService: EmailService,
@@ -103,8 +103,8 @@ export class SignInService {
     session.userId = user.id;
     await this._authSessionRedisService.update(session);
 
-    const token = await this._oneTimeTokenEntityService.create(
-      user,
+    const token = await this._oneTimeTokenRedisService.create(
+      user.id,
       OneTimeTokenType.MagicLink
     );
 
@@ -127,8 +127,8 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
-    await this._oneTimeTokenEntityService.verifyToken(
-      user,
+    await this._oneTimeTokenRedisService.verifyToken(
+      user.id,
       dto.token,
       OneTimeTokenType.MagicLink
     );
@@ -196,8 +196,8 @@ export class SignInService {
     }
 
     // Create an exchange OTT
-    const exchangeToken = await this._oneTimeTokenEntityService.create(
-      user,
+    const exchangeToken = await this._oneTimeTokenRedisService.create(
+      user.id,
       OneTimeTokenType.Exchange
     );
 
@@ -210,8 +210,14 @@ export class SignInService {
   async token(
     exchangeToken: string
   ): Promise<SignInOutputDto & { refreshToken: string }> {
-    const user =
-      await this._oneTimeTokenEntityService.verifyExchangeToken(exchangeToken);
+    const userId =
+      await this._oneTimeTokenRedisService.verifyExchangeToken(exchangeToken);
+
+    const user = await this._userEntityService.findById(userId);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
+    }
 
     // Generate the access token
     const expiresIn = this._configService.getOrThrow<number>(

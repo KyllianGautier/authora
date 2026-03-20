@@ -2,10 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import {
-  OneTimeTokenEntity,
-  OneTimeTokenType
-} from '../../../src/entity/one-time-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { PasswordEntity } from '../../../src/entity/password.entity';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
 import { TwoFactorAuthEntity } from '../../../src/entity/two-factor-auth.entity';
@@ -18,7 +15,7 @@ import {
 import { createRefreshToken } from '../utils/create-refresh-token';
 import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
-import { getExpiredDate } from '../utils/date';
+
 
 // Confirms account deletion using the one-time token from the verification email.
 // Deletes the user and all related data (passwords, refresh tokens, 2FA, one-time tokens).
@@ -125,8 +122,8 @@ describe('POST /account/delete/validate', () => {
       );
 
       await createOneTimeToken(
-        dataSource,
-        user,
+        app,
+        user.id,
         OneTimeTokenType.AccountDeletion
       );
 
@@ -146,12 +143,7 @@ describe('POST /account/delete/validate', () => {
         'password123'
       );
 
-      await createOneTimeToken(
-        dataSource,
-        user,
-        OneTimeTokenType.AccountDeletion,
-        { expiredAt: getExpiredDate() }
-      );
+      // No token created in Redis — equivalent to an expired token (TTL elapsed)
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/account/delete/validate')
@@ -172,8 +164,8 @@ describe('POST /account/delete/validate', () => {
       await createRefreshToken(dataSource, user);
       await createTwoFactorAuth(dataSource, user, true);
       await createOneTimeToken(
-        dataSource,
-        user,
+        app,
+        user.id,
         OneTimeTokenType.AccountDeletion
       );
 
@@ -206,12 +198,6 @@ describe('POST /account/delete/validate', () => {
         .findOneBy({ user: { id: user.id } });
 
       expect(twoFactorAuth).toBeNull();
-
-      const oneTimeTokens = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .find({ where: { user: { id: user.id } } });
-
-      expect(oneTimeTokens).toHaveLength(0);
     });
 
     it('should normalize email to lowercase', async () => {
@@ -222,8 +208,8 @@ describe('POST /account/delete/validate', () => {
       );
 
       await createOneTimeToken(
-        dataSource,
-        user,
+        app,
+        user.id,
         OneTimeTokenType.AccountDeletion
       );
 

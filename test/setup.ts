@@ -70,11 +70,14 @@ export async function resetTestState(): Promise<void> {
   storage.onApplicationShutdown();
   storage.storage.clear();
 
-  // Flush auth sessions from Redis
+  // Flush auth sessions and one-time tokens from Redis
   const redis = app.get<Redis>(REDIS_CLIENT);
   const keys = await redis.keys('auth_session:*');
-  if (keys.length > 0) {
-    await redis.del(...keys);
+  const ottKeys = await redis.keys('ott:*');
+  const ottExchangeKeys = await redis.keys('ott_exchange:*');
+  const allKeys = [...keys, ...ottKeys, ...ottExchangeKeys];
+  if (allKeys.length > 0) {
+    await redis.del(...allKeys);
   }
 }
 

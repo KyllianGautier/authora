@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { OneTimeTokenType } from '../../../src/entity/one-time-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { resetTestState, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
 import { createOneTimeToken, FAKE_ONE_TIME_TOKEN } from '../utils/create-one-time-token';
@@ -80,7 +80,7 @@ describe('GET /auth/sign-in/primary/magic-link/validate', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       const session = await createAuthSession(app, { userId: user.id });
 
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.MagicLink);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.MagicLink);
 
       const response = await request(app.getHttpServer())
         .get('/api/v1/auth/sign-in/primary/magic-link/validate')
@@ -99,7 +99,7 @@ describe('GET /auth/sign-in/primary/magic-link/validate', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       const session = await createAuthSession(app, { userId: user.id });
 
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.MagicLink);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.MagicLink);
 
       const response = await request(app.getHttpServer())
         .get('/api/v1/auth/sign-in/primary/magic-link/validate')

@@ -4,7 +4,7 @@ import { DisableMultiFactorAuthInputDto } from '../dto/input/disable-two-factor-
 import { SetupMultiFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
 import { VerifyMultiFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
 import { SetupMultiFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
-import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
+import { OneTimeTokenRedisService } from './redis-model-service/one-time-token-redis.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
@@ -16,7 +16,7 @@ export class TwoFactorAuthService {
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
-    private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
+    private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService
   ) {}
 
@@ -103,7 +103,7 @@ export class TwoFactorAuthService {
 
     // Revoke all sessions and one-time tokens
     await this._refreshTokenEntityService.revokeAllForUser(user);
-    await this._oneTimeTokenEntityService.revokeAllForUser(user);
+    await this._oneTimeTokenRedisService.revokeAllForUser(user.id);
   }
 }
 
