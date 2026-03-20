@@ -8,11 +8,11 @@ import {
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
-import { DisableTwoFactorAuthInputDto } from '../dto/input/disable-two-factor-auth.input.dto';
-import { SetupTwoFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
-import { VerifyTwoFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
-import { SetupTwoFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
-import { VerifyTwoFactorAuthOutputDto } from '../dto/output/verify-two-factor-auth.output.dto';
+import { DisableMultiFactorAuthInputDto } from '../dto/input/disable-two-factor-auth.input.dto';
+import { SetupMultiFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
+import { VerifyMultiFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
+import { SetupMultiFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
+import { VerifyMultiFactorAuthOutputDto } from '../dto/output/verify-two-factor-auth.output.dto';
 import { TwoFactorAuthService } from '../service/two-factor-auth.service';
 
 @ApiTags('Two-Factor-Auth')
@@ -27,15 +27,15 @@ export class TwoFactorAuthController {
   @ApiOperation({ summary: 'Setup two-factor authentication' })
   @ApiOkResponse({
     description: 'Returns QR code and manual code for 2FA app',
-    type: SetupTwoFactorAuthOutputDto
+    type: SetupMultiFactorAuthOutputDto
   })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   @ApiConflictResponse({
     description: 'Two-factor authentication is already enabled'
   })
   async setup(
-    @Body() dto: SetupTwoFactorAuthInputDto
-  ): Promise<SetupTwoFactorAuthOutputDto> {
+    @Body() dto: SetupMultiFactorAuthInputDto
+  ): Promise<SetupMultiFactorAuthOutputDto> {
     return this._twoFactorAuthService.setup(dto);
   }
 
@@ -46,14 +46,14 @@ export class TwoFactorAuthController {
   @ApiOperation({ summary: 'Verify and enable two-factor authentication' })
   @ApiOkResponse({
     description: 'Two-factor authentication enabled, returns recovery codes',
-    type: VerifyTwoFactorAuthOutputDto
+    type: VerifyMultiFactorAuthOutputDto
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid credentials or verification code'
   })
   async verify(
-    @Body() dto: VerifyTwoFactorAuthInputDto
-  ): Promise<VerifyTwoFactorAuthOutputDto> {
+    @Body() dto: VerifyMultiFactorAuthInputDto
+  ): Promise<VerifyMultiFactorAuthOutputDto> {
     const recoveryCodes = await this._twoFactorAuthService.verify(dto);
     return { recoveryCodes };
   }
@@ -70,7 +70,7 @@ export class TwoFactorAuthController {
     description: 'Invalid credentials'
   })
   async disable(
-    @Body() dto: DisableTwoFactorAuthInputDto
+    @Body() dto: DisableMultiFactorAuthInputDto
   ): Promise<{ message: string }> {
     await this._twoFactorAuthService.disable(dto);
     return { message: 'Two-factor authentication disabled' };

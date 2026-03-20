@@ -1,6 +1,7 @@
 import { ForgotPasswordVerifyInput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsDifferentFrom } from '../validator/is-different-from.decorator';
 import {
   HasDigit,
   HasLowercase,
@@ -15,21 +16,21 @@ import {
 } from '../validator/password';
 
 export class ForgotPasswordVerifyInputDto implements ForgotPasswordVerifyInput {
-  @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
+  @ApiProperty({ description: 'User email address' })
   @IsEmail()
   email: string;
 
-  @ApiProperty({ description: 'Password reset token' })
+  @ApiProperty({ description: 'One-time forgot password token' })
   @IsString()
   @IsNotEmpty()
   token: string;
 
-  @ApiProperty({
-    description: 'New clear text password',
-    example: 'N3wP@ss!'
-  })
+  @ApiProperty({ description: 'New password' })
   @IsString()
   @IsNotEmpty()
+  @IsDifferentFrom('token', {
+    message: 'New password must be different from the token'
+  })
   @HasMinLength()
   @HasDigit()
   @HasSpecialChar()

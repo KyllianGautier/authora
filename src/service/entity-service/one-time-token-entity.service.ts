@@ -25,7 +25,8 @@ const EXPIRATION_CONFIG_KEYS: Record<OneTimeTokenType, string> = {
     'TWO_FACTOR_AUTH_DISABLING_TOKEN_EXPIRATION_SECONDS',
   [OneTimeTokenType.ForgotPassword]:
     'FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS',
-  [OneTimeTokenType.MagicLink]: 'MAGIC_LINK_TOKEN_EXPIRATION_SECONDS'
+  [OneTimeTokenType.MagicLink]: 'MAGIC_LINK_TOKEN_EXPIRATION_SECONDS',
+  [OneTimeTokenType.Exchange]: 'EXCHANGE_TOKEN_EXPIRATION_SECONDS'
 };
 
 @Injectable()
@@ -92,6 +93,34 @@ export class OneTimeTokenEntityService {
     }
 
     await this._repository.update(token.id, { revoked: true });
+  }
+
+  async verifyExchangeToken(clearToken: string): Promise<UserEntity> {
+    const tokens = await this._repository.find({
+      where: {
+        type: OneTimeTokenType.Exchange,
+        revoked: false
+      },
+      relations: { user: true }
+    });
+
+    for (const token of tokens) {
+      if (DateTime.utc() > DateTime.fromJSDate(token.expiredAt)) {
+        continue;
+      }
+
+      const isValid = await this._hashService.verify(
+        token.tokenHash,
+        clearToken
+      );
+
+      if (isValid) {
+        await this._repository.update(token.id, { revoked: true });
+        return token.user;
+      }
+    }
+
+    throw new InvalidTokenException();
   }
 
   async revokeAllForUser(user: UserEntity): Promise<void> {

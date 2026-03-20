@@ -1,7 +1,7 @@
-import { VerifyTwoFactorAuthOutput } from '@kylliangautier/authora-types';
+import { VerifyMultiFactorAuthOutput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class VerifyTwoFactorAuthOutputDto implements VerifyTwoFactorAuthOutput {
+export class VerifyMultiFactorAuthOutputDto implements VerifyMultiFactorAuthOutput {
   @ApiProperty({
     description: 'List of recovery codes'
   })

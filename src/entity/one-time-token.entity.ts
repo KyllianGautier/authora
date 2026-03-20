@@ -14,7 +14,8 @@ export enum OneTimeTokenType {
   TwoFactorAuthDisabling = 'TWO_FACTOR_AUTH_DISABLING',
   AccountDeletion = 'ACCOUNT_DELETION',
   ForgotPassword = 'FORGOT_PASSWORD',
-  MagicLink = 'MAGIC_LINK'
+  MagicLink = 'MAGIC_LINK',
+  Exchange = 'EXCHANGE'
 }
 
 @Entity('one_time_token')

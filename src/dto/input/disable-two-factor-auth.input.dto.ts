@@ -1,8 +1,8 @@
-import { DisableTwoFactorAuthInput } from '@kylliangautier/authora-types';
+import { DisableMultiFactorAuthInput } from '@kylliangautier/authora-types';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 
-export class DisableTwoFactorAuthInputDto implements DisableTwoFactorAuthInput {
+export class DisableMultiFactorAuthInputDto implements DisableMultiFactorAuthInput {
   @ApiProperty({ description: 'Email address', example: 'user@domain.com' })
   @IsEmail()
   email: string;

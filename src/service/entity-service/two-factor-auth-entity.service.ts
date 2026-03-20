@@ -88,6 +88,30 @@ export class TwoFactorAuthEntityService {
     return clearRecoveryCodes;
   }
 
+  async validateTotpForUser(
+    user: UserEntity,
+    clearCode: string
+  ): Promise<void> {
+    const twoFactorAuth = await this._repository.findOne({
+      where: { user: { id: user.id }, isVerified: true }
+    });
+
+    if (twoFactorAuth === null) {
+      throw new TwoFactorAuthNotFoundException();
+    }
+
+    const isCodeValid = speakeasy.totp.verify({
+      secret: twoFactorAuth.secret,
+      encoding: 'base32',
+      token: clearCode,
+      window: 1
+    });
+
+    if (!isCodeValid) {
+      throw new TwoFactorAuthCodeInvalidException();
+    }
+  }
+
   async disableForUser(
     user: UserEntity,
     clearCode: string

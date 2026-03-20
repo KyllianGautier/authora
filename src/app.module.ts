@@ -12,6 +12,7 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EMAIL_QUEUE } from './config/constants';
 import { envValidationSchema } from './config/env.validation';
+import { redisProvider } from './config/redis.provider';
 import { CONTROLLERS } from './controller';
 import { ENTITIES } from './entity';
 import { DelayInterceptor } from './interceptor/delay.interceptor';
@@ -116,6 +117,7 @@ import { SERVICES } from './service';
   providers: [
     ...SERVICES,
     ...PASSWORD_CONSTRAINTS,
+    redisProvider,
     {
       provide: APP_INTERCEPTOR,
       useClass: DelayInterceptor

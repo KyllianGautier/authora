@@ -10,7 +10,9 @@ import cookieParser from 'cookie-parser';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
+import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
+import { REDIS_CLIENT } from '../src/config/redis.provider';
 
 let app: INestApplication<App>;
 let initialized = false;
@@ -67,6 +69,13 @@ export async function resetTestState(): Promise<void> {
   const storage = app.get(ThrottlerStorage);
   storage.onApplicationShutdown();
   storage.storage.clear();
+
+  // Flush auth sessions from Redis
+  const redis = app.get<Redis>(REDIS_CLIENT);
+  const keys = await redis.keys('auth_session:*');
+  if (keys.length > 0) {
+    await redis.del(...keys);
+  }
 }
 
 // Drain all messages from the RabbitMQ email queue and return their parsed payloads
