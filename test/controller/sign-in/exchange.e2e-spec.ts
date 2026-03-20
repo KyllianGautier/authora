@@ -9,7 +9,7 @@ import { getAuthSession } from '../utils/get-auth-session';
 
 // Exchanges a completed auth session for a one-time exchange token.
 // The session is consumed (deleted from Redis) after exchange.
-describe('POST /auth/sign-in-2/exchange', () => {
+describe('POST /auth/sign-in/exchange', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -26,7 +26,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
   describe('validation', () => {
     it('should return 400 when sessionId is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({})
         .expect(400);
 
@@ -38,7 +38,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
 
     it('should return 400 when sessionId is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: '' })
         .expect(400);
 
@@ -51,7 +51,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
   describe('behavior', () => {
     it('should return 404 when session does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: 'non-existent' })
         .expect(404);
 
@@ -62,7 +62,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: session.id })
         .expect(401);
 
@@ -77,7 +77,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
       const session = await createAuthSession(app, { primaryAuthVerified: true });
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: session.id })
         .expect(401);
 
@@ -92,7 +92,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: session.id })
         .expect(200);
 
@@ -113,7 +113,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
       });
 
       await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: session.id })
         .expect(200);
 
@@ -123,7 +123,7 @@ describe('POST /auth/sign-in-2/exchange', () => {
 
       // Second exchange fails
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: session.id })
         .expect(404);
 
@@ -136,12 +136,12 @@ describe('POST /auth/sign-in-2/exchange', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/exchange')
+          .post('/api/v1/auth/sign-in/exchange')
           .send({ sessionId: 'fake-id' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: 'fake-id' });
 
       expect(response.status).toBe(429);
@@ -151,12 +151,12 @@ describe('POST /auth/sign-in-2/exchange', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/exchange')
+          .post('/api/v1/auth/sign-in/exchange')
           .send({ sessionId: `fake-id-${i}` });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/exchange')
+        .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: 'fake-id-final' });
 
       expect(response.status).toBe(429);

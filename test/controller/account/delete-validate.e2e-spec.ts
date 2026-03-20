@@ -22,7 +22,7 @@ import { getExpiredDate } from '../utils/date';
 
 // Confirms account deletion using the one-time token from the verification email.
 // Deletes the user and all related data (passwords, refresh tokens, 2FA, one-time tokens).
-describe('POST /auth/delete-account/verify', () => {
+describe('POST /account/delete/validate', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -39,7 +39,7 @@ describe('POST /auth/delete-account/verify', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ token: 'some-token' })
         .expect(400);
 
@@ -48,7 +48,7 @@ describe('POST /auth/delete-account/verify', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'not-an-email', token: 'some-token' })
         .expect(400);
 
@@ -57,7 +57,7 @@ describe('POST /auth/delete-account/verify', () => {
 
     it('should return 400 when token is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'user@example.com' })
         .expect(400);
 
@@ -69,7 +69,7 @@ describe('POST /auth/delete-account/verify', () => {
 
     it('should return 400 when token is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'user@example.com', token: '' })
         .expect(400);
 
@@ -78,7 +78,7 @@ describe('POST /auth/delete-account/verify', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({})
         .expect(400);
 
@@ -93,7 +93,7 @@ describe('POST /auth/delete-account/verify', () => {
   describe('behavior', () => {
     it('should return 404 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'unknown@example.com', token: 'some-token' })
         .expect(404);
 
@@ -110,7 +110,7 @@ describe('POST /auth/delete-account/verify', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'user@example.com', token: 'some-token' })
         .expect(401);
 
@@ -131,7 +131,7 @@ describe('POST /auth/delete-account/verify', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'user@example.com', token: 'wrong-token' })
         .expect(401);
 
@@ -154,7 +154,7 @@ describe('POST /auth/delete-account/verify', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN })
         .expect(401);
 
@@ -178,7 +178,7 @@ describe('POST /auth/delete-account/verify', () => {
       );
 
       await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN })
         .expect(200);
 
@@ -228,7 +228,7 @@ describe('POST /auth/delete-account/verify', () => {
       );
 
       await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'User@Example.COM', token: FAKE_ONE_TIME_TOKEN })
         .expect(200);
 
@@ -246,12 +246,12 @@ describe('POST /auth/delete-account/verify', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/delete-account/verify')
+          .post('/api/v1/account/delete/validate')
           .send({ email: 'combined@example.com', token: 'fake-token' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'combined@example.com', token: 'fake-token' });
 
       expect(response.status).toBe(429);
@@ -261,13 +261,13 @@ describe('POST /auth/delete-account/verify', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/delete-account/verify')
+          .post('/api/v1/account/delete/validate')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com', token: 'fake-token' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com', token: 'fake-token' });
 
@@ -278,12 +278,12 @@ describe('POST /auth/delete-account/verify', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/delete-account/verify')
+          .post('/api/v1/account/delete/validate')
           .send({ email: `origin-${i}@example.com`, token: 'fake-token' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/delete-account/verify')
+        .post('/api/v1/account/delete/validate')
         .send({ email: 'origin-final@example.com', token: 'fake-token' });
 
       expect(response.status).toBe(429);

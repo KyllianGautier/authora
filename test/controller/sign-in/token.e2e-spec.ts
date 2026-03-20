@@ -17,7 +17,7 @@ import { extractCookie } from '../utils/extract-cookie';
 import { hashVerify } from '../utils/hash';
 
 // Exchanges a one-time exchange token for an access token (body) and refresh token (cookie).
-describe('POST /auth/sign-in-2/token', () => {
+describe('POST /auth/sign-in/token', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -34,7 +34,7 @@ describe('POST /auth/sign-in-2/token', () => {
   describe('validation', () => {
     it('should return 400 when exchangeToken is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({})
         .expect(400);
 
@@ -46,7 +46,7 @@ describe('POST /auth/sign-in-2/token', () => {
 
     it('should return 400 when exchangeToken is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: '' })
         .expect(400);
 
@@ -59,7 +59,7 @@ describe('POST /auth/sign-in-2/token', () => {
   describe('behavior', () => {
     it('should return 401 when exchange token is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: 'invalid-token' })
         .expect(401);
 
@@ -71,7 +71,7 @@ describe('POST /auth/sign-in-2/token', () => {
       await createOneTimeToken(dataSource, user, OneTimeTokenType.Exchange);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: FAKE_ONE_TIME_TOKEN })
         .expect(200);
 
@@ -118,13 +118,13 @@ describe('POST /auth/sign-in-2/token', () => {
       await createOneTimeToken(dataSource, user, OneTimeTokenType.Exchange);
 
       await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: FAKE_ONE_TIME_TOKEN })
         .expect(200);
 
       // Second use should fail
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: FAKE_ONE_TIME_TOKEN })
         .expect(401);
 
@@ -138,7 +138,7 @@ describe('POST /auth/sign-in-2/token', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: FAKE_ONE_TIME_TOKEN })
         .expect(401);
 
@@ -151,12 +151,12 @@ describe('POST /auth/sign-in-2/token', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/token')
+          .post('/api/v1/auth/sign-in/token')
           .send({ exchangeToken: 'fake-token' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: 'fake-token' });
 
       expect(response.status).toBe(429);
@@ -166,12 +166,12 @@ describe('POST /auth/sign-in-2/token', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/token')
+          .post('/api/v1/auth/sign-in/token')
           .send({ exchangeToken: `fake-token-${i}` });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/token')
+        .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: 'fake-token-final' });
 
       expect(response.status).toBe(429);

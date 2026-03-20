@@ -11,7 +11,7 @@ import { getAuthSession } from '../utils/get-auth-session';
 
 // Validates a TOTP code for MFA within an existing auth session.
 // Requires primary auth to be completed first.
-describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
+describe('POST /auth/sign-in/mfa/totp/validate', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -28,7 +28,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
   describe('validation', () => {
     it('should return 400 when sessionId is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ code: '123456' })
         .expect(400);
 
@@ -40,7 +40,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
 
     it('should return 400 when code is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: 'some-id' })
         .expect(400);
 
@@ -53,7 +53,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
 
     it('should return 400 when code is too short', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: 'some-id', code: '123' })
         .expect(400);
 
@@ -64,7 +64,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
 
     it('should return 400 when code is too long', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: 'some-id', code: '1234567' })
         .expect(400);
 
@@ -75,7 +75,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({})
         .expect(400);
 
@@ -92,7 +92,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
   describe('behavior', () => {
     it('should return 404 when session does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: 'non-existent', code: '123456' })
         .expect(404);
 
@@ -104,7 +104,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
       const session = await createAuthSession(app, { userId: user.id });
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: session.id, code: '123456' })
         .expect(401);
 
@@ -125,7 +125,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: session.id, code: '000000' })
         .expect(401);
 
@@ -151,7 +151,7 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: session.id, code })
         .expect(200);
 
@@ -170,12 +170,12 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+          .post('/api/v1/auth/sign-in/mfa/totp/validate')
           .send({ sessionId: 'fake-id', code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: 'fake-id', code: '000000' });
 
       expect(response.status).toBe(429);
@@ -185,12 +185,12 @@ describe('POST /auth/sign-in-2/mfa/totp/validate', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+          .post('/api/v1/auth/sign-in/mfa/totp/validate')
           .send({ sessionId: `fake-id-${i}`, code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/mfa/totp/validate')
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
         .send({ sessionId: 'fake-id-final', code: '000000' });
 
       expect(response.status).toBe(429);

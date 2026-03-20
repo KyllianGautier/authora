@@ -49,10 +49,6 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(1)
     .default(300),
-  MAGIC_LINK_REFRESH_TOKEN_EXPIRATION_SECONDS: Joi.number()
-    .integer()
-    .min(1)
-    .default(86400),
   FORGOT_PASSWORD_TOKEN_EXPIRATION_SECONDS: Joi.number()
     .integer()
     .min(1)

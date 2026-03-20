@@ -5,7 +5,7 @@ import { resetTestState, consumeEmailQueue, getTestApp } from '../../setup';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Creates a new auth session. Returns sessionId and nextStep: 'primaryAuth'.
-describe('POST /auth/sign-in-2', () => {
+describe('POST /auth/sign-in', () => {
   let app: INestApplication<App>;
 
   beforeAll(async () => {
@@ -20,7 +20,7 @@ describe('POST /auth/sign-in-2', () => {
   describe('validation', () => {
     it('should return 400 when tenantId is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2')
+        .post('/api/v1/auth/sign-in')
         .send({})
         .expect(400);
 
@@ -32,7 +32,7 @@ describe('POST /auth/sign-in-2', () => {
 
     it('should return 400 when tenantId is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2')
+        .post('/api/v1/auth/sign-in')
         .send({ tenantId: '' })
         .expect(400);
 
@@ -45,7 +45,7 @@ describe('POST /auth/sign-in-2', () => {
   describe('behavior', () => {
     it('should return 201 with sessionId and nextStep primaryAuth', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2')
+        .post('/api/v1/auth/sign-in')
         .send({ tenantId: 'default' })
         .expect(201);
 

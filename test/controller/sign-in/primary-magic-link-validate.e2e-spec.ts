@@ -10,7 +10,7 @@ import { createUserWithPassword } from '../utils/create-user-with-password';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Validates a magic link token via query params and marks primary auth as verified.
-describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
+describe('GET /auth/sign-in/primary/magic-link/validate', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -27,7 +27,7 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
   describe('validation', () => {
     it('should return 400 when sessionId is missing', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ token: 'some-token' })
         .expect(400);
 
@@ -39,7 +39,7 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
 
     it('should return 400 when token is missing', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ sessionId: 'some-id' })
         .expect(400);
 
@@ -53,7 +53,7 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
   describe('behavior', () => {
     it('should return 404 when session does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ sessionId: 'non-existent', token: 'some-token' })
         .expect(404);
 
@@ -64,7 +64,7 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ sessionId: session.id, token: 'some-token' })
         .expect(401);
 
@@ -83,7 +83,7 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
       await createOneTimeToken(dataSource, user, OneTimeTokenType.MagicLink);
 
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ sessionId: session.id, token: 'wrong-token' })
         .expect(401);
 
@@ -102,7 +102,7 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
       await createOneTimeToken(dataSource, user, OneTimeTokenType.MagicLink);
 
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ sessionId: session.id, token: FAKE_ONE_TIME_TOKEN })
         .expect(200);
 
@@ -122,12 +122,12 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+          .get('/api/v1/auth/sign-in/primary/magic-link/validate')
           .query({ sessionId: 'fake-id', token: 'fake-token' });
       }
 
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ sessionId: 'fake-id', token: 'fake-token' });
 
       expect(response.status).toBe(429);
@@ -137,12 +137,12 @@ describe('GET /auth/sign-in-2/primary/magic-link/validate', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+          .get('/api/v1/auth/sign-in/primary/magic-link/validate')
           .query({ sessionId: `fake-id-${i}`, token: 'fake-token' });
       }
 
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/sign-in-2/primary/magic-link/validate')
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
         .query({ sessionId: 'fake-id-final', token: 'fake-token' });
 
       expect(response.status).toBe(429);

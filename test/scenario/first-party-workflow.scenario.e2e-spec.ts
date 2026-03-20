@@ -9,12 +9,12 @@ import {
   consumeEmailQueue,
   getTestApp,
   getTestPublicKey
-} from '../../setup';
-import { createUserWithPassword } from '../../controller/utils/create-user-with-password';
-import { createTwoFactorAuth } from '../../controller/utils/create-two-factor-auth';
-import { extractCookie } from '../../controller/utils/extract-cookie';
+} from '../setup';
+import { createUserWithPassword } from '../controller/utils/create-user-with-password';
+import { createTwoFactorAuth } from '../controller/utils/create-two-factor-auth';
+import { extractCookie } from '../controller/utils/extract-cookie';
 
-const BASE = '/api/v1/auth/sign-in-2';
+const BASE = '/api/v1/auth/sign-in';
 
 describe('Scenario: First-party sign-in workflows', () => {
   let app: INestApplication<App>;

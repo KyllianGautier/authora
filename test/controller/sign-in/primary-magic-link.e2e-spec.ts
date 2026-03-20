@@ -8,7 +8,7 @@ import { createUserWithPassword } from '../utils/create-user-with-password';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Requests a magic link email within an existing auth session.
-describe('POST /auth/sign-in-2/primary/magic-link', () => {
+describe('POST /auth/sign-in/primary/magic-link', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -25,7 +25,7 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
   describe('validation', () => {
     it('should return 400 when sessionId is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ email: 'user@example.com' })
         .expect(400);
 
@@ -37,7 +37,7 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
 
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ sessionId: 'some-id' })
         .expect(400);
 
@@ -46,7 +46,7 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({})
         .expect(400);
 
@@ -61,7 +61,7 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
   describe('behavior', () => {
     it('should return 404 when session does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ sessionId: 'non-existent', email: 'user@example.com' })
         .expect(404);
 
@@ -73,7 +73,7 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ sessionId: session.id, email: 'user@example.com' })
         .expect(202);
 
@@ -99,7 +99,7 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
       const session = await createAuthSession(app);
 
       await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ sessionId: session.id, email: 'unknown@example.com' })
         .expect(202);
 
@@ -118,7 +118,7 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
       const session = await createAuthSession(app);
 
       await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ sessionId: session.id, email: 'User@Example.COM' })
         .expect(202);
 
@@ -135,12 +135,12 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/primary/magic-link')
+          .post('/api/v1/auth/sign-in/primary/magic-link')
           .send({ sessionId: 'fake-id', email: 'combined@example.com' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ sessionId: 'fake-id', email: 'combined@example.com' });
 
       expect(response.status).toBe(429);
@@ -150,13 +150,13 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/primary/magic-link')
+          .post('/api/v1/auth/sign-in/primary/magic-link')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ sessionId: 'fake-id', email: 'identity@example.com' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ sessionId: 'fake-id', email: 'identity@example.com' });
 
@@ -167,12 +167,12 @@ describe('POST /auth/sign-in-2/primary/magic-link', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/primary/magic-link')
+          .post('/api/v1/auth/sign-in/primary/magic-link')
           .send({ sessionId: 'fake-id', email: `origin-${i}@example.com` });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/magic-link')
+        .post('/api/v1/auth/sign-in/primary/magic-link')
         .send({ sessionId: 'fake-id', email: 'origin-final@example.com' });
 
       expect(response.status).toBe(429);

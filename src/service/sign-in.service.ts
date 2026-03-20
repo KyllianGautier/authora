@@ -1,44 +1,59 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { OneTimeTokenType } from '../entity/one-time-token.entity';
-import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
-import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verify.input.dto';
-import { MagicLinkInputDto } from '../dto/input/magic-link.input.dto';
-import { SignInInputDto } from '../dto/input/sign-in.input.dto';
-import { ValidateMagicLinkInputDto } from '../dto/input/validate-magic-link.input.dto';
+import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
+import { UserEntity } from '../entity/user.entity';
+import { AuthSession, MfaPolicy } from '../redis-model/auth-session.model';
+import { CreateSessionInputDto } from '../dto/input/create-session.input.dto';
+import { SessionPasswordInputDto } from '../dto/input/session-password.input.dto';
+import { SessionMagicLinkInputDto } from '../dto/input/session-magic-link.input.dto';
+import { SessionMagicLinkValidateInputDto } from '../dto/input/session-magic-link-validate.input.dto';
+import { SessionTotpValidateInputDto } from '../dto/input/session-totp-validate.input.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
+import { AuthSessionRedisService } from './redis-model-service/auth-session-redis.service';
 import { EmailService } from './email.service';
-import { HashService } from './hash.service';
 import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
+import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
-import { AuthSessionRedisService } from './redis-model-service/auth-session-redis.service';
-
-export interface SignInResult {
-  body: SignInOutputDto;
-  refreshToken: string;
-}
 
 @Injectable()
 export class SignInService {
   constructor(
+    private readonly _authSessionRedisService: AuthSessionRedisService,
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
-    private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
-    private readonly _authSessionRedisService: AuthSessionRedisService,
+    private readonly _refreshTokenEntityService: RefreshTokenEntityService,
+    private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService,
     private readonly _emailService: EmailService,
-    private readonly _hashService: HashService,
     private readonly _jwtService: JwtService,
-    private readonly _configService: ConfigService
+    private readonly _configService: ConfigService,
+    @InjectRepository(TwoFactorAuthEntity)
+    private readonly _twoFactorAuthRepository: Repository<TwoFactorAuthEntity>
   ) {}
 
-  async signIn(dto: SignInInputDto): Promise<SignInResult> {
+  async createSession(dto: CreateSessionInputDto): Promise<AuthSession> {
+    return this._authSessionRedisService.create({
+      tenantId: dto.tenantId,
+      mode: 'first-party',
+      primaryAuthVerified: false,
+      mfaPolicy: 'DISABLED'
+    });
+  }
+
+  async primaryAuthPassword(
+    sessionId: string,
+    dto: SessionPasswordInputDto
+  ): Promise<AuthSession> {
+    const session = await this._getSession(sessionId);
+
     const email = dto.email.toLowerCase();
 
-    // Find the user and verify the password
     const user = await this._userEntityService.findByEmailWithPasswords(email);
 
     if (user === null) {
@@ -52,6 +67,147 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
+    // Update the session with user info and primary auth status
+    session.userId = user.id;
+    session.primaryAuthVerified = true;
+    session.rememberMe = dto.rememberMe ?? false;
+
+    // Resolve MFA status for the user
+    await this._resolveMfaStatus(session, user);
+
+    await this._authSessionRedisService.update(session);
+
+    return session;
+  }
+
+  async primaryAuthMagicLink(
+    sessionId: string,
+    dto: SessionMagicLinkInputDto
+  ): Promise<void> {
+    const session = await this._getSession(sessionId);
+
+    const email = dto.email.toLowerCase();
+
+    const user = await this._userEntityService.findByEmail(email);
+
+    // Silently ignore if user does not exist to avoid enumeration
+    if (user === null) {
+      return;
+    }
+
+    // Store the userId in the session (not yet verified)
+    session.userId = user.id;
+    await this._authSessionRedisService.update(session);
+
+    const token = await this._oneTimeTokenEntityService.create(
+      user,
+      OneTimeTokenType.MagicLink
+    );
+
+    await this._emailService.sendMagicLink(
+      email,
+      token,
+      sessionId,
+      dto.locale
+    );
+  }
+
+  async primaryAuthMagicLinkValidate(
+    sessionId: string,
+    dto: SessionMagicLinkValidateInputDto
+  ): Promise<AuthSession> {
+    const session = await this._getSession(sessionId);
+
+    if (session.userId === undefined) {
+      throw new InvalidCredentialsException();
+    }
+
+    const user = await this._userEntityService.findById(session.userId);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
+    }
+
+    await this._oneTimeTokenEntityService.verifyToken(
+      user,
+      dto.token,
+      OneTimeTokenType.MagicLink
+    );
+
+    // Mark primary auth as verified and resolve MFA status
+    session.primaryAuthVerified = true;
+    await this._resolveMfaStatus(session, user);
+
+    await this._authSessionRedisService.update(session);
+
+    return session;
+  }
+
+  async mfaAuthTotpValidate(
+    sessionId: string,
+    dto: SessionTotpValidateInputDto
+  ): Promise<AuthSession> {
+    const session = await this._getSession(sessionId);
+
+    if (session.userId === undefined) {
+      throw new InvalidCredentialsException();
+    }
+
+    if (!session.primaryAuthVerified) {
+      throw new UnauthorizedException('Primary authentication required');
+    }
+
+    const user = await this._userEntityService.findById(session.userId);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
+    }
+
+    await this._twoFactorAuthEntityService.validateTotpForUser(user, dto.code);
+
+    session.mfaVerified = true;
+    await this._authSessionRedisService.update(session);
+
+    return session;
+  }
+
+  async exchange(sessionId: string): Promise<string> {
+    const session = await this._getSession(sessionId);
+
+    if (!session.primaryAuthVerified) {
+      throw new UnauthorizedException('Primary authentication required');
+    }
+
+    if (session.mfaPolicy !== 'DISABLED' && !session.mfaVerified && !session.deviceTrusted) {
+      throw new UnauthorizedException('MFA verification required');
+    }
+
+    if (session.userId === undefined) {
+      throw new InvalidCredentialsException();
+    }
+
+    const user = await this._userEntityService.findById(session.userId);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
+    }
+
+    // Create an exchange OTT
+    const exchangeToken = await this._oneTimeTokenEntityService.create(
+      user,
+      OneTimeTokenType.Exchange
+    );
+
+    // Consume the auth session
+    await this._authSessionRedisService.delete(session);
+
+    return exchangeToken;
+  }
+
+  async token(exchangeToken: string): Promise<SignInOutputDto & { refreshToken: string }> {
+    const user =
+      await this._oneTimeTokenEntityService.verifyExchangeToken(exchangeToken);
+
     // Generate the access token
     const expiresIn = this._configService.getOrThrow<number>(
       'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
@@ -62,12 +218,11 @@ export class SignInService {
       email: user.email
     });
 
-    // Generate the refresh token with expiration based on rememberMe
+    // Generate the refresh token
+    // TODO: use rememberMe from the consumed session to pick short/long expiration
     const refreshTokenExpirationSeconds =
       this._configService.getOrThrow<number>(
-        dto.rememberMe
-          ? 'JWT_REFRESH_TOKEN_LONG_EXPIRATION_SECONDS'
-          : 'JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS'
+        'JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SECONDS'
       );
 
     const refreshToken = await this._refreshTokenEntityService.create(
@@ -81,228 +236,44 @@ export class SignInService {
       userId: user.id,
       mode: 'first-party',
       primaryAuthVerified: true,
-      rememberMe: dto.rememberMe ?? false,
       mfaPolicy: 'DISABLED'
     });
 
     return {
-      body: { accessToken, type: 'Bearer', expiresIn, authSessionId: session.id },
+      accessToken,
+      type: 'Bearer',
+      expiresIn,
+      authSessionId: session.id,
       refreshToken
     };
   }
 
-  async refresh(
-    accessToken: string,
-    clearRefreshToken: string
-  ): Promise<SignInResult> {
-    // Verify the JWT is expired — if still valid, the client should use it
-    const payload = this._verifyExpiredToken(accessToken);
+  private async _getSession(sessionId: string): Promise<AuthSession> {
+    const session = await this._authSessionRedisService.findById(sessionId);
 
-    if (payload === null) {
-      throw new BadRequestException('Access token is not yet expired');
+    if (session === null) {
+      throw new SessionNotFoundException();
     }
 
-    // Find the user
-    const user = await this._userEntityService.findById(payload.sub);
+    await this._authSessionRedisService.verify(session);
 
-    if (user === null) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    // Find the active refresh token for this user
-    const refreshToken =
-      await this._refreshTokenEntityService.findActiveForUser(user);
-
-    if (refreshToken === null) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    // Verify the refresh token hash and expiration
-    const isValid = await this._refreshTokenEntityService.verify(
-      refreshToken,
-      clearRefreshToken
-    );
-
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    // Generate new access token
-    const expiresIn = this._configService.getOrThrow<number>(
-      'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
-    );
-
-    const newAccessToken = await this._jwtService.signAsync({
-      sub: user.id,
-      email: user.email
-    });
-
-    // Rotate the refresh token (same expiration date as the previous one)
-    const newRefreshToken = await this._refreshTokenEntityService.rotate(
-      refreshToken,
-      user
-    );
-
-    // Find the existing auth session for the user
-    const session = await this._authSessionRedisService.findActiveForUserId(user.id);
-
-    return {
-      body: {
-        accessToken: newAccessToken,
-        type: 'Bearer',
-        expiresIn,
-        authSessionId: session?.id ?? ''
-      },
-      refreshToken: newRefreshToken
-    };
+    return session;
   }
 
-  async forgotPassword(dto: ForgotPasswordInputDto): Promise<void> {
-    const email = dto.email.toLowerCase();
-
-    const user = await this._userEntityService.findByEmail(email);
-
-    if (user === null) {
-      return;
-    }
-
-    const token = await this._oneTimeTokenEntityService.create(
-      user,
-      OneTimeTokenType.ForgotPassword
-    );
-
-    await this._emailService.sendForgotPassword(email, token);
-  }
-
-  async forgotPasswordVerify(
-    dto: ForgotPasswordVerifyInputDto
+  private async _resolveMfaStatus(
+    session: AuthSession,
+    user: UserEntity
   ): Promise<void> {
-    const email = dto.email.toLowerCase();
-
-    const user =
-      await this._userEntityService.findByEmailWithPasswords(email);
-
-    if (user === null) {
-      throw new InvalidCredentialsException();
-    }
-
-    // Verify the forgot password token
-    await this._oneTimeTokenEntityService.verifyToken(
-      user,
-      dto.token,
-      OneTimeTokenType.ForgotPassword
-    );
-
-    // Check that the new password has not been used before
-    const isNewPasswordAlreadyUsed = await Promise.all(
-      user.passwords.map((password) =>
-        this._hashService.verify(password.passwordHash, dto.newPassword)
-      )
-    );
-
-    if (isNewPasswordAlreadyUsed.some((match) => match)) {
-      throw new PasswordAlreadyUsedException();
-    }
-
-    // Revoke the current password and create the new one
-    await this._passwordEntityService.updateUserPassword(
-      user,
-      dto.newPassword
-    );
-
-    // Invalidate all active sessions and one-time tokens
-    await this._refreshTokenEntityService.revokeAllForUser(user);
-    await this._oneTimeTokenEntityService.revokeAllForUser(user);
-  }
-
-  async magicLink(dto: MagicLinkInputDto): Promise<void> {
-    const email = dto.email.toLowerCase();
-
-    const user = await this._userEntityService.findByEmail(email);
-
-    // Silently ignore if user does not exist to avoid enumeration
-    if (user === null) {
-      return;
-    }
-
-    const token = await this._oneTimeTokenEntityService.create(
-      user,
-      OneTimeTokenType.MagicLink
-    );
-
-    await this._emailService.sendMagicLink(email, token, dto.redirectTo, dto.locale);
-  }
-
-  async validateMagicLink(
-    dto: ValidateMagicLinkInputDto
-  ): Promise<SignInResult> {
-    const email = dto.email.toLowerCase();
-
-    const user = await this._userEntityService.findByEmail(email);
-
-    if (user === null) {
-      throw new InvalidCredentialsException();
-    }
-
-    await this._oneTimeTokenEntityService.verifyToken(
-      user,
-      dto.token,
-      OneTimeTokenType.MagicLink
-    );
-
-    // Generate the access token
-    const expiresIn = this._configService.getOrThrow<number>(
-      'JWT_ACCESS_TOKEN_EXPIRATION_SECONDS'
-    );
-
-    const accessToken = await this._jwtService.signAsync({
-      sub: user.id,
-      email: user.email
+    const twoFactorAuth = await this._twoFactorAuthRepository.findOne({
+      where: { user: { id: user.id } }
     });
 
-    // Generate the refresh token with magic link expiration
-    const refreshTokenExpirationSeconds =
-      this._configService.getOrThrow<number>(
-        'MAGIC_LINK_REFRESH_TOKEN_EXPIRATION_SECONDS'
-      );
+    const hasVerifiedMfa = twoFactorAuth !== null && twoFactorAuth.isVerified;
 
-    const refreshToken = await this._refreshTokenEntityService.create(
-      user,
-      refreshTokenExpirationSeconds
-    );
+    session.mfaSetup = hasVerifiedMfa;
 
-    // Create an auth session to track the magic link sign-in state
-    const session = await this._authSessionRedisService.create({
-      tenantId: 'default',
-      userId: user.id,
-      mode: 'first-party',
-      primaryAuthVerified: true,
-      rememberMe: false,
-      mfaPolicy: 'DISABLED'
-    });
-
-    return {
-      body: { accessToken, type: 'Bearer', expiresIn, authSessionId: session.id },
-      refreshToken
-    };
-  }
-
-  private _verifyExpiredToken(
-    token: string
-  ): { sub: string; email: string } | null {
-    try {
-      // If verification succeeds, the token is still valid
-      this._jwtService.verify(token);
-      return null;
-    } catch (error) {
-      // Only accept TokenExpiredError — any other error means the token is invalid
-      if (error instanceof Error && error.name === 'TokenExpiredError') {
-        return this._jwtService.verify<{ sub: string; email: string }>(token, {
-          ignoreExpiration: true
-        });
-      }
-      throw new UnauthorizedException('Invalid access token');
-    }
+    // TODO: mfaPolicy should come from tenant/app config
+    // For now, keep the default from session creation
   }
 }
 
@@ -312,8 +283,8 @@ export class InvalidCredentialsException extends UnauthorizedException {
   }
 }
 
-export class PasswordAlreadyUsedException extends BadRequestException {
+export class SessionNotFoundException extends NotFoundException {
   constructor() {
-    super('New password has already been used');
+    super('Session not found or expired');
   }
 }

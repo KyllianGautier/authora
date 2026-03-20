@@ -14,7 +14,7 @@ import { hashVerify } from '../utils/hash';
 
 // Changes the user's password after verifying current credentials.
 // Revokes the old password, creates a new one, and invalidates all refresh tokens and one-time tokens.
-describe('POST /auth/change-password', () => {
+describe('POST /account/password/change', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -31,7 +31,7 @@ describe('POST /auth/change-password', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({ currentPassword: 'oldPass123', newPassword: 'newPass123' })
         .expect(400);
 
@@ -40,7 +40,7 @@ describe('POST /auth/change-password', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'not-an-email',
           currentPassword: 'oldPass123',
@@ -53,7 +53,7 @@ describe('POST /auth/change-password', () => {
 
     it('should return 400 when currentPassword is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({ email: 'user@example.com', newPassword: 'newPass123' })
         .expect(400);
 
@@ -65,7 +65,7 @@ describe('POST /auth/change-password', () => {
 
     it('should return 400 when currentPassword is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: '',
@@ -80,7 +80,7 @@ describe('POST /auth/change-password', () => {
 
     it('should return 400 when newPassword is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({ email: 'user@example.com', currentPassword: 'oldPass123' })
         .expect(400);
 
@@ -93,7 +93,7 @@ describe('POST /auth/change-password', () => {
 
     it('should return 400 when newPassword is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: 'oldPass123',
@@ -109,7 +109,7 @@ describe('POST /auth/change-password', () => {
 
     it('should return 400 when newPassword is the same as currentPassword', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: 'samePassword',
@@ -124,7 +124,7 @@ describe('POST /auth/change-password', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({})
         .expect(400);
 
@@ -143,7 +143,7 @@ describe('POST /auth/change-password', () => {
   describe('behavior', () => {
     it('should return 401 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'unknown@example.com',
           currentPassword: 'oldPass123',
@@ -158,7 +158,7 @@ describe('POST /auth/change-password', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'correctPassword');
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: 'wrongPassword',
@@ -173,7 +173,7 @@ describe('POST /auth/change-password', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: 'oldPassword',
@@ -207,7 +207,7 @@ describe('POST /auth/change-password', () => {
       await createPassword(dataSource, user, 'previousPassword', true);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: 'currentPassword',
@@ -222,7 +222,7 @@ describe('POST /auth/change-password', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'User@Example.COM',
           currentPassword: 'oldPassword',
@@ -240,7 +240,7 @@ describe('POST /auth/change-password', () => {
       await createRefreshToken(dataSource, user);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: 'oldPassword',
@@ -264,7 +264,7 @@ describe('POST /auth/change-password', () => {
       await createOneTimeToken(dataSource, user, OneTimeTokenType.AccountDeletion);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({
           email: 'user@example.com',
           currentPassword: 'oldPassword',
@@ -288,12 +288,12 @@ describe('POST /auth/change-password', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/change-password')
+          .post('/api/v1/account/password/change')
           .send({ email: 'combined@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({ email: 'combined@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
 
       expect(response.status).toBe(429);
@@ -303,13 +303,13 @@ describe('POST /auth/change-password', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/change-password')
+          .post('/api/v1/account/password/change')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
 
@@ -320,12 +320,12 @@ describe('POST /auth/change-password', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/change-password')
+          .post('/api/v1/account/password/change')
           .send({ email: `origin-${i}@example.com`, currentPassword: 'oldPass123', newPassword: 'newPass123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/change-password')
+        .post('/api/v1/account/password/change')
         .send({ email: 'origin-final@example.com', currentPassword: 'oldPass123', newPassword: 'newPass123' });
 
       expect(response.status).toBe(429);

@@ -8,7 +8,7 @@ import { createUserWithPassword } from '../utils/create-user-with-password';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Authenticates with email and password within an existing auth session.
-describe('POST /auth/sign-in-2/primary/password', () => {
+describe('POST /auth/sign-in/primary/password', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -25,7 +25,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
   describe('validation', () => {
     it('should return 400 when sessionId is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ email: 'user@example.com', password: 'password123' })
         .expect(400);
 
@@ -37,7 +37,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
 
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: 'some-id', password: 'password123' })
         .expect(400);
 
@@ -46,7 +46,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
 
     it('should return 400 when password is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: 'some-id', email: 'user@example.com' })
         .expect(400);
 
@@ -58,7 +58,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
 
     it('should return 400 when password is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: 'some-id', email: 'user@example.com', password: '' })
         .expect(400);
 
@@ -69,7 +69,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({})
         .expect(400);
 
@@ -86,7 +86,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
   describe('behavior', () => {
     it('should return 404 when session does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: 'non-existent', email: 'user@example.com', password: 'password123' })
         .expect(404);
 
@@ -97,7 +97,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: session.id, email: 'unknown@example.com', password: 'password123' })
         .expect(401);
 
@@ -115,7 +115,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: session.id, email: 'user@example.com', password: 'wrongPassword' })
         .expect(401);
 
@@ -133,7 +133,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
         .expect(200);
 
@@ -154,7 +154,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
       const session = await createAuthSession(app);
 
       await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: session.id, email: 'user@example.com', password: 'password123', rememberMe: true })
         .expect(200);
 
@@ -167,7 +167,7 @@ describe('POST /auth/sign-in-2/primary/password', () => {
       const session = await createAuthSession(app);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: session.id, email: 'User@Example.COM', password: 'password123' })
         .expect(200);
 
@@ -181,12 +181,12 @@ describe('POST /auth/sign-in-2/primary/password', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/primary/password')
+          .post('/api/v1/auth/sign-in/primary/password')
           .send({ sessionId: 'fake-id', email: 'combined@example.com', password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: 'fake-id', email: 'combined@example.com', password: 'password123' });
 
       expect(response.status).toBe(429);
@@ -196,13 +196,13 @@ describe('POST /auth/sign-in-2/primary/password', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/primary/password')
+          .post('/api/v1/auth/sign-in/primary/password')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ sessionId: 'fake-id', email: 'identity@example.com', password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ sessionId: 'fake-id', email: 'identity@example.com', password: 'password123' });
 
@@ -213,12 +213,12 @@ describe('POST /auth/sign-in-2/primary/password', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/auth/sign-in-2/primary/password')
+          .post('/api/v1/auth/sign-in/primary/password')
           .send({ sessionId: 'fake-id', email: `origin-${i}@example.com`, password: 'password123' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/sign-in-2/primary/password')
+        .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: 'fake-id', email: 'origin-final@example.com', password: 'password123' });
 
       expect(response.status).toBe(429);
