@@ -3,8 +3,8 @@ import * as jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { OneTimeTokenType } from '../../../src/entity/one-time-token.entity';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import {
   resetTestState,
   consumeEmailQueue,
@@ -68,7 +68,7 @@ describe('POST /auth/sign-in/token', () => {
 
     it('should return 200 with access token and refresh token cookie', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.Exchange);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.Exchange);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/sign-in/token')
@@ -121,7 +121,7 @@ describe('POST /auth/sign-in/token', () => {
 
     it('should revoke the exchange token after use', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.Exchange);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.Exchange);
 
       await request(app.getHttpServer())
         .post('/api/v1/auth/sign-in/token')
@@ -138,11 +138,9 @@ describe('POST /auth/sign-in/token', () => {
     });
 
     it('should return 401 when exchange token is expired', async () => {
-      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.Exchange, {
-        expiredAt: new Date(Date.now() - 1000)
-      });
+      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
+      // No token created in Redis — equivalent to an expired token (TTL elapsed)
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/sign-in/token')
         .send({ exchangeToken: FAKE_ONE_TIME_TOKEN })

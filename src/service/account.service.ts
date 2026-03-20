@@ -9,13 +9,13 @@ import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
 import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verify.input.dto';
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
-import { OneTimeTokenType } from '../entity/one-time-token.entity';
+import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { EmailService } from './email.service';
 import { HashService } from './hash.service';
-import { OneTimeTokenEntityService } from './entity-service/one-time-token-entity.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
+import { OneTimeTokenRedisService } from './redis-model-service/one-time-token-redis.service';
 
 @Injectable()
 export class AccountService {
@@ -23,7 +23,7 @@ export class AccountService {
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
-    private readonly _oneTimeTokenEntityService: OneTimeTokenEntityService,
+    private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _emailService: EmailService,
     private readonly _hashService: HashService
   ) {}
@@ -63,7 +63,7 @@ export class AccountService {
     );
 
     await this._refreshTokenEntityService.revokeAllForUser(user);
-    await this._oneTimeTokenEntityService.revokeAllForUser(user);
+    await this._oneTimeTokenRedisService.revokeAllForUser(user.id);
   }
 
   async forgotPassword(dto: ForgotPasswordInputDto): Promise<void> {
@@ -75,8 +75,8 @@ export class AccountService {
       return;
     }
 
-    const token = await this._oneTimeTokenEntityService.create(
-      user,
+    const token = await this._oneTimeTokenRedisService.create(
+      user.id,
       OneTimeTokenType.ForgotPassword
     );
 
@@ -93,8 +93,8 @@ export class AccountService {
       throw new InvalidCredentialsException();
     }
 
-    await this._oneTimeTokenEntityService.verifyToken(
-      user,
+    await this._oneTimeTokenRedisService.verifyToken(
+      user.id,
       dto.token,
       OneTimeTokenType.ForgotPassword
     );
@@ -115,7 +115,7 @@ export class AccountService {
     );
 
     await this._refreshTokenEntityService.revokeAllForUser(user);
-    await this._oneTimeTokenEntityService.revokeAllForUser(user);
+    await this._oneTimeTokenRedisService.revokeAllForUser(user.id);
   }
 
   async deleteAccount(dto: DeleteAccountInputDto): Promise<void> {
@@ -138,8 +138,8 @@ export class AccountService {
       throw new InvalidCredentialsException();
     }
 
-    const verificationToken = await this._oneTimeTokenEntityService.create(
-      user,
+    const verificationToken = await this._oneTimeTokenRedisService.create(
+      user.id,
       OneTimeTokenType.AccountDeletion
     );
 
@@ -159,8 +159,8 @@ export class AccountService {
       throw new AccountDeletionNotFoundException(email);
     }
 
-    await this._oneTimeTokenEntityService.verifyToken(
-      user,
+    await this._oneTimeTokenRedisService.verifyToken(
+      user.id,
       dto.token,
       OneTimeTokenType.AccountDeletion
     );

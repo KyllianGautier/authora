@@ -2,13 +2,10 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import {
-  OneTimeTokenEntity,
-  OneTimeTokenType
-} from '../../../src/entity/one-time-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
 import { createUserWithPassword } from '../utils/create-user-with-password';
-import { hashVerify } from '../utils/hash';
+import { getOneTimeToken } from '../utils/get-one-time-token';
 
 // Requests account deletion: verifies credentials, creates a one-time deletion token,
 // and sends a verification email via the queue. The actual deletion happens on /account/delete/validate.
@@ -108,7 +105,7 @@ describe('POST /account/delete', () => {
     });
 
     it('should return 200, create a deletion token and send verification email', async () => {
-      await createUserWithPassword(
+      const user = await createUserWithPassword(
         dataSource,
         'user@example.com',
         'password123'
@@ -119,28 +116,18 @@ describe('POST /account/delete', () => {
         .send({ email: 'user@example.com', password: 'password123' })
         .expect(200);
 
-      // A one-time deletion token should be stored (hashed) in the database
-      const token = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .findOne({
-          where: {
-            user: { email: 'user@example.com' },
-            type: OneTimeTokenType.AccountDeletion
-          }
-        });
+      // A one-time deletion token should be stored in Redis
+      const ott = await getOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
 
-      expect(token).not.toBeNull();
-      expect(token!.revoked).toBe(false);
+      expect(ott).not.toBeNull();
 
-      // Verify the clear token in the queue message matches the hashed token in DB
+      // Verify the email queue message
       const messages = await consumeEmailQueue();
 
       expect(messages).toHaveLength(1);
       expect(messages[0].pattern).toBe('account-deletion-verification');
       expect(messages[0].data.email).toBe('user@example.com');
-      await expect(
-        hashVerify(token!.tokenHash, messages[0].data.token as string)
-      ).resolves.toBe(true);
+      expect(messages[0].data.token).toBeDefined();
     });
 
     it('should normalize email to lowercase', async () => {

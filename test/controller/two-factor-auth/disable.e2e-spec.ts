@@ -3,11 +3,12 @@ import * as speakeasy from 'speakeasy';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { OneTimeTokenEntity, OneTimeTokenType } from '../../../src/entity/one-time-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
 import { TwoFactorAuthEntity } from '../../../src/entity/two-factor-auth.entity';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
 import { createOneTimeToken } from '../utils/create-one-time-token';
+import { getOneTimeToken } from '../utils/get-one-time-token';
 import { createRefreshToken } from '../utils/create-refresh-token';
 import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
@@ -331,7 +332,7 @@ describe('POST /2fa/disable', () => {
         'password123'
       );
 
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.AccountDeletion);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
 
       const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
       const code = generateTotpCode(twoFactorAuth.secret);
@@ -349,11 +350,9 @@ describe('POST /2fa/disable', () => {
         'Two-factor authentication disabled'
       );
 
-      const activeTokens = await dataSource
-        .getRepository(OneTimeTokenEntity)
-        .find({ where: { user: { email: 'user@example.com' }, revoked: false } });
+      const token = await getOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
 
-      expect(activeTokens).toHaveLength(0);
+      expect(token).toBeNull();
     });
   });
 

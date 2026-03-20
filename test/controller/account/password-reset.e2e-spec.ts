@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { OneTimeTokenType } from '../../../src/entity/one-time-token.entity';
+import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { PasswordEntity } from '../../../src/entity/password.entity';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
 import {
@@ -88,11 +88,9 @@ describe('POST /account/password/reset', () => {
     });
 
     it('should return 401 when token is expired', async () => {
-      const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.ForgotPassword, {
-        expiredAt: new Date(Date.now() - 1000)
-      });
+      await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
 
+      // No token created in Redis — equivalent to an expired token (TTL elapsed)
       const response = await request(app.getHttpServer())
         .post('/api/v1/account/password/reset')
         .send({ email: 'user@example.com', token: FAKE_ONE_TIME_TOKEN, newPassword: VALID_PASSWORD })
@@ -103,7 +101,7 @@ describe('POST /account/password/reset', () => {
 
     it('should return 200 and reset password with valid token', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.ForgotPassword);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/account/password/reset')
@@ -124,7 +122,7 @@ describe('POST /account/password/reset', () => {
 
     it('should return 400 when new password was already used', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.ForgotPassword);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/account/password/reset')
@@ -136,7 +134,7 @@ describe('POST /account/password/reset', () => {
 
     it('should revoke the token after use', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.ForgotPassword);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
 
       await request(app.getHttpServer())
         .post('/api/v1/account/password/reset')
@@ -155,7 +153,7 @@ describe('POST /account/password/reset', () => {
     it('should revoke all refresh tokens for the user', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
       await createRefreshToken(dataSource, user);
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.ForgotPassword);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
 
       await request(app.getHttpServer())
         .post('/api/v1/account/password/reset')
@@ -172,7 +170,7 @@ describe('POST /account/password/reset', () => {
 
     it('should normalize email to lowercase', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
-      await createOneTimeToken(dataSource, user, OneTimeTokenType.ForgotPassword);
+      await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/account/password/reset')
