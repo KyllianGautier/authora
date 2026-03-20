@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
 import { RefreshTokenEntity } from '../../entity/refresh-token.entity';
@@ -36,6 +36,7 @@ export class RefreshTokenEntityService {
       this._repository.create({
         user,
         tokenHash,
+        family: randomUUID(),
         expiredAt
       })
     );
@@ -43,8 +44,34 @@ export class RefreshTokenEntityService {
     return clearToken;
   }
 
-  async findActiveForUser(user: UserEntity): Promise<RefreshTokenEntity | null> {
-    return this._repository.findOne({ where: { user: { id: user.id }, revoked: false }});
+  async findActiveForUser(
+    user: UserEntity
+  ): Promise<RefreshTokenEntity | null> {
+    return this._repository.findOne({
+      where: { user: { id: user.id }, revoked: false }
+    });
+  }
+
+  async findByUserIncludingRevoked(
+    user: UserEntity,
+    clearToken: string
+  ): Promise<RefreshTokenEntity | null> {
+    const tokens = await this._repository.find({
+      where: { user: { id: user.id } },
+      order: { createdAt: 'DESC' }
+    });
+
+    for (const token of tokens) {
+      const match = await this._hashService.verify(
+        token.tokenHash,
+        clearToken
+      );
+      if (match) {
+        return token;
+      }
+    }
+
+    return null;
   }
 
   async verify(
@@ -61,6 +88,13 @@ export class RefreshTokenEntityService {
     await this._repository.update({ user, revoked: false }, { revoked: true });
   }
 
+  async revokeFamily(family: string): Promise<void> {
+    await this._repository.update(
+      { family, revoked: false },
+      { revoked: true }
+    );
+  }
+
   async rotate(
     refreshToken: RefreshTokenEntity,
     user: UserEntity
@@ -68,7 +102,7 @@ export class RefreshTokenEntityService {
     // Revoke the current refresh token
     await this._repository.update(refreshToken.id, { revoked: true });
 
-    // Generate a new refresh token with the same expiration date
+    // Generate a new refresh token in the same family
     const clearToken = randomBytes(32).toString('hex');
     const tokenHash = await this._hashService.hash(clearToken);
 
@@ -76,6 +110,7 @@ export class RefreshTokenEntityService {
       this._repository.create({
         user,
         tokenHash,
+        family: refreshToken.family,
         expiredAt: refreshToken.expiredAt
       })
     );
