@@ -91,13 +91,13 @@ export class TwoFactorAuthEntityService {
   async validateTotpForUser(
     user: UserEntity,
     clearCode: string
-  ): Promise<void> {
+  ): Promise<TotpValidateResult> {
     const twoFactorAuth = await this._repository.findOne({
       where: { user: { id: user.id }, isVerified: true }
     });
 
     if (twoFactorAuth === null) {
-      throw new TwoFactorAuthNotFoundException();
+      return 'not_found';
     }
 
     const isCodeValid = speakeasy.totp.verify({
@@ -107,9 +107,7 @@ export class TwoFactorAuthEntityService {
       window: 1
     });
 
-    if (!isCodeValid) {
-      throw new TwoFactorAuthCodeInvalidException();
-    }
+    return isCodeValid ? 'valid' : 'invalid';
   }
 
   async disableForUser(
@@ -173,3 +171,5 @@ export class TwoFactorAuthCodeInvalidException extends UnauthorizedException {
     super('Invalid credentials');
   }
 }
+
+export type TotpValidateResult = 'valid' | 'invalid' | 'not_found';

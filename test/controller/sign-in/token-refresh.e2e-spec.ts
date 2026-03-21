@@ -293,7 +293,7 @@ describe('POST /auth/sign-in/token/refresh', () => {
         .set('Cookie', `refreshToken=${oldRefreshToken}`)
         .expect(401);
 
-      expect(response.body.message).toBe('Token reuse detected');
+      expect(response.body.message).toBe('Invalid or expired refresh token');
 
       // All tokens in the family should be revoked
       const tokens = await dataSource
@@ -391,7 +391,7 @@ describe('POST /auth/sign-in/token/refresh', () => {
         .set('Cookie', `refreshToken=${familyA.refreshToken}`)
         .expect(401);
 
-      expect(response.body.message).toBe('Token reuse detected');
+      expect(response.body.message).toBe('Invalid or expired refresh token');
 
       // Family B's active token should still be valid
       const activeTokens = await dataSource

@@ -32,10 +32,10 @@ export class TwoFactorAuthService {
       throw new InvalidCredentialsException();
     }
 
-    const isPasswordValid =
+    const passwordResult =
       await this._passwordEntityService.verifyUserPassword(user, dto.password);
 
-    if (!isPasswordValid) {
+    if (passwordResult === 'invalid') {
       throw new InvalidCredentialsException();
     }
 
@@ -64,10 +64,10 @@ export class TwoFactorAuthService {
       throw new InvalidCredentialsException();
     }
 
-    const isPasswordValid =
+    const passwordResult =
       await this._passwordEntityService.verifyUserPassword(user, dto.password);
 
-    if (!isPasswordValid) {
+    if (passwordResult === 'invalid') {
       throw new InvalidCredentialsException();
     }
 
@@ -88,10 +88,10 @@ export class TwoFactorAuthService {
       throw new InvalidCredentialsException();
     }
 
-    const isPasswordValid =
+    const passwordResult =
       await this._passwordEntityService.verifyUserPassword(user, dto.password);
 
-    if (!isPasswordValid) {
+    if (passwordResult === 'invalid') {
       throw new InvalidCredentialsException();
     }
 

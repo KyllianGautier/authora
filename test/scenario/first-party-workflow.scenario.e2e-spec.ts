@@ -13,6 +13,7 @@ import {
 } from '../setup';
 import { createUserWithPassword } from '../controller/utils/create-user-with-password';
 import { createTwoFactorAuth } from '../controller/utils/create-two-factor-auth';
+import { expirePassword } from '../controller/utils/expire-password';
 import { extractCookie } from '../controller/utils/extract-cookie';
 
 const BASE = '/api/v1/auth/sign-in';
@@ -858,6 +859,71 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const cookie = extractCookie(tokenRes, 'refreshToken');
       expect(cookie).toBeDefined();
+    });
+  });
+
+  describe('expired password → reset → resume same session → exchange → token', () => {
+    it('should resume the same session after resetting an expired password', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'OldP@ssw0rd!');
+      await expirePassword(dataSource, user);
+
+      // Start sign-in flow
+      const createRes = await request(app.getHttpServer())
+        .post(BASE)
+        .send({ tenantId: 'default' })
+        .expect(201);
+
+      const sessionId = createRes.body.sessionId;
+
+      // Password is expired → 401 with nextStep
+      const expiredRes = await request(app.getHttpServer())
+        .post(`${BASE}/primary/password`)
+        .send({ sessionId, email: 'user@example.com', password: 'OldP@ssw0rd!' })
+        .expect(401);
+
+      expect(expiredRes.body.message).toBe('Password expired');
+      expect(expiredRes.body.nextStep).toBe('reset_password');
+
+      // User resets their password via forgot flow
+      await request(app.getHttpServer())
+        .post('/api/v1/account/password/forgot')
+        .send({ email: 'user@example.com' })
+        .expect(202);
+
+      const messages = await consumeEmailQueue();
+      const token = messages[0].data.token as string;
+
+      await request(app.getHttpServer())
+        .post('/api/v1/account/password/reset')
+        .send({ email: 'user@example.com', token, newPassword: 'N3wP@ssw0rd!' })
+        .expect(200);
+
+      // Resume the SAME session with the new password
+      const authRes = await request(app.getHttpServer())
+        .post(`${BASE}/primary/password`)
+        .send({ sessionId, email: 'user@example.com', password: 'N3wP@ssw0rd!' })
+        .expect(200);
+
+      expect(authRes.body.sessionId).toBe(sessionId);
+      expect(authRes.body.nextStep).toBe('complete');
+
+      // Complete the flow: exchange → token
+      const exchangeRes = await request(app.getHttpServer())
+        .post(`${BASE}/exchange`)
+        .send({ sessionId })
+        .expect(200);
+
+      const tokenRes = await request(app.getHttpServer())
+        .post(`${BASE}/token`)
+        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .expect(200);
+
+      expect(tokenRes.body.accessToken).toBeDefined();
+      expect(tokenRes.body.type).toBe('Bearer');
+
+      const cookie = extractCookie(tokenRes, 'refreshToken');
+      expect(cookie).toBeDefined();
+      expect(cookie!.flags).toContain('HttpOnly');
     });
   });
 });
