@@ -926,4 +926,55 @@ describe('Scenario: First-party sign-in workflows', () => {
       expect(cookie!.flags).toContain('HttpOnly');
     });
   });
+
+  describe('expired password → magic-link bypasses expiration → exchange → token', () => {
+    it('should complete sign-in via magic-link even when password is expired', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'OldP@ssw0rd!');
+      await expirePassword(dataSource, user);
+
+      // Start sign-in flow
+      const createRes = await request(app.getHttpServer())
+        .post(BASE)
+        .send({ tenantId: 'default' })
+        .expect(201);
+
+      const sessionId = createRes.body.sessionId;
+
+      // Use magic-link instead of password (bypasses expiration entirely)
+      await request(app.getHttpServer())
+        .post(`${BASE}/primary/magic-link`)
+        .send({ sessionId, email: 'user@example.com' })
+        .expect(202);
+
+      const messages = await consumeEmailQueue();
+      expect(messages).toHaveLength(1);
+      const token = messages[0].data.token as string;
+
+      const validateRes = await request(app.getHttpServer())
+        .get(`${BASE}/primary/magic-link/validate`)
+        .query({ sessionId, token })
+        .expect(200);
+
+      expect(validateRes.body.sessionId).toBe(sessionId);
+      expect(validateRes.body.nextStep).toBe('complete');
+
+      // Complete the flow: exchange → token
+      const exchangeRes = await request(app.getHttpServer())
+        .post(`${BASE}/exchange`)
+        .send({ sessionId })
+        .expect(200);
+
+      const tokenRes = await request(app.getHttpServer())
+        .post(`${BASE}/token`)
+        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .expect(200);
+
+      expect(tokenRes.body.accessToken).toBeDefined();
+      expect(tokenRes.body.type).toBe('Bearer');
+
+      const cookie = extractCookie(tokenRes, 'refreshToken');
+      expect(cookie).toBeDefined();
+      expect(cookie!.flags).toContain('HttpOnly');
+    });
+  });
 });
