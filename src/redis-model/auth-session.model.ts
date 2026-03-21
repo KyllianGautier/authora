@@ -17,10 +17,13 @@ export interface AuthSession {
   rememberMe: boolean;
 
   // MFA auth status:
+  mfaVerified: boolean;
   mfaPolicy: MfaPolicy;
   mfaSetup: boolean;
-  mfaVerified: boolean;
   deviceTrusted: boolean;
+
+  // Device:
+  deviceFingerprint?: string;
 
   // Exchange status:
   exchanged: boolean;

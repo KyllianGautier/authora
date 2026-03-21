@@ -8,6 +8,7 @@ import {
 import { PasswordEntity } from './password.entity';
 import { RefreshTokenEntity } from './refresh-token.entity';
 import { SignInAttemptEntity } from './sign-in-attempt.entity';
+import { TrustedDeviceEntity } from './trusted-device.entity';
 
 
 
@@ -55,6 +56,11 @@ export class UserEntity {
     orphanedRowAction: 'delete'
   })
   signInAttempts: SignInAttemptEntity[];
+
+  @OneToMany(() => TrustedDeviceEntity, (trustedDevice) => trustedDevice.user, {
+    orphanedRowAction: 'delete'
+  })
+  trustedDevices: TrustedDeviceEntity[];
 
   @Column({ name: 'is_locked', type: 'boolean', default: false })
   isLocked: boolean;

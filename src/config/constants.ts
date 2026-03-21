@@ -39,6 +39,10 @@ export const PASSWORD_EXPIRATION_ENABLED = process.env.NODE_ENV === 'test' ? tru
 export const PASSWORD_MAX_AGE_SEC = process.env.NODE_ENV === 'test' ? 60 : 5_184_000; // test: 60s, prod: 60 days
 export const UNLOCK_ON_PASSWORD_RESET = true;
 
+// Trusted devices
+export const TRUSTED_DEVICE_TTL_SEC = process.env.NODE_ENV === 'test' ? 60 : 5_184_000; // test: 60s, prod: 60 days
+export const DEVICE_FINGERPRINT_COOKIE_MAX_AGE_DAYS = 365;
+
 // MFA authentication lock
 export const MFA_AUTH_MAX_ATTEMPTS = 3;
 export const MFA_AUTH_COOLDOWN_SEC = 300;

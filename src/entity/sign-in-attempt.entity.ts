@@ -34,6 +34,6 @@ export class SignInAttemptEntity {
   @Column({ type: 'enum', enum: AuthFailureReason, nullable: true })
   failureReason: AuthFailureReason | null
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date
 }

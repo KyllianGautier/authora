@@ -9,11 +9,14 @@ import {
   PRIMARY_AUTH_MAX_ATTEMPTS
 } from '../../../src/config/constants';
 import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
+import { TrustedDeviceEntity } from '../../../src/entity/trusted-device.entity';
 import { LockReason, UserEntity } from '../../../src/entity/user.entity';
 import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp, setTenantConfig } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
+import { createTrustedDevice, FAKE_DEVICE_FINGERPRINT } from '../utils/create-trusted-device';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { expirePassword } from '../utils/expire-password';
+import { extractCookie } from '../utils/extract-cookie';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Authenticates with email and password within an existing auth session.
@@ -202,6 +205,95 @@ describe('POST /auth/sign-in/primary/password', () => {
         .expect(200);
 
       expect(response.body.nextStep).toBe('complete');
+    });
+  });
+
+  describe('trusted device', () => {
+    it('should create a trusted device with trusted: false and set the cookie', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const session = await createAuthSession(app);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      // Verify a TrustedDevice was created
+      const devices = await dataSource
+        .getRepository(TrustedDeviceEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(devices).toHaveLength(1);
+      expect(devices[0].trusted).toBe(false);
+
+      // Verify the deviceFingerprint cookie is set
+      const cookie = extractCookie(response, 'deviceFingerprint');
+      expect(cookie).toBeDefined();
+      expect(cookie!.value.length).toBeGreaterThan(0);
+      expect(cookie!.flags).toContain('Secure');
+      expect(cookie!.flags).toContain('SameSite=Strict');
+      expect(cookie!.flags).not.toContain('HttpOnly');
+
+      // Verify the fingerprint is stored in the session
+      const redisSession = await getAuthSession(app, session.id);
+      expect(redisSession!.deviceFingerprint).toBe(cookie!.value);
+    });
+
+    it('should reuse existing device and update lastSeenAt when cookie is sent', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTrustedDevice(dataSource, user);
+      const session = await createAuthSession(app);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .set('Cookie', `deviceFingerprint=${FAKE_DEVICE_FINGERPRINT}`)
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      // Should not create a second device
+      const devices = await dataSource
+        .getRepository(TrustedDeviceEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(devices).toHaveLength(1);
+
+      // Cookie should be set with the same fingerprint
+      const cookie = extractCookie(response, 'deviceFingerprint');
+      expect(cookie).toBeDefined();
+      expect(cookie!.value).toBe(FAKE_DEVICE_FINGERPRINT);
+    });
+
+    it('should set deviceTrusted on session when device is trusted', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTrustedDevice(dataSource, user, { trusted: true });
+      const session = await createAuthSession(app);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .set('Cookie', `deviceFingerprint=${FAKE_DEVICE_FINGERPRINT}`)
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      const redisSession = await getAuthSession(app, session.id);
+      expect(redisSession!.deviceTrusted).toBe(true);
+    });
+
+    it('should not set deviceTrusted when trust has expired', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTrustedDevice(dataSource, user, {
+        trusted: true,
+        trustedUntil: new Date('2000-01-01')
+      });
+      const session = await createAuthSession(app);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .set('Cookie', `deviceFingerprint=${FAKE_DEVICE_FINGERPRINT}`)
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      const redisSession = await getAuthSession(app, session.id);
+      expect(redisSession!.deviceTrusted).toBe(false);
     });
   });
 

@@ -19,6 +19,7 @@ export interface CreateAuthSessionOptions {
   mfaSetup?: boolean;
   mfaVerified?: boolean;
   deviceTrusted?: boolean;
+  deviceFingerprint?: string;
   exchanged?: boolean;
 }
 
@@ -40,6 +41,7 @@ export async function createAuthSession(
     mfaSetup: options?.mfaSetup ?? false,
     mfaVerified: options?.mfaVerified ?? false,
     deviceTrusted: options?.deviceTrusted ?? false,
+    deviceFingerprint: options?.deviceFingerprint,
     exchanged: options?.exchanged ?? false,
     createdAt: now.toISO(),
     expiresAt: now.plus({ seconds: AUTH_SESSION_TTL_SEC }).toISO()

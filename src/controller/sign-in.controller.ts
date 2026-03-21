@@ -31,6 +31,7 @@ import { SessionExchangeInputDto } from '../dto/input/session-exchange.input.dto
 import { SessionTokenInputDto } from '../dto/input/session-token.input.dto';
 import { AuthSessionStatusOutputDto } from '../dto/output/auth-session-status.output.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
+import { DEVICE_FINGERPRINT_COOKIE_MAX_AGE_DAYS } from '../config/constants';
 import { SignInService } from '../service/sign-in.service';
 
 @ApiTags('Sign-in')
@@ -59,11 +60,20 @@ export class SignInController {
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async primaryAuthPassword(
     @Body() dto: SessionPasswordInputDto,
-    @Req() req: Request
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
   ): Promise<AuthSessionStatusOutputDto> {
-    const session = await this._signInService.primaryAuthPassword(
-      dto.sessionId, dto, req.ip ?? '', req.headers['user-agent'] ?? ''
-    );
+    const { deviceFingerprint, ...session } =
+      await this._signInService.primaryAuthPassword(
+        dto.sessionId,
+        dto,
+        req.ip ?? '',
+        req.headers['user-agent'] ?? '',
+        req.cookies?.deviceFingerprint as string | undefined
+      );
+
+    this._setDeviceFingerprintCookie(res, deviceFingerprint);
+
     return AuthSessionStatusOutputDto.fromSession(session);
   }
 
@@ -89,9 +99,21 @@ export class SignInController {
   @ApiUnauthorizedResponse({ description: 'Invalid token' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async primaryAuthMagicLinkValidate(
-    @Query() dto: SessionMagicLinkValidateInputDto
+    @Query() dto: SessionMagicLinkValidateInputDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
   ): Promise<AuthSessionStatusOutputDto> {
-    const session = await this._signInService.primaryAuthMagicLinkValidate(dto.sessionId, dto);
+    const { deviceFingerprint, ...session } =
+      await this._signInService.primaryAuthMagicLinkValidate(
+        dto.sessionId,
+        dto,
+        req.ip ?? '',
+        req.headers['user-agent'] ?? '',
+        req.cookies?.deviceFingerprint as string | undefined
+      );
+
+    this._setDeviceFingerprintCookie(res, deviceFingerprint);
+
     return AuthSessionStatusOutputDto.fromSession(session);
   }
 
@@ -208,5 +230,17 @@ export class SignInController {
     });
 
     return { message: 'Token revoked' };
+  }
+
+  private _setDeviceFingerprintCookie(
+    res: Response,
+    fingerprint: string
+  ): void {
+    res.cookie('deviceFingerprint', fingerprint, {
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: DEVICE_FINGERPRINT_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1_000
+    });
   }
 }

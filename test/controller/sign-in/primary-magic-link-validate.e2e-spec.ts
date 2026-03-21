@@ -3,10 +3,13 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
+import { TrustedDeviceEntity } from '../../../src/entity/trusted-device.entity';
 import { resetTestState, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
 import { createOneTimeToken, FAKE_ONE_TIME_TOKEN } from '../utils/create-one-time-token';
+import { createTrustedDevice, FAKE_DEVICE_FINGERPRINT } from '../utils/create-trusted-device';
 import { createUserWithPassword } from '../utils/create-user-with-password';
+import { extractCookie } from '../utils/extract-cookie';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Validates a magic link token via query params and marks primary auth as verified.
@@ -116,6 +119,46 @@ describe('GET /auth/sign-in/primary/magic-link/validate', () => {
       expect(redisSession!.userId).toBe(user.id);
       expect(redisSession!.mfaSetup).toBe(false);
       expect(redisSession!.exchanged).toBe(false);
+    });
+
+    it('should create a trusted device and set the cookie', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const session = await createAuthSession(app, { userId: user.id });
+      await createOneTimeToken(app, user.id, OneTimeTokenType.MagicLink);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
+        .query({ sessionId: session.id, token: FAKE_ONE_TIME_TOKEN })
+        .expect(200);
+
+      // Verify a TrustedDevice was created
+      const devices = await dataSource
+        .getRepository(TrustedDeviceEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(devices).toHaveLength(1);
+      expect(devices[0].trusted).toBe(false);
+
+      // Verify the deviceFingerprint cookie is set
+      const cookie = extractCookie(response, 'deviceFingerprint');
+      expect(cookie).toBeDefined();
+      expect(cookie!.value.length).toBeGreaterThan(0);
+    });
+
+    it('should set deviceTrusted when device is trusted', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTrustedDevice(dataSource, user, { trusted: true });
+      const session = await createAuthSession(app, { userId: user.id });
+      await createOneTimeToken(app, user.id, OneTimeTokenType.MagicLink);
+
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/sign-in/primary/magic-link/validate')
+        .set('Cookie', `deviceFingerprint=${FAKE_DEVICE_FINGERPRINT}`)
+        .query({ sessionId: session.id, token: FAKE_ONE_TIME_TOKEN })
+        .expect(200);
+
+      const redisSession = await getAuthSession(app, session.id);
+      expect(redisSession!.deviceTrusted).toBe(true);
     });
   });
 

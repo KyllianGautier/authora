@@ -15,6 +15,7 @@ import { LockReason } from '../entity/user.entity';
 import { AuthFailureReason } from '../entity/sign-in-attempt.entity';
 import { SignInAttemptEntityService } from './entity-service/sign-in-attempt-entity.service';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
+import { TrustedDeviceEntity } from '../entity/trusted-device.entity';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
 import { AuthSession } from '../redis-model/auth-session.model';
@@ -30,6 +31,7 @@ import { OneTimeTokenRedisService } from './redis-model-service/one-time-token-r
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { PasswordRevocationReason } from '../entity/password.entity';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
+import { TrustedDeviceEntityService } from './entity-service/trusted-device-entity.service';
 import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
 
@@ -43,6 +45,7 @@ export class SignInService {
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService,
     private readonly _signInAttemptEntityService: SignInAttemptEntityService,
+    private readonly _trustedDeviceEntityService: TrustedDeviceEntityService,
     private readonly _emailService: EmailService,
     private readonly _jwtService: JwtService,
     @InjectRepository(TwoFactorAuthEntity)
@@ -63,8 +66,9 @@ export class SignInService {
     sessionId: string,
     dto: SessionPasswordInputDto,
     ip: string,
-    userAgent: string
-  ): Promise<AuthSession> {
+    userAgent: string,
+    deviceFingerprint: string | undefined
+  ): Promise<AuthSession & { deviceFingerprint: string }> {
     const session = await this._getSession(sessionId);
 
     const email = dto.email.toLowerCase();
@@ -119,17 +123,24 @@ export class SignInService {
 
     await this._signInAttemptEntityService.create(user, ip, userAgent, true);
 
+    // Register or update the trusted device
+    const { device, fingerprint } =
+      await this._trustedDeviceEntityService.registerOrUpdate(
+        user, deviceFingerprint, ip, userAgent
+      );
+
     // Update the session with user info and primary auth status
     session.userId = user.id;
     session.primaryAuthVerified = true;
     session.rememberMe = dto.rememberMe ?? false;
+    session.deviceFingerprint = fingerprint;
 
     // Resolve MFA status for the user
-    await this._resolveMfaStatus(session, user);
+    await this._resolveMfaStatus(session, user, device);
 
     await this._authSessionRedisService.update(session);
 
-    return session;
+    return { ...session, deviceFingerprint: fingerprint };
   }
 
   async primaryAuthMagicLink(
@@ -161,8 +172,11 @@ export class SignInService {
 
   async primaryAuthMagicLinkValidate(
     sessionId: string,
-    dto: SessionMagicLinkValidateInputDto
-  ): Promise<AuthSession> {
+    dto: SessionMagicLinkValidateInputDto,
+    ip: string,
+    userAgent: string,
+    deviceFingerprint: string | undefined
+  ): Promise<AuthSession & { deviceFingerprint: string }> {
     const session = await this._getSession(sessionId);
 
     if (session.userId === undefined) {
@@ -181,13 +195,20 @@ export class SignInService {
       OneTimeTokenType.MagicLink
     );
 
+    // Register or update the trusted device
+    const { device, fingerprint } =
+      await this._trustedDeviceEntityService.registerOrUpdate(
+        user, deviceFingerprint, ip, userAgent
+      );
+
     // Mark primary auth as verified and resolve MFA status
     session.primaryAuthVerified = true;
-    await this._resolveMfaStatus(session, user);
+    session.deviceFingerprint = fingerprint;
+    await this._resolveMfaStatus(session, user, device);
 
     await this._authSessionRedisService.update(session);
 
-    return session;
+    return { ...session, deviceFingerprint: fingerprint };
   }
 
   async mfaAuthTotpValidate(
@@ -247,6 +268,19 @@ export class SignInService {
     await this._signInAttemptEntityService.create(user, ip, userAgent, true);
 
     session.mfaVerified = true;
+
+    // Trust the device if requested
+    if (dto.trustThisDevice === true && session.deviceFingerprint !== undefined) {
+      const device = await this._trustedDeviceEntityService.findByFingerprint(
+        user, session.deviceFingerprint
+      );
+
+      if (device !== null) {
+        await this._trustedDeviceEntityService.trust(device);
+        session.deviceTrusted = true;
+      }
+    }
+
     await this._authSessionRedisService.update(session);
 
     return session;
@@ -461,7 +495,8 @@ export class SignInService {
 
   private async _resolveMfaStatus(
     session: AuthSession,
-    user: UserEntity
+    user: UserEntity,
+    device: TrustedDeviceEntity
   ): Promise<void> {
     const twoFactorAuth = await this._twoFactorAuthRepository.findOne({
       where: { user: { id: user.id } }
@@ -470,9 +505,8 @@ export class SignInService {
     const hasVerifiedMfa = twoFactorAuth !== null && twoFactorAuth.isVerified;
 
     session.mfaSetup = hasVerifiedMfa;
-
-    // TODO: mfaPolicy should come from tenant/app config
-    // For now, keep the default from session creation
+    session.mfaPolicy = this._tenantConfig.mfaPolicy;
+    session.deviceTrusted = this._trustedDeviceEntityService.isTrusted(device);
   }
 }
 

@@ -6,9 +6,11 @@ import { DataSource } from 'typeorm';
 import { MFA_AUTH_COOLDOWN_SEC, MFA_AUTH_MAX_ATTEMPTS } from '../../../src/config/constants';
 import { DateTime } from 'luxon';
 import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
+import { TrustedDeviceEntity } from '../../../src/entity/trusted-device.entity';
 import { LockReason, UserEntity } from '../../../src/entity/user.entity';
 import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
+import { createTrustedDevice, FAKE_DEVICE_FINGERPRINT } from '../utils/create-trusted-device';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
 import { getAuthSession } from '../utils/get-auth-session';
@@ -185,6 +187,118 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
       expect(attempts).toHaveLength(1);
       expect(attempts[0].success).toBe(true);
       expect(attempts[0].failureReason).toBeNull();
+    });
+
+    it('should trust the device when trustThisDevice is true', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const device = await createTrustedDevice(dataSource, user);
+      const session = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true,
+        deviceFingerprint: FAKE_DEVICE_FINGERPRINT
+      });
+
+      const code = speakeasy.totp({
+        secret: twoFactorAuth.secret,
+        encoding: 'base32'
+      });
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: session.id, code, trustThisDevice: true })
+        .expect(200);
+
+      const updatedDevice = await dataSource
+        .getRepository(TrustedDeviceEntity)
+        .findOneBy({ id: device.id });
+
+      expect(updatedDevice!.trusted).toBe(true);
+      expect(updatedDevice!.trustedUntil).toBeDefined();
+      expect(new Date(updatedDevice!.trustedUntil).getTime()).toBeGreaterThan(Date.now());
+
+      const redisSession = await getAuthSession(app, session.id);
+      expect(redisSession!.deviceTrusted).toBe(true);
+    });
+
+    it('should not trust the device when trustThisDevice is false', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const device = await createTrustedDevice(dataSource, user);
+      const session = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true,
+        deviceFingerprint: FAKE_DEVICE_FINGERPRINT
+      });
+
+      const code = speakeasy.totp({
+        secret: twoFactorAuth.secret,
+        encoding: 'base32'
+      });
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: session.id, code, trustThisDevice: false })
+        .expect(200);
+
+      const updatedDevice = await dataSource
+        .getRepository(TrustedDeviceEntity)
+        .findOneBy({ id: device.id });
+
+      expect(updatedDevice!.trusted).toBe(false);
+    });
+
+    it('should not trust the device when trustThisDevice is omitted', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const device = await createTrustedDevice(dataSource, user);
+      const session = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true,
+        deviceFingerprint: FAKE_DEVICE_FINGERPRINT
+      });
+
+      const code = speakeasy.totp({
+        secret: twoFactorAuth.secret,
+        encoding: 'base32'
+      });
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: session.id, code })
+        .expect(200);
+
+      const updatedDevice = await dataSource
+        .getRepository(TrustedDeviceEntity)
+        .findOneBy({ id: device.id });
+
+      expect(updatedDevice!.trusted).toBe(false);
+    });
+
+    it('should not trust the device when session has no deviceFingerprint', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const device = await createTrustedDevice(dataSource, user);
+      const session = await createAuthSession(app, {
+        userId: user.id,
+        primaryAuthVerified: true
+      });
+
+      const code = speakeasy.totp({
+        secret: twoFactorAuth.secret,
+        encoding: 'base32'
+      });
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/mfa/totp/validate')
+        .send({ sessionId: session.id, code, trustThisDevice: true })
+        .expect(200);
+
+      const updatedDevice = await dataSource
+        .getRepository(TrustedDeviceEntity)
+        .findOneBy({ id: device.id });
+
+      expect(updatedDevice!.trusted).toBe(false);
     });
   });
 
