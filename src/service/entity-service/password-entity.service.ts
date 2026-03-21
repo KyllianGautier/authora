@@ -54,7 +54,7 @@ export class PasswordEntityService {
       return 'invalid';
     }
 
-    if (PASSWORD_EXPIRATION_ENABLED && DateTime.fromMillis(currentPassword.createdAt.getTime() + PASSWORD_MAX_AGE_SEC * 1000) < DateTime.utc()) {
+    if (PASSWORD_EXPIRATION_ENABLED && DateTime.fromMillis(currentPassword.createdAt.getTime() + PASSWORD_MAX_AGE_SEC * 1_000) < DateTime.utc()) {
       return 'expired';
     }
 

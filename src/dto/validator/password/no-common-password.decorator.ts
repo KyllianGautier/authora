@@ -29,7 +29,7 @@ export class NoCommonPasswordConstraint
 
     try {
       const response = await fetch(url, {
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(5_000)
       });
 
       if (!response.ok) return true;

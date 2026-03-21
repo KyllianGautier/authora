@@ -23,7 +23,7 @@ export async function createOneTimeToken(
   const tokenHash = createHash('sha256')
     .update(FAKE_ONE_TIME_TOKEN)
     .digest('hex');
-  const ttl = options?.ttlSeconds ?? 3600;
+  const ttl = options?.ttlSeconds ?? 3_600;
 
   const key = 'ott:' + userId + ':' + type;
 

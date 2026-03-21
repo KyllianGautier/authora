@@ -15,7 +15,7 @@ function ensureTestKeys() {
   if (existsSync(privatePath) && existsSync(publicPath)) return;
 
   const { privateKey, publicKey } = generateKeyPairSync('rsa', {
-    modulusLength: 2048,
+    modulusLength: 2_048,
     publicKeyEncoding: { type: 'spki', format: 'pem' },
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
   });

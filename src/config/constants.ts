@@ -1,7 +1,7 @@
 export const EMAIL_QUEUE = 'EMAIL_QUEUE';
 
 // Argon2id hashing
-export const HASH_MEMORY_COST = process.env.NODE_ENV === 'test' ? 1024 : 65_536;
+export const HASH_MEMORY_COST = process.env.NODE_ENV === 'test' ? 1_024 : 65_536;
 export const HASH_TIME_COST = process.env.NODE_ENV === 'test' ? 1 : 3;
 export const HASH_PARALLELISM = process.env.NODE_ENV === 'test' ? 1 : 4;
 
