@@ -12,7 +12,9 @@ import {
 } from '../../config/constants';
 import { OTT_EXCHANGE_KEY, OTT_KEY } from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
+import { AuthSession } from '../../redis-model/auth-session.model';
 import { OneTimeTokenType } from '../../redis-model/one-time-token.model';
+import { AuthSessionRedisService } from './auth-session-redis.service';
 
 const TTL_SECONDS: Record<OneTimeTokenType, number> = {
   [OneTimeTokenType.AccountDeletion]: OTT_ACCOUNT_DELETION_TTL_SEC,
@@ -26,7 +28,10 @@ const TTL_SECONDS: Record<OneTimeTokenType, number> = {
 
 @Injectable()
 export class OneTimeTokenRedisService {
-  constructor(@Inject(REDIS_CLIENT) private readonly _redis: Redis) {}
+  constructor(
+    @Inject(REDIS_CLIENT) private readonly _redis: Redis,
+    private readonly _authSessionRedisService: AuthSessionRedisService
+  ) {}
 
   async create(userId: string, type: OneTimeTokenType): Promise<string> {
     const clearToken = randomBytes(32).toString('hex');
@@ -35,27 +40,38 @@ export class OneTimeTokenRedisService {
 
     const key = OTT_KEY(userId, type);
 
-    // If an existing token of the same type exists, clean up its exchange index
-    if (type === OneTimeTokenType.Exchange) {
-      const existingHash = await this._redis.get(key);
+    await this._redis.set(key, tokenHash, 'EX', ttl);
 
-      if (existingHash !== null) {
-        await this._redis.del(OTT_EXCHANGE_KEY(existingHash));
-      }
+    return clearToken;
+  }
+
+  async createExchangeToken(
+    userId: string,
+    sessionId: string
+  ): Promise<string> {
+    const clearToken = randomBytes(32).toString('hex');
+    const tokenHash = this._sha256(clearToken);
+    const ttl = this._getTtlSeconds(OneTimeTokenType.Exchange);
+
+    const key = OTT_KEY(userId, OneTimeTokenType.Exchange);
+
+    // If an existing exchange token exists, clean up its reverse index
+    const existingHash = await this._redis.get(key);
+
+    if (existingHash !== null) {
+      await this._redis.del(OTT_EXCHANGE_KEY(existingHash));
     }
 
     // Store the token hash keyed by userId + type
     await this._redis.set(key, tokenHash, 'EX', ttl);
 
-    // For exchange tokens, store a reverse index for lookup by token
-    if (type === OneTimeTokenType.Exchange) {
-      await this._redis.set(
-        OTT_EXCHANGE_KEY(tokenHash),
-        userId,
-        'EX',
-        ttl
-      );
-    }
+    // Store a reverse index pointing to the sessionId
+    await this._redis.set(
+      OTT_EXCHANGE_KEY(tokenHash),
+      sessionId,
+      'EX',
+      ttl
+    );
 
     return clearToken;
   }
@@ -82,22 +98,29 @@ export class OneTimeTokenRedisService {
     await this._redis.del(key);
   }
 
-  async consumeExchangeToken(clearToken: string): Promise<string> {
+  async consumeExchangeToken(clearToken: string): Promise<AuthSession> {
     const tokenHash = this._sha256(clearToken);
     const exchangeKey = OTT_EXCHANGE_KEY(tokenHash);
 
-    const userId = await this._redis.get(exchangeKey);
+    const sessionId = await this._redis.get(exchangeKey);
 
-    if (userId === null) {
+    if (sessionId === null) {
       throw new InvalidTokenException();
     }
 
-    // Consume both keys atomically
-    const ottKey = OTT_KEY(userId, OneTimeTokenType.Exchange);
+    // Load the auth session before consuming
+    const session = await this._authSessionRedisService.findById(sessionId);
 
+    if (session === null || session.userId === undefined) {
+      throw new InvalidTokenException();
+    }
+
+    // Consume the exchange token keys and the auth session
+    const ottKey = OTT_KEY(session.userId, OneTimeTokenType.Exchange);
     await this._redis.del(exchangeKey, ottKey);
+    await this._authSessionRedisService.delete(session);
 
-    return userId;
+    return session;
   }
 
   async revokeAllForUser(userId: string): Promise<void> {

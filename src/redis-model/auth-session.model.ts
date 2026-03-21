@@ -22,6 +22,9 @@ export interface AuthSession {
   mfaVerified: boolean;
   deviceTrusted: boolean;
 
+  // Exchange status:
+  exchanged: boolean;
+
   // Technical info:
   createdAt: string;
   expiresAt: string;

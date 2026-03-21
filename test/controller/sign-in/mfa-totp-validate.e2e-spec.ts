@@ -175,6 +175,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
       const redisSession = await getAuthSession(app, session.id);
       expect(redisSession).not.toBeNull();
       expect(redisSession!.mfaVerified).toBe(true);
+      expect(redisSession!.exchanged).toBe(false);
 
       // Verify sign-in attempt is recorded
       const attempts = await dataSource

@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   JWT_ACCESS_TOKEN_EXPIRATION_SEC,
+  JWT_REFRESH_TOKEN_LONG_EXPIRATION_SEC,
   JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC,
   PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD
 } from '../config/constants';
@@ -258,6 +259,10 @@ export class SignInService {
       throw new UnauthorizedException('MFA verification required');
     }
 
+    if (session.exchanged) {
+      throw new SessionNotFoundException();
+    }
+
     if (session.userId === undefined) {
       throw new InvalidCredentialsException();
     }
@@ -268,14 +273,16 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
-    // Create an exchange OTT
-    const exchangeToken = await this._oneTimeTokenRedisService.create(
-      user.id,
-      OneTimeTokenType.Exchange
-    );
+    // Create an exchange OTT linked to the session
+    const exchangeToken =
+      await this._oneTimeTokenRedisService.createExchangeToken(
+        user.id,
+        session.id
+      );
 
-    // Consume the auth session
-    await this._authSessionRedisService.delete(session);
+    // Mark the session as exchanged
+    session.exchanged = true;
+    await this._authSessionRedisService.update(session);
 
     return exchangeToken;
   }
@@ -283,10 +290,10 @@ export class SignInService {
   async token(
     exchangeToken: string
   ): Promise<SignInOutputDto & { refreshToken: string }> {
-    const userId =
+    const consumedSession =
       await this._oneTimeTokenRedisService.consumeExchangeToken(exchangeToken);
 
-    const user = await this._userEntityService.findById(userId);
+    const user = await this._userEntityService.findById(consumedSession.userId!);
 
     if (user === null) {
       throw new InvalidCredentialsException();
@@ -298,27 +305,20 @@ export class SignInService {
       { keyid: 'CHANGE_IT' }
     );
 
-    // Generate the refresh token
-    // TODO: use rememberMe from the consumed session to pick short/long expiration
+    // Generate the refresh token with expiration based on rememberMe
+    const refreshTokenExpirationSeconds = consumedSession.rememberMe
+      ? JWT_REFRESH_TOKEN_LONG_EXPIRATION_SEC
+      : JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC;
+
     const refreshToken = await this._refreshTokenEntityService.create(
       user,
-      JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC
+      refreshTokenExpirationSeconds
     );
-
-    // Create an auth session to track the sign-in state
-    const session = await this._authSessionRedisService.create({
-      tenantId: 'default',
-      userId: user.id,
-      mode: 'first-party',
-      primaryAuthVerified: true,
-      mfaPolicy: 'DISABLED'
-    });
 
     return {
       accessToken,
       type: 'Bearer',
       expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC,
-      authSessionId: session.id,
       refreshToken
     };
   }
@@ -388,7 +388,6 @@ export class SignInService {
       accessToken: newAccessToken,
       type: 'Bearer',
       expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC,
-      authSessionId: '',
       refreshToken: newRefreshToken
     };
   }

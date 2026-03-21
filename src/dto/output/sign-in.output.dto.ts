@@ -10,7 +10,4 @@ export class SignInOutputDto implements SignInOutput {
 
   @ApiProperty({ description: 'Token expiration in seconds', example: 900 })
   expiresIn: number;
-
-  @ApiProperty({ description: 'Auth session id' })
-  authSessionId: string;
 }

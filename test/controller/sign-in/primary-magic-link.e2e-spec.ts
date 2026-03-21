@@ -93,6 +93,7 @@ describe('POST /auth/sign-in/primary/magic-link', () => {
       expect(redisSession).not.toBeNull();
       expect(redisSession!.userId).toBe(user.id);
       expect(redisSession!.primaryAuthVerified).toBe(false);
+      expect(redisSession!.exchanged).toBe(false);
     });
 
     it('should return 202 without sending email when user does not exist', async () => {

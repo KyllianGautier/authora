@@ -8,7 +8,7 @@ import { createUserWithPassword } from '../utils/create-user-with-password';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Exchanges a completed auth session for a one-time exchange token.
-// The session is consumed (deleted from Redis) after exchange.
+// The session remains in Redis until the token endpoint consumes it.
 describe('POST /auth/sign-in/exchange', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
@@ -100,12 +100,13 @@ describe('POST /auth/sign-in/exchange', () => {
       expect(typeof response.body.exchangeToken).toBe('string');
       expect(response.body.exchangeToken.length).toBeGreaterThan(0);
 
-      // Verify the session is deleted from Redis
+      // Session should still exist in Redis with exchanged flag
       const redisSession = await getAuthSession(app, session.id);
-      expect(redisSession).toBeNull();
+      expect(redisSession).not.toBeNull();
+      expect(redisSession!.exchanged).toBe(true);
     });
 
-    it('should consume the session after exchange', async () => {
+    it('should return 401 when session is already exchanged', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       const session = await createAuthSession(app, {
         userId: user.id,
@@ -117,11 +118,7 @@ describe('POST /auth/sign-in/exchange', () => {
         .send({ sessionId: session.id })
         .expect(200);
 
-      // Verify deleted from Redis
-      const redisSession = await getAuthSession(app, session.id);
-      expect(redisSession).toBeNull();
-
-      // Second exchange fails
+      // Second exchange should fail with same error as non-existent session
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/sign-in/exchange')
         .send({ sessionId: session.id })

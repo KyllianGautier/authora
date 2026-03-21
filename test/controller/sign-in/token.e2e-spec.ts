@@ -15,6 +15,7 @@ import {
 import { createOneTimeToken, FAKE_ONE_TIME_TOKEN } from '../utils/create-one-time-token';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { extractCookie } from '../utils/extract-cookie';
+import { getAuthSession } from '../utils/get-auth-session';
 import { hashVerify } from '../utils/hash';
 
 // Exchanges a one-time exchange token for an access token (body) and refresh token (cookie).
@@ -69,7 +70,7 @@ describe('POST /auth/sign-in/token', () => {
 
     it('should return 200 with access token and refresh token cookie', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createOneTimeToken(app, user.id, OneTimeTokenType.Exchange);
+      const { session: exchangeSession } = await createOneTimeToken(app, user.id, OneTimeTokenType.Exchange);
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/sign-in/token')
@@ -81,9 +82,6 @@ describe('POST /auth/sign-in/token', () => {
       expect(response.body.expiresIn).toBe(
         JWT_ACCESS_TOKEN_EXPIRATION_SEC
       );
-      expect(response.body.authSessionId).toBeDefined();
-      expect(typeof response.body.authSessionId).toBe('string');
-
       const decoded = jwt.verify(
         response.body.accessToken,
         getTestPublicKey(),
@@ -118,6 +116,10 @@ describe('POST /auth/sign-in/token', () => {
       await expect(
         hashVerify(refreshTokens[0].tokenHash, cookie!.value)
       ).resolves.toBe(true);
+
+      // Verify the auth session is deleted from Redis
+      const redisSession = await getAuthSession(app, exchangeSession!.id);
+      expect(redisSession).toBeNull();
     });
 
     it('should revoke the exchange token after use', async () => {

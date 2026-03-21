@@ -164,6 +164,7 @@ describe('POST /auth/sign-in/primary/password', () => {
       expect(redisSession!.primaryAuthVerified).toBe(true);
       expect(redisSession!.rememberMe).toBe(false);
       expect(redisSession!.mfaSetup).toBe(false);
+      expect(redisSession!.exchanged).toBe(false);
 
       // Verify sign-in attempt is recorded
       const attempts = await dataSource

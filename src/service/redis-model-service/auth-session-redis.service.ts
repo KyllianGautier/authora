@@ -47,6 +47,7 @@ export class AuthSessionRedisService {
       mfaSetup: options.mfaSetup ?? false,
       mfaVerified: false,
       deviceTrusted: options.deviceTrusted ?? false,
+      exchanged: false,
       createdAt: now.toISO(),
       expiresAt: now.plus({ seconds: this._ttlSeconds }).toISO()
     };

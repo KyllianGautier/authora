@@ -114,6 +114,8 @@ describe('GET /auth/sign-in/primary/magic-link/validate', () => {
       expect(redisSession).not.toBeNull();
       expect(redisSession!.primaryAuthVerified).toBe(true);
       expect(redisSession!.userId).toBe(user.id);
+      expect(redisSession!.mfaSetup).toBe(false);
+      expect(redisSession!.exchanged).toBe(false);
     });
   });
 

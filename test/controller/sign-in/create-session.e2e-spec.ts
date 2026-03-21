@@ -66,6 +66,7 @@ describe('POST /auth/sign-in', () => {
       expect(session!.mfaSetup).toBe(false);
       expect(session!.mfaVerified).toBe(false);
       expect(session!.deviceTrusted).toBe(false);
+      expect(session!.exchanged).toBe(false);
       expect(session!.createdAt).toBeDefined();
       expect(session!.expiresAt).toBeDefined();
     });
