@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
 import { createUserWithPassword } from '../utils/create-user-with-password';
+import { expirePassword } from '../utils/expire-password';
 import { getOneTimeToken } from '../utils/get-one-time-token';
 
 // Requests account deletion: verifies credentials, creates a one-time deletion token,
@@ -146,6 +147,24 @@ describe('POST /account/delete', () => {
 
       expect(messages).toHaveLength(1);
       expect(messages[0].data.email).toBe('user@example.com');
+    });
+
+    it('should allow account deletion even when password is expired', async () => {
+      const user = await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
+      await expirePassword(dataSource, user);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/account/delete')
+        .send({ email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      const messages = await consumeEmailQueue();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].pattern).toBe('account-deletion-verification');
     });
   });
 

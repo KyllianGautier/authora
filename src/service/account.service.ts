@@ -39,13 +39,13 @@ export class AccountService {
       throw new InvalidCredentialsException();
     }
 
-    const isCurrentPasswordValid =
+    const passwordResult =
       await this._passwordEntityService.verifyUserPassword(
         user,
         dto.currentPassword
       );
 
-    if (!isCurrentPasswordValid) {
+    if (passwordResult === 'invalid') {
       throw new InvalidCredentialsException();
     }
 
@@ -59,7 +59,7 @@ export class AccountService {
       throw new PasswordAlreadyUsedException();
     }
 
-    await this._passwordEntityService.updateUserPassword(
+    await this._passwordEntityService.changeUserPassword(
       user,
       dto.newPassword
     );
@@ -111,7 +111,7 @@ export class AccountService {
       throw new PasswordAlreadyUsedException();
     }
 
-    await this._passwordEntityService.updateUserPassword(
+    await this._passwordEntityService.resetUserPassword(
       user,
       dto.newPassword
     );
@@ -140,13 +140,13 @@ export class AccountService {
       throw new InvalidCredentialsException();
     }
 
-    const isPasswordValid =
+    const passwordResult =
       await this._passwordEntityService.verifyUserPassword(
         user,
         dto.password
       );
 
-    if (!isPasswordValid) {
+    if (passwordResult === 'invalid') {
       throw new InvalidCredentialsException();
     }
 

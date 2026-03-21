@@ -6,6 +6,7 @@ export enum AuthFailureReason {
   InvalidPasswordAuth = 'INVALID_CREDENTIALS',
   AccountLocked = 'ACCOUNT_LOCKED',
   TooManyAttempts = 'TOO_MANY_ATTEMPTS',
+  PasswordExpired = 'PASSWORD_EXPIRED',
   InvalidMfaAuth = 'INVALID_MFA_CODE',
   TooManyMfaAttempts = 'TOO_MANY_MFA_ATTEMPTS'
 }

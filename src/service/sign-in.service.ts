@@ -16,7 +16,6 @@ import {
 } from '../config/constants';
 import { LockReason } from '../entity/user.entity';
 import { AuthFailureReason } from '../entity/sign-in-attempt.entity';
-import { TwoFactorAuthCodeInvalidException } from './entity-service/two-factor-auth-entity.service';
 import { SignInAttemptEntityService } from './entity-service/sign-in-attempt-entity.service';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
@@ -32,6 +31,7 @@ import { AuthSessionRedisService } from './redis-model-service/auth-session-redi
 import { EmailService } from './email.service';
 import { OneTimeTokenRedisService } from './redis-model-service/one-time-token-redis.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
+import { PasswordRevocationReason } from '../entity/password.entity';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
@@ -91,10 +91,18 @@ export class SignInService {
       throw new TooManyAttemptsException();
     }
 
-    const isPasswordValid =
+    const passwordResult =
       await this._passwordEntityService.verifyUserPassword(user, dto.password);
 
-    if (!isPasswordValid) {
+    if (passwordResult === 'expired') {
+      await this._passwordEntityService.revoke(user, PasswordRevocationReason.Expired);
+      await this._signInAttemptEntityService.create(
+        user, ip, userAgent, false, AuthFailureReason.PasswordExpired
+      );
+      throw new PasswordExpiredHttpException();
+    }
+
+    if (passwordResult === 'invalid') {
       const attempts =
         await this._userEntityService.recordFailedPasswordAttempt(user);
 
@@ -220,17 +228,19 @@ export class SignInService {
       throw new TooManyAttemptsException();
     }
 
-    try {
+    const totpResult =
       await this._twoFactorAuthEntityService.validateTotpForUser(user, dto.code);
-    } catch (error) {
-      if (error instanceof TwoFactorAuthCodeInvalidException) {
-        await this._userEntityService.recordFailedMfaAttempt(user);
-        await this._signInAttemptEntityService.create(
-          user, ip, userAgent, false, AuthFailureReason.InvalidMfaAuth
-        );
-      }
 
-      throw error;
+    if (totpResult === 'not_found') {
+      throw new InvalidCredentialsException();
+    }
+
+    if (totpResult === 'invalid') {
+      await this._userEntityService.recordFailedMfaAttempt(user);
+      await this._signInAttemptEntityService.create(
+        user, ip, userAgent, false, AuthFailureReason.InvalidMfaAuth
+      );
+      throw new InvalidCredentialsException();
     }
 
     // Reset failed attempts on successful validation
@@ -477,6 +487,12 @@ export class InvalidCredentialsException extends UnauthorizedException {
 export class TooManyAttemptsException extends HttpException {
   constructor() {
     super('Too many attempts, try again later', HttpStatus.TOO_MANY_REQUESTS);
+  }
+}
+
+export class PasswordExpiredHttpException extends UnauthorizedException {
+  constructor() {
+    super({ message: 'Password expired', nextStep: 'reset_password' });
   }
 }
 

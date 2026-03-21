@@ -180,7 +180,7 @@ describe('Scenario: Refresh token workflows', () => {
         .set('Cookie', `refreshToken=${originalRt}`)
         .expect(401);
 
-      expect(replayRes.body.message).toBe('Token reuse detected');
+      expect(replayRes.body.message).toBe('Invalid or expired refresh token');
 
       // Entire family is revoked — no active tokens remain
       const active = await dataSource
@@ -219,7 +219,7 @@ describe('Scenario: Refresh token workflows', () => {
         .set('Cookie', `refreshToken=${newRt}`)
         .expect(401);
 
-      expect(finalRes.body.message).toBe('Token reuse detected');
+      expect(finalRes.body.message).toBe('Invalid or expired refresh token');
     });
   });
 

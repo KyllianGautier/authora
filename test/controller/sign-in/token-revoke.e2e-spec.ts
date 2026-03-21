@@ -240,7 +240,7 @@ describe('POST /auth/sign-in/token/revoke', () => {
         .set('Cookie', `refreshToken=${refreshToken}`)
         .expect(401);
 
-      expect(response.body.message).toBe('Token reuse detected');
+      expect(response.body.message).toBe('Invalid or expired refresh token');
     });
   });
 

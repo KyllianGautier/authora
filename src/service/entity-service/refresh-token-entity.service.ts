@@ -155,6 +155,6 @@ export class RefreshTokenEntityService {
 
 export class TokenReuseDetectedException extends UnauthorizedException {
   constructor() {
-    super('Token reuse detected');
+    super('Invalid or expired refresh token');
   }
 }

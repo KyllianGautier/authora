@@ -13,6 +13,7 @@ import { LockReason, UserEntity } from '../../../src/entity/user.entity';
 import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
 import { createUserWithPassword } from '../utils/create-user-with-password';
+import { expirePassword } from '../utils/expire-password';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Authenticates with email and password within an existing auth session.
@@ -198,6 +199,69 @@ describe('POST /auth/sign-in/primary/password', () => {
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/sign-in/primary/password')
         .send({ sessionId: session.id, email: 'User@Example.COM', password: 'password123' })
+        .expect(200);
+
+      expect(response.body.nextStep).toBe('complete');
+    });
+  });
+
+  describe('password expiration', () => {
+    it('should return 401 with nextStep reset_password when password is expired', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await expirePassword(dataSource, user);
+      const session = await createAuthSession(app);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(401);
+
+      expect(response.body.message).toBe('Password expired');
+      expect(response.body.nextStep).toBe('reset_password');
+    });
+
+    it('should not update the session when password is expired', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await expirePassword(dataSource, user);
+      const session = await createAuthSession(app);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(401);
+
+      const redisSession = await getAuthSession(app, session.id);
+      expect(redisSession).not.toBeNull();
+      expect(redisSession!.primaryAuthVerified).toBe(false);
+      expect(redisSession!.userId).toBeUndefined();
+    });
+
+    it('should record a sign-in attempt with PasswordExpired reason', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await expirePassword(dataSource, user);
+      const session = await createAuthSession(app);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
+        .expect(401);
+
+      const attempts = await dataSource
+        .getRepository(SignInAttemptEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].success).toBe(false);
+      expect(attempts[0].failureReason).toBe(AuthFailureReason.PasswordExpired);
+    });
+
+    it('should return 200 when password is not yet expired', async () => {
+      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const session = await createAuthSession(app);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/sign-in/primary/password')
+        .send({ sessionId: session.id, email: 'user@example.com', password: 'password123' })
         .expect(200);
 
       expect(response.body.nextStep).toBe('complete');

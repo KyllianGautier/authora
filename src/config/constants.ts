@@ -35,6 +35,8 @@ export const OTT_EXCHANGE_TTL_SEC = 300;
 export const PRIMARY_AUTH_MAX_ATTEMPTS = 5;
 export const PRIMARY_AUTH_COOLDOWN_SEC = 900;
 export const PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD = 10;
+export const PASSWORD_EXPIRATION_ENABLED = process.env.NODE_ENV === 'test' ? true : false;
+export const PASSWORD_MAX_AGE_SEC = process.env.NODE_ENV === 'test' ? 60 : 5_184_000; // test: 60s, prod: 60 days
 export const UNLOCK_ON_PASSWORD_RESET = true;
 
 // MFA authentication lock

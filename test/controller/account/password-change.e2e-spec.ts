@@ -10,6 +10,7 @@ import { getOneTimeToken } from '../utils/get-one-time-token';
 import { createPassword } from '../utils/create-password';
 import { createRefreshToken } from '../utils/create-refresh-token';
 import { createUserWithPassword } from '../utils/create-user-with-password';
+import { expirePassword } from '../utils/expire-password';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
 import { hashVerify } from '../utils/hash';
 
@@ -278,6 +279,22 @@ describe('POST /account/password/change', () => {
       const token = await getOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
 
       expect(token).toBeNull();
+    });
+
+    it('should allow password change even when current password is expired', async () => {
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
+      await expirePassword(dataSource, user);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/account/password/change')
+        .send({
+          email: 'user@example.com',
+          currentPassword: 'oldPassword',
+          newPassword: 'N3wP@ssw0rd!'
+        })
+        .expect(200);
+
+      expect(response.body).toEqual({});
     });
   });
 

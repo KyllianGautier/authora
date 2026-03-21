@@ -6,6 +6,7 @@ import { TwoFactorAuthEntity } from '../../../src/entity/two-factor-auth.entity'
 import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
 import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
+import { expirePassword } from '../utils/expire-password';
 
 // Initiates 2FA setup: generates a TOTP secret, returns a QR code and manual code,
 // and creates an unverified TwoFactorAuth record in the database.
@@ -161,6 +162,23 @@ describe('POST /2fa/setup', () => {
       const response = await request(app.getHttpServer())
         .post('/api/v1/2fa/setup')
         .send({ email: 'User@Example.COM', password: 'password123' })
+        .expect(200);
+
+      expect(response.body.qrcode).toMatch(/^data:image\/png;base64,/);
+      expect(response.body.manualCode).toBeDefined();
+    });
+
+    it('should allow 2FA setup even when password is expired', async () => {
+      const user = await createUserWithPassword(
+        dataSource,
+        'user@example.com',
+        'password123'
+      );
+      await expirePassword(dataSource, user);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/2fa/setup')
+        .send({ email: 'user@example.com', password: 'password123' })
         .expect(200);
 
       expect(response.body.qrcode).toMatch(/^data:image\/png;base64,/);
