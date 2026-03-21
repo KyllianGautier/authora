@@ -9,7 +9,8 @@ import {
   resetTestState,
   consumeEmailQueue,
   getTestApp,
-  getTestPublicKey
+  getTestPublicKey,
+  setTenantConfig
 } from '../setup';
 import { createUserWithPassword } from '../controller/utils/create-user-with-password';
 import { createTwoFactorAuth } from '../controller/utils/create-two-factor-auth';
@@ -864,6 +865,7 @@ describe('Scenario: First-party sign-in workflows', () => {
 
   describe('expired password → reset → resume same session → exchange → token', () => {
     it('should resume the same session after resetting an expired password', async () => {
+      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'OldP@ssw0rd!');
       await expirePassword(dataSource, user);
 

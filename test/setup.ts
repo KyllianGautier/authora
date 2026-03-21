@@ -13,9 +13,15 @@ import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
 import { REDIS_CLIENT } from '../src/config/redis.provider';
+import { INFRA_CONFIG, testInfraConfig } from '../src/config/infra-config';
+import type { AuthoraInfraConfig } from '../src/config/infra-config';
+import { TENANT_CONFIG, defaultTenantConfig } from '../src/config/tenant-config';
+import type { AuthoraTenantConfig } from '../src/config/tenant-config';
 
 let app: INestApplication<App>;
 let initialized = false;
+let activeTenantConfig: AuthoraTenantConfig = { ...defaultTenantConfig };
+let activeInfraConfig: AuthoraInfraConfig = { ...testInfraConfig };
 
 export function getTestPublicKey(): string {
   return readFileSync(process.env.JWT_PUBLIC_KEY_PATH!, 'utf8');
@@ -31,12 +37,25 @@ export function getTestPrivateKey(): string {
 export async function getTestApp(): Promise<INestApplication<App>> {
   if (initialized) return app;
 
+  const tenantConfigProxy = new Proxy({} as AuthoraTenantConfig, {
+    get: (_target, prop) => (activeTenantConfig as any)[prop]
+  });
+
+  const infraConfigProxy = new Proxy({} as AuthoraInfraConfig, {
+    get: (_target, prop) => (activeInfraConfig as any)[prop]
+  });
+
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule]
   })
     // Replace Redis-backed throttle storage with in-memory
     .overrideProvider(ThrottlerStorage)
     .useClass(ThrottlerStorageService)
+    // Use proxies so configs can be swapped per-test
+    .overrideProvider(TENANT_CONFIG)
+    .useValue(tenantConfigProxy)
+    .overrideProvider(INFRA_CONFIG)
+    .useValue(infraConfigProxy)
     .compile();
 
   app = moduleFixture.createNestApplication();
@@ -62,8 +81,24 @@ export function resetThrottler(): void {
   storage.storage.clear();
 }
 
+// Override tenant config for the current test. Resets automatically in resetTestState().
+export function setTenantConfig(
+  overrides: Partial<AuthoraTenantConfig>
+): void {
+  activeTenantConfig = { ...defaultTenantConfig, ...overrides };
+}
+
+// Override infra config for the current test. Resets automatically in resetTestState().
+export function setInfraConfig(
+  overrides: Partial<AuthoraInfraConfig>
+): void {
+  activeInfraConfig = { ...testInfraConfig, ...overrides };
+}
+
 // Truncate all tables and reset throttler state between tests
 export async function resetTestState(): Promise<void> {
+  activeTenantConfig = { ...defaultTenantConfig };
+  activeInfraConfig = { ...testInfraConfig };
   const dataSource = app.get(DataSource);
   const entities = dataSource.entityMetadatas;
   for (const entity of entities) {

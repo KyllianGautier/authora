@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
-import { EMAIL_VERIFICATION_TOKEN_TTL_SEC } from '../../config/constants';
+import { TENANT_CONFIG } from '../../config/tenant-config';
+import type { AuthoraTenantConfig } from '../../config/tenant-config';
 import { RegistrationEntity } from '../../entity/registration.entity';
 import { HashService } from '../hash.service';
 
@@ -11,7 +12,8 @@ export class RegistrationEntityService {
   constructor(
     @InjectRepository(RegistrationEntity)
     private readonly _repository: Repository<RegistrationEntity>,
-    private readonly _hashService: HashService
+    private readonly _hashService: HashService,
+    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
   ) {}
 
   async create(data: {
@@ -60,7 +62,7 @@ export class RegistrationEntityService {
 
   private _computeEmailVerificationTokenExpiresAt(): Date {
     return DateTime.utc()
-      .plus({ seconds: EMAIL_VERIFICATION_TOKEN_TTL_SEC })
+      .plus({ seconds: this._tenantConfig.emailVerificationTokenTtlSec })
       .toJSDate();
   }
 }

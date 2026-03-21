@@ -3,7 +3,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
-import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
+import { consumeEmailQueue, getTestApp, resetTestState, setTenantConfig } from '../../setup';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { expirePassword } from '../utils/expire-password';
 import { getOneTimeToken } from '../utils/get-one-time-token';
@@ -150,6 +150,7 @@ describe('POST /account/delete', () => {
     });
 
     it('should allow account deletion even when password is expired', async () => {
+      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(
         dataSource,
         'user@example.com',

@@ -2,12 +2,13 @@ import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import Redis from 'ioredis';
-import { AUTH_SESSION_TTL_SEC } from '../../config/constants';
 import {
   AUTH_SESSION_KEY,
   AUTH_SESSION_USER_KEY
 } from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
+import { TENANT_CONFIG } from '../../config/tenant-config';
+import type { AuthoraTenantConfig } from '../../config/tenant-config';
 import { AuthSession, MfaPolicy } from '../../redis-model/auth-session.model';
 
 export interface CreateAuthSessionOptions {
@@ -26,9 +27,10 @@ export interface CreateAuthSessionOptions {
 
 @Injectable()
 export class AuthSessionRedisService {
-  private readonly _ttlSeconds = AUTH_SESSION_TTL_SEC;
-
-  constructor(@Inject(REDIS_CLIENT) private readonly _redis: Redis) {}
+  constructor(
+    @Inject(REDIS_CLIENT) private readonly _redis: Redis,
+    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+  ) {}
 
   async create(options: CreateAuthSessionOptions): Promise<AuthSession> {
     const now = DateTime.utc();
@@ -49,16 +51,16 @@ export class AuthSessionRedisService {
       deviceTrusted: options.deviceTrusted ?? false,
       exchanged: false,
       createdAt: now.toISO(),
-      expiresAt: now.plus({ seconds: this._ttlSeconds }).toISO()
+      expiresAt: now.plus({ seconds: this._tenantConfig.authSessionTtlSec }).toISO()
     };
 
     const key = AUTH_SESSION_KEY(session.id);
 
-    await this._redis.set(key, JSON.stringify(session), 'EX', this._ttlSeconds);
+    await this._redis.set(key, JSON.stringify(session), 'EX', this._tenantConfig.authSessionTtlSec);
 
     if (session.userId !== undefined) {
       const userKey = AUTH_SESSION_USER_KEY(session.userId);
-      await this._redis.set(userKey, session.id, 'EX', this._ttlSeconds);
+      await this._redis.set(userKey, session.id, 'EX', this._tenantConfig.authSessionTtlSec);
     }
 
     return session;

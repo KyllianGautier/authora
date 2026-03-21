@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException
@@ -9,7 +10,8 @@ import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
 import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verify.input.dto';
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
-import { UNLOCK_ON_PASSWORD_RESET } from '../config/constants';
+import { TENANT_CONFIG } from '../config/tenant-config';
+import type { AuthoraTenantConfig } from '../config/tenant-config';
 import { LockReason } from '../entity/user.entity';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { EmailService } from './email.service';
@@ -27,7 +29,8 @@ export class AccountService {
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _emailService: EmailService,
-    private readonly _hashService: HashService
+    private readonly _hashService: HashService,
+    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
   ) {}
 
   async changePassword(dto: ChangePasswordInputDto): Promise<void> {
@@ -118,7 +121,7 @@ export class AccountService {
 
     // Unlock the account if it was locked due to too many failed attempts
     if (
-      UNLOCK_ON_PASSWORD_RESET &&
+      this._tenantConfig.unlockOnPasswordReset &&
       user.isLocked &&
       user.lockReason === LockReason.TooManyAttempts
     ) {

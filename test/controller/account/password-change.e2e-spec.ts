@@ -11,7 +11,7 @@ import { createPassword } from '../utils/create-password';
 import { createRefreshToken } from '../utils/create-refresh-token';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { expirePassword } from '../utils/expire-password';
-import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
+import { consumeEmailQueue, getTestApp, resetTestState, setTenantConfig } from '../../setup';
 import { hashVerify } from '../utils/hash';
 
 // Changes the user's password after verifying current credentials.
@@ -282,6 +282,7 @@ describe('POST /account/password/change', () => {
     });
 
     it('should allow password change even when current password is expired', async () => {
+      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
       await expirePassword(dataSource, user);
 

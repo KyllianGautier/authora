@@ -1,13 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
-import {
-  MFA_AUTH_COOLDOWN_SEC,
-  MFA_AUTH_MAX_ATTEMPTS,
-  PRIMARY_AUTH_COOLDOWN_SEC,
-  PRIMARY_AUTH_MAX_ATTEMPTS
-} from '../../config/constants';
+import { TENANT_CONFIG } from '../../config/tenant-config';
+import type { AuthoraTenantConfig } from '../../config/tenant-config';
 import {
   isLockReasonEscalation,
   LockReason,
@@ -18,7 +14,8 @@ import {
 export class UserEntityService {
   constructor(
     @InjectRepository(UserEntity)
-    private readonly _repository: Repository<UserEntity>
+    private readonly _repository: Repository<UserEntity>,
+    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
   ) {}
 
   async create(data: Pick<UserEntity, 'email'>): Promise<UserEntity> {
@@ -87,8 +84,8 @@ export class UserEntityService {
 
   isPasswordTemporarilyLocked(user: UserEntity): boolean {
     return (
-      user.failedPasswordAttempts >= PRIMARY_AUTH_MAX_ATTEMPTS &&
-      !this._isCooldownExpired(user.lastFailedPasswordAt, PRIMARY_AUTH_COOLDOWN_SEC)
+      user.failedPasswordAttempts >= this._tenantConfig.primaryAuthMaxAttempts &&
+      !this._isCooldownExpired(user.lastFailedPasswordAt, this._tenantConfig.primaryAuthCooldownSec)
     );
   }
 
@@ -118,8 +115,8 @@ export class UserEntityService {
 
   isMfaTemporarilyLocked(user: UserEntity): boolean {
     return (
-      user.failedMfaAttempts >= MFA_AUTH_MAX_ATTEMPTS &&
-      !this._isCooldownExpired(user.lastFailedMfaAt, MFA_AUTH_COOLDOWN_SEC)
+      user.failedMfaAttempts >= this._tenantConfig.mfaAuthMaxAttempts &&
+      !this._isCooldownExpired(user.lastFailedMfaAt, this._tenantConfig.mfaAuthCooldownSec)
     );
   }
 

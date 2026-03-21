@@ -10,14 +10,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import {
-  EMAIL_QUEUE,
-  JWT_ACCESS_TOKEN_EXPIRATION_SEC,
-  THROTTLE_COMBINED_LIMIT,
-  THROTTLE_IDENTITY_LIMIT,
-  THROTTLE_ORIGIN_LIMIT,
-  THROTTLE_TTL_MS
-} from './config/constants';
+import { EMAIL_QUEUE } from './config/constants';
+import { INFRA_CONFIG, defaultInfraConfig, testInfraConfig } from './config/infra-config';
+import { TENANT_CONFIG, defaultTenantConfig } from './config/tenant-config';
 import { envValidationSchema } from './config/env.validation';
 import { redisProvider } from './config/redis.provider';
 import { CONTROLLERS } from './controller';
@@ -66,7 +61,7 @@ import { SERVICES } from './service';
         signOptions: {
           algorithm: 'RS256',
           issuer: config.getOrThrow<string>('JWT_ISSUER'),
-          expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC
+          expiresIn: defaultTenantConfig.jwtAccessTokenExpirationSec
         },
         verifyOptions: {
           algorithms: ['RS256'],
@@ -76,16 +71,19 @@ import { SERVICES } from './service';
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        throttlers: [
-          { name: 'origin', ttl: THROTTLE_TTL_MS, limit: THROTTLE_ORIGIN_LIMIT },
-          { name: 'identity', ttl: THROTTLE_TTL_MS, limit: THROTTLE_IDENTITY_LIMIT },
-          { name: 'combined', ttl: THROTTLE_TTL_MS, limit: THROTTLE_COMBINED_LIMIT }
-        ],
-        storage: new ThrottlerStorageRedisService(
-          config.getOrThrow<string>('REDIS_URL')
-        )
-      })
+      useFactory: (config: ConfigService) => {
+        const infra = process.env.NODE_ENV === 'test' ? testInfraConfig : defaultInfraConfig;
+        return {
+          throttlers: [
+            { name: 'origin', ttl: infra.throttleTtlMs, limit: infra.throttleOriginLimit },
+            { name: 'identity', ttl: infra.throttleTtlMs, limit: infra.throttleIdentityLimit },
+            { name: 'combined', ttl: infra.throttleTtlMs, limit: infra.throttleCombinedLimit }
+          ],
+          storage: new ThrottlerStorageRedisService(
+            config.getOrThrow<string>('REDIS_URL')
+          )
+        };
+      }
     }),
     ServeStaticModule.forRoot(
       {
@@ -119,6 +117,14 @@ import { SERVICES } from './service';
     ...SERVICES,
     ...PASSWORD_CONSTRAINTS,
     redisProvider,
+    {
+      provide: TENANT_CONFIG,
+      useValue: defaultTenantConfig
+    },
+    {
+      provide: INFRA_CONFIG,
+      useValue: process.env.NODE_ENV === 'test' ? testInfraConfig : defaultInfraConfig
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: DelayInterceptor

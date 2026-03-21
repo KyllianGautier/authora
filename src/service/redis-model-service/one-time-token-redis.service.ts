@@ -1,42 +1,39 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import Redis from 'ioredis';
-import {
-  OTT_ACCOUNT_DELETION_TTL_SEC,
-  OTT_EXCHANGE_TTL_SEC,
-  OTT_FORGOT_PASSWORD_TTL_SEC,
-  OTT_MAGIC_LINK_TTL_SEC,
-  OTT_TWO_FACTOR_AUTH_DISABLING_TTL_SEC,
-  OTT_TWO_FACTOR_AUTH_VALIDATE_TTL_SEC,
-  OTT_TWO_FACTOR_AUTH_VERIFY_TTL_SEC
-} from '../../config/constants';
 import { OTT_EXCHANGE_KEY, OTT_KEY } from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
+import { TENANT_CONFIG } from '../../config/tenant-config';
+import type { AuthoraTenantConfig } from '../../config/tenant-config';
 import { AuthSession } from '../../redis-model/auth-session.model';
 import { OneTimeTokenType } from '../../redis-model/one-time-token.model';
 import { AuthSessionRedisService } from './auth-session-redis.service';
-
-const TTL_SECONDS: Record<OneTimeTokenType, number> = {
-  [OneTimeTokenType.AccountDeletion]: OTT_ACCOUNT_DELETION_TTL_SEC,
-  [OneTimeTokenType.TwoFactorAuthVerify]: OTT_TWO_FACTOR_AUTH_VERIFY_TTL_SEC,
-  [OneTimeTokenType.TwoFactorAuthValidate]: OTT_TWO_FACTOR_AUTH_VALIDATE_TTL_SEC,
-  [OneTimeTokenType.TwoFactorAuthDisabling]: OTT_TWO_FACTOR_AUTH_DISABLING_TTL_SEC,
-  [OneTimeTokenType.ForgotPassword]: OTT_FORGOT_PASSWORD_TTL_SEC,
-  [OneTimeTokenType.MagicLink]: OTT_MAGIC_LINK_TTL_SEC,
-  [OneTimeTokenType.Exchange]: OTT_EXCHANGE_TTL_SEC
-};
 
 @Injectable()
 export class OneTimeTokenRedisService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly _redis: Redis,
+    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig,
     private readonly _authSessionRedisService: AuthSessionRedisService
   ) {}
+
+  private _getTtlSecondsForType(type: OneTimeTokenType): number {
+    const map: Record<OneTimeTokenType, number> = {
+      [OneTimeTokenType.AccountDeletion]: this._tenantConfig.ottAccountDeletionTtlSec,
+      [OneTimeTokenType.TwoFactorAuthVerify]: this._tenantConfig.ottTwoFactorAuthVerifyTtlSec,
+      [OneTimeTokenType.TwoFactorAuthValidate]: this._tenantConfig.ottTwoFactorAuthValidateTtlSec,
+      [OneTimeTokenType.TwoFactorAuthDisabling]: this._tenantConfig.ottTwoFactorAuthDisablingTtlSec,
+      [OneTimeTokenType.ForgotPassword]: this._tenantConfig.ottForgotPasswordTtlSec,
+      [OneTimeTokenType.MagicLink]: this._tenantConfig.ottMagicLinkTtlSec,
+      [OneTimeTokenType.Exchange]: this._tenantConfig.ottExchangeTtlSec
+    };
+    return map[type];
+  }
 
   async create(userId: string, type: OneTimeTokenType): Promise<string> {
     const clearToken = randomBytes(32).toString('hex');
     const tokenHash = this._sha256(clearToken);
-    const ttl = this._getTtlSeconds(type);
+    const ttl = this._getTtlSecondsForType(type);
 
     const key = OTT_KEY(userId, type);
 
@@ -51,7 +48,7 @@ export class OneTimeTokenRedisService {
   ): Promise<string> {
     const clearToken = randomBytes(32).toString('hex');
     const tokenHash = this._sha256(clearToken);
-    const ttl = this._getTtlSeconds(OneTimeTokenType.Exchange);
+    const ttl = this._getTtlSecondsForType(OneTimeTokenType.Exchange);
 
     const key = OTT_KEY(userId, OneTimeTokenType.Exchange);
 
@@ -150,9 +147,6 @@ export class OneTimeTokenRedisService {
     return createHash('sha256').update(value).digest('hex');
   }
 
-  private _getTtlSeconds(type: OneTimeTokenType): number {
-    return TTL_SECONDS[type];
-  }
 }
 
 export class InvalidTokenException extends UnauthorizedException {

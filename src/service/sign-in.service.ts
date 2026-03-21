@@ -1,6 +1,7 @@
 import {
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException
@@ -8,12 +9,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  JWT_ACCESS_TOKEN_EXPIRATION_SEC,
-  JWT_REFRESH_TOKEN_LONG_EXPIRATION_SEC,
-  JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC,
-  PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD
-} from '../config/constants';
+import { TENANT_CONFIG } from '../config/tenant-config';
+import type { AuthoraTenantConfig } from '../config/tenant-config';
 import { LockReason } from '../entity/user.entity';
 import { AuthFailureReason } from '../entity/sign-in-attempt.entity';
 import { SignInAttemptEntityService } from './entity-service/sign-in-attempt-entity.service';
@@ -49,7 +46,8 @@ export class SignInService {
     private readonly _emailService: EmailService,
     private readonly _jwtService: JwtService,
     @InjectRepository(TwoFactorAuthEntity)
-    private readonly _twoFactorAuthRepository: Repository<TwoFactorAuthEntity>
+    private readonly _twoFactorAuthRepository: Repository<TwoFactorAuthEntity>,
+    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
   ) {}
 
   async createSession(dto: CreateSessionInputDto): Promise<AuthSession> {
@@ -106,7 +104,7 @@ export class SignInService {
       const attempts =
         await this._userEntityService.recordFailedPasswordAttempt(user);
 
-      if (attempts >= PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD) {
+      if (attempts >= this._tenantConfig.primaryAuthLockAccountThreshold) {
         await this._userEntityService.lock(user, LockReason.TooManyAttempts);
       }
 
@@ -317,8 +315,8 @@ export class SignInService {
 
     // Generate the refresh token with expiration based on rememberMe
     const refreshTokenExpirationSeconds = consumedSession.rememberMe
-      ? JWT_REFRESH_TOKEN_LONG_EXPIRATION_SEC
-      : JWT_REFRESH_TOKEN_SHORT_EXPIRATION_SEC;
+      ? this._tenantConfig.jwtRefreshTokenLongExpirationSec
+      : this._tenantConfig.jwtRefreshTokenShortExpirationSec;
 
     const refreshToken = await this._refreshTokenEntityService.create(
       user,
@@ -328,7 +326,7 @@ export class SignInService {
     return {
       accessToken,
       type: 'Bearer',
-      expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC,
+      expiresIn: this._tenantConfig.jwtAccessTokenExpirationSec,
       refreshToken
     };
   }
@@ -397,7 +395,7 @@ export class SignInService {
     return {
       accessToken: newAccessToken,
       type: 'Bearer',
-      expiresIn: JWT_ACCESS_TOKEN_EXPIRATION_SEC,
+      expiresIn: this._tenantConfig.jwtAccessTokenExpirationSec,
       refreshToken: newRefreshToken
     };
   }

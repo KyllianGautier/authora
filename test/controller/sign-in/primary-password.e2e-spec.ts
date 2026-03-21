@@ -10,7 +10,7 @@ import {
 } from '../../../src/config/constants';
 import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
 import { LockReason, UserEntity } from '../../../src/entity/user.entity';
-import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '../../setup';
+import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp, setTenantConfig } from '../../setup';
 import { createAuthSession } from '../utils/create-auth-session';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 import { expirePassword } from '../utils/expire-password';
@@ -207,6 +207,7 @@ describe('POST /auth/sign-in/primary/password', () => {
 
   describe('password expiration', () => {
     it('should return 401 with nextStep reset_password when password is expired', async () => {
+      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await expirePassword(dataSource, user);
       const session = await createAuthSession(app);
@@ -221,6 +222,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     });
 
     it('should not update the session when password is expired', async () => {
+      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await expirePassword(dataSource, user);
       const session = await createAuthSession(app);
@@ -237,6 +239,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     });
 
     it('should record a sign-in attempt with PasswordExpired reason', async () => {
+      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await expirePassword(dataSource, user);
       const session = await createAuthSession(app);
@@ -256,6 +259,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     });
 
     it('should return 200 when password is not yet expired', async () => {
+      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       const session = await createAuthSession(app);
 

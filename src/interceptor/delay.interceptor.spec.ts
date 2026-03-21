@@ -1,7 +1,7 @@
 import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { of } from 'rxjs';
-import { ENDPOINT_DELAY_MIN_MS } from '../config/constants';
+import { testInfraConfig } from '../config/infra-config';
 import { DelayInterceptor } from './delay.interceptor';
 
 describe('DelayInterceptor', () => {
@@ -19,7 +19,7 @@ describe('DelayInterceptor', () => {
 
   beforeEach(() => {
     reflector = new Reflector();
-    interceptor = new DelayInterceptor(reflector);
+    interceptor = new DelayInterceptor(reflector, testInfraConfig);
   });
 
   it('should not delay when @Delay() metadata is absent', (done) => {
@@ -45,7 +45,7 @@ describe('DelayInterceptor', () => {
     interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
       next: (value) => {
         const elapsed = Date.now() - start;
-        expect(elapsed).toBeGreaterThanOrEqual(ENDPOINT_DELAY_MIN_MS);
+        expect(elapsed).toBeGreaterThanOrEqual(testInfraConfig.endpointDelayMinMs);
         expect(value).toEqual({ result: 'test' });
       },
       complete: () => done()
