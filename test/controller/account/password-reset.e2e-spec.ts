@@ -187,11 +187,15 @@ describe('POST /account/password/reset', () => {
     it('should unlock the account when locked for TOO_MANY_ATTEMPTS', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'P@ssw0rd!');
 
-      // Lock the user
+      // Lock the user with failed attempts
       await dataSource.getRepository(UserEntity).update(user.id, {
         isLocked: true,
         lockedAt: new Date(),
-        lockReason: LockReason.TooManyAttempts
+        lockReason: LockReason.TooManyAttempts,
+        primaryFailedAttemptCount: 5,
+        primaryLastFailedAttemptAt: new Date(),
+        mfaFailedAttemptCount: 3,
+        mfaLastFailedAttemptAt: new Date()
       });
 
       await createOneTimeToken(app, user.id, OneTimeTokenType.ForgotPassword);
@@ -208,6 +212,10 @@ describe('POST /account/password/reset', () => {
       expect(updatedUser!.isLocked).toBe(false);
       expect(updatedUser!.lockedAt).toBeNull();
       expect(updatedUser!.lockReason).toBeNull();
+      expect(updatedUser!.primaryFailedAttemptCount).toBe(0);
+      expect(updatedUser!.primaryLastFailedAttemptAt).toBeNull();
+      expect(updatedUser!.mfaFailedAttemptCount).toBe(0);
+      expect(updatedUser!.mfaLastFailedAttemptAt).toBeNull();
     });
 
     it('should NOT unlock the account when locked for SUSPICIOUS_ACTIVITY', async () => {

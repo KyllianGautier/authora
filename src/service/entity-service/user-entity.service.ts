@@ -58,10 +58,6 @@ export class UserEntityService {
       isLocked: false,
       lockedAt: null,
       lockReason: null,
-      failedPasswordAttempts: 0,
-      lastFailedPasswordAt: null,
-      failedMfaAttempts: 0,
-      lastFailedMfaAt: null
     });
   }
 
@@ -72,27 +68,27 @@ export class UserEntityService {
       .createQueryBuilder()
       .update(UserEntity)
       .set({
-        failedPasswordAttempts: () => 'failed_password_attempts + 1',
-        lastFailedPasswordAt: now.toJSDate()
+        primaryFailedAttemptCount: () => 'primary_failed_attempt_count + 1',
+        primaryLastFailedAttemptAt: now.toJSDate()
       })
       .where('id = :id', { id: user.id })
-      .returning('failed_password_attempts')
+      .returning('primary_failed_attempt_count')
       .execute();
 
-    return result.raw[0].failed_password_attempts as number;
+    return result.raw[0].primary_failed_attempt_count as number;
   }
 
   isPasswordTemporarilyLocked(user: UserEntity): boolean {
     return (
-      user.failedPasswordAttempts >= this._tenantConfig.primaryAuthMaxAttempts &&
-      !this._isCooldownExpired(user.lastFailedPasswordAt, this._tenantConfig.primaryAuthCooldownSec)
+      user.primaryFailedAttemptCount >= this._tenantConfig.primaryAuthMaxAttempts &&
+      !this._isCooldownExpired(user.primaryLastFailedAttemptAt, this._tenantConfig.primaryAuthCooldownSec)
     );
   }
 
   async resetPasswordAttempts(user: UserEntity): Promise<void> {
     await this._repository.update(user.id, {
-      failedPasswordAttempts: 0,
-      lastFailedPasswordAt: null
+      primaryFailedAttemptCount: 0,
+      primaryLastFailedAttemptAt: null
     });
   }
 
@@ -103,27 +99,27 @@ export class UserEntityService {
       .createQueryBuilder()
       .update(UserEntity)
       .set({
-        failedMfaAttempts: () => 'failed_mfa_attempts + 1',
-        lastFailedMfaAt: now.toJSDate()
+        mfaFailedAttemptCount: () => 'mfa_failed_attempt_count + 1',
+        mfaLastFailedAttemptAt: now.toJSDate()
       })
       .where('id = :id', { id: user.id })
-      .returning('failed_mfa_attempts')
+      .returning('mfa_failed_attempt_count')
       .execute();
 
-    return result.raw[0].failed_mfa_attempts as number;
+    return result.raw[0].mfa_failed_attempt_count as number;
   }
 
   isMfaTemporarilyLocked(user: UserEntity): boolean {
     return (
-      user.failedMfaAttempts >= this._tenantConfig.mfaAuthMaxAttempts &&
-      !this._isCooldownExpired(user.lastFailedMfaAt, this._tenantConfig.mfaAuthCooldownSec)
+      user.mfaFailedAttemptCount >= this._tenantConfig.mfaAuthMaxAttempts &&
+      !this._isCooldownExpired(user.mfaLastFailedAttemptAt, this._tenantConfig.mfaAuthCooldownSec)
     );
   }
 
   async resetMfaAttempts(user: UserEntity): Promise<void> {
     await this._repository.update(user.id, {
-      failedMfaAttempts: 0,
-      lastFailedMfaAt: null
+      mfaFailedAttemptCount: 0,
+      mfaLastFailedAttemptAt: null
     });
   }
 

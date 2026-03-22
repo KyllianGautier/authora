@@ -408,8 +408,8 @@ describe('POST /auth/sign-in/primary/password', () => {
 
       // Simulate a temp lock that has expired
       await dataSource.getRepository(UserEntity).update(user.id, {
-        failedPasswordAttempts: PRIMARY_AUTH_MAX_ATTEMPTS,
-        lastFailedPasswordAt: DateTime.utc()
+        primaryFailedAttemptCount: PRIMARY_AUTH_MAX_ATTEMPTS,
+        primaryLastFailedAttemptAt: DateTime.utc()
           .minus({ seconds: PRIMARY_AUTH_COOLDOWN_SEC + 1 })
           .toJSDate()
       });
@@ -471,9 +471,9 @@ describe('POST /auth/sign-in/primary/password', () => {
       // Do attempts in batches, simulating cooldown expiry between batches via DB
       for (let i = 0; i < PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD; i++) {
         if (i >= PRIMARY_AUTH_MAX_ATTEMPTS) {
-          // Simulate cooldown expiry by backdating lastFailedPasswordAt
+          // Simulate cooldown expiry by backdating primaryLastFailedAttemptAt
           await dataSource.getRepository(UserEntity).update(user.id, {
-            lastFailedPasswordAt: DateTime.utc()
+            primaryLastFailedAttemptAt: DateTime.utc()
               .minus({ seconds: PRIMARY_AUTH_COOLDOWN_SEC + 1 })
               .toJSDate()
           });

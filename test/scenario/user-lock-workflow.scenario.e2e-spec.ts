@@ -107,7 +107,7 @@ async function triggerTokenReuse(
 
 // Helper: fail N password attempts, simulating cooldown expiry via DB when needed.
 // After PRIMARY_AUTH_MAX_ATTEMPTS, each attempt re-triggers the temp lock,
-// so we backdate lastFailedPasswordAt before every attempt beyond the threshold.
+// so we backdate primaryLastFailedAttemptAt before every attempt beyond the threshold.
 async function failPasswordAttempts(
   app: INestApplication<App>,
   dataSource: DataSource,
@@ -119,7 +119,7 @@ async function failPasswordAttempts(
       await dataSource.getRepository(UserEntity).update(
         { email },
         {
-          lastFailedPasswordAt: DateTime.utc()
+          primaryLastFailedAttemptAt: DateTime.utc()
             .minus({ seconds: PRIMARY_AUTH_COOLDOWN_SEC + 1 })
             .toJSDate()
         }

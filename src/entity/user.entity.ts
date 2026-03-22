@@ -76,17 +76,17 @@ export class UserEntity {
   })
   lockReason: LockReason | null;
 
-  @Column({ name: 'failed_password_attempts', type: 'int', default: 0 })
-  failedPasswordAttempts: number;
+  @Column({ name: 'primary_failed_attempt_count', type: 'int', default: 0 })
+  primaryFailedAttemptCount: number;
 
-  @Column({ name: 'last_failed_password_at', type: 'timestamptz', nullable: true })
-  lastFailedPasswordAt: Date | null;
+  @Column({ name: 'primary_last_failed_attempt_at', type: 'timestamptz', nullable: true })
+  primaryLastFailedAttemptAt: Date | null;
 
-  @Column({ name: 'failed_mfa_attempts', type: 'int', default: 0 })
-  failedMfaAttempts: number;
+  @Column({ name: 'mfa_failed_attempt_count', type: 'int', default: 0 })
+  mfaFailedAttemptCount: number;
 
-  @Column({ name: 'last_failed_mfa_at', type: 'timestamptz', nullable: true })
-  lastFailedMfaAt: Date | null;
+  @Column({ name: 'mfa_last_failed_attempt_at', type: 'timestamptz', nullable: true })
+  mfaLastFailedAttemptAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

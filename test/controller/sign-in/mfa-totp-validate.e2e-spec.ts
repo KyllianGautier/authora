@@ -425,7 +425,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
         if (batch > 0) {
           // Simulate cooldown expiry
           await dataSource.getRepository(UserEntity).update(user.id, {
-            lastFailedMfaAt: DateTime.utc()
+            mfaLastFailedAttemptAt: DateTime.utc()
               .minus({ seconds: MFA_AUTH_COOLDOWN_SEC + 1 })
               .toJSDate()
           });

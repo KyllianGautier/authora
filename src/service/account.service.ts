@@ -126,6 +126,8 @@ export class AccountService {
       user.lockReason === LockReason.TooManyAttempts
     ) {
       await this._userEntityService.unlock(user);
+      await this._userEntityService.resetPasswordAttempts(user);
+      await this._userEntityService.resetMfaAttempts(user);
       await this._refreshTokenEntityService.resetReuseCounter(user.id);
     }
 
