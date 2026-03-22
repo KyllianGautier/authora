@@ -8,6 +8,7 @@ import {
   PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD,
   PRIMARY_AUTH_MAX_ATTEMPTS
 } from '../../../src/config/constants';
+import { PasswordEntity, PasswordRevocationReason } from '../../../src/entity/password.entity';
 import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
 import { TrustedDeviceEntity } from '../../../src/entity/trusted-device.entity';
 import { LockReason, UserEntity } from '../../../src/entity/user.entity';
@@ -311,6 +312,15 @@ describe('POST /auth/sign-in/primary/password', () => {
 
       expect(response.body.message).toBe('Password expired');
       expect(response.body.nextStep).toBe('reset_password');
+
+      const passwords = await dataSource
+        .getRepository(PasswordEntity)
+        .find({ where: { user: { id: user.id } } });
+
+      expect(passwords).toHaveLength(1);
+      expect(passwords[0].revoked).toBe(true);
+      expect(passwords[0].revocationReason).toBe(PasswordRevocationReason.Expired);
+      expect(passwords[0].revokedAt).not.toBeNull();
     });
 
     it('should not update the session when password is expired', async () => {
