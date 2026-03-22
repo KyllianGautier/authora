@@ -9,7 +9,7 @@ describe('GET /password/rules', () => {
 
   beforeAll(async () => {
     app = await getTestApp();
-  }, 120_000);
+  }, 60_000);
 
   describe('behavior', () => {
     it('should return 200 with all password rules', async () => {

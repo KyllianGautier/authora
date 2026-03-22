@@ -11,7 +11,7 @@ describe('POST /password/check-strength', () => {
 
   beforeAll(async () => {
     app = await getTestApp();
-  }, 120_000);
+  }, 60_000);
 
   beforeEach(async () => {
     await resetTestState();

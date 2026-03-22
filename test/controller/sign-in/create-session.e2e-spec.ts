@@ -10,7 +10,7 @@ describe('POST /auth/sign-in', () => {
 
   beforeAll(async () => {
     app = await getTestApp();
-  }, 120_000);
+  }, 60_000);
 
   beforeEach(async () => {
     await resetTestState();

@@ -49,7 +49,7 @@ describe('POST /auth/sign-in/token/revoke', () => {
   beforeAll(async () => {
     app = await getTestApp();
     dataSource = app.get(DataSource);
-  }, 120_000);
+  }, 60_000);
 
   beforeEach(async () => {
     await resetTestState();
