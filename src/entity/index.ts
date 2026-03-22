@@ -5,12 +5,14 @@ import { TrustedDeviceEntity } from './trusted-device.entity';
 import { TwoFactorAuthEntity } from './two-factor-auth.entity';
 import { UserEntity } from './user.entity';
 import { SignInAttemptEntity } from './sign-in-attempt.entity';
+import { TenantEntity } from './tenant.entity';
 
 export const ENTITIES = [
   PasswordEntity,
   RefreshTokenEntity,
   RegistrationEntity,
   SignInAttemptEntity,
+  TenantEntity,
   TrustedDeviceEntity,
   TwoFactorAuthEntity,
   UserEntity

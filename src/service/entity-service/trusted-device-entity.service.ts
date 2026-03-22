@@ -42,7 +42,7 @@ export class TrustedDeviceEntityService {
     return (
       device.trusted &&
       !device.revoked &&
-      DateTime.fromJSDate(device.trustedUntil) > DateTime.utc()
+      DateTime.fromJSDate(device.trustedUntil!) > DateTime.utc()
     );
   }
 

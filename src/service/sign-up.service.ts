@@ -24,13 +24,13 @@ export class SignUpService {
     private readonly _hashService: HashService
   ) {}
 
-  async signUp(dto: SignUpInputDto): Promise<SignUpOutputDto> {
+  async signUp(dto: SignUpInputDto, tenant: TenantEntity): Promise<SignUpOutputDto> {
     const email = dto.email.toLowerCase();
 
     // Check that the email is not already used in a registration or by a user
     const [emailInRegistration, emailInUser] = await Promise.all([
-      this._registrationEntityService.existsByEmail(email),
-      this._userEntityService.existsByEmail(email)
+      this._registrationEntityService.existsByEmail(email, tenant),
+      this._userEntityService.existsByEmail(email, tenant)
     ]);
 
     if (emailInRegistration || emailInUser) {
@@ -42,6 +42,7 @@ export class SignUpService {
 
     const registration = await this._registrationEntityService.create({
       email,
+      tenant,
       clearPassword: dto.password,
       clearEmailVerificationToken: verificationToken
     });
@@ -77,12 +78,12 @@ export class SignUpService {
     await this._emailService.sendSignUpVerification(email, verificationToken);
   }
 
-  async checkEmail(dto: CheckEmailInputDto): Promise<CheckEmailOutputDto> {
+  async checkEmail(dto: CheckEmailInputDto, tenant: TenantEntity): Promise<CheckEmailOutputDto> {
     const email = dto.email.toLowerCase();
 
     const [emailInRegistration, emailInUser] = await Promise.all([
-      this._registrationEntityService.existsByEmail(email),
-      this._userEntityService.existsByEmail(email)
+      this._registrationEntityService.existsByEmail(email, tenant),
+      this._userEntityService.existsByEmail(email, tenant)
     ]);
 
     if (emailInRegistration || emailInUser) {
@@ -123,7 +124,7 @@ export class SignUpService {
     }
 
     // Create the user and its password from the registration data
-    const user = await this._userEntityService.create({ email });
+    const user = await this._userEntityService.create({ email, tenant: registration.tenant });
 
     await this._passwordEntityService.createFromHash({
       user,
@@ -142,6 +143,7 @@ import {
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
+import { TenantEntity } from '../entity/tenant.entity';
 
 export class EmailAlreadyUsedException extends ConflictException {
   constructor(email: string) {

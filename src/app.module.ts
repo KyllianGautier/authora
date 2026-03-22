@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -20,6 +20,7 @@ import { ENTITIES } from './entity';
 import { DelayInterceptor } from './interceptor/delay.interceptor';
 import { PASSWORD_CONSTRAINTS } from './dto/validator/password';
 import { SERVICES } from './service';
+import { TenantMiddleware } from './middleware/tenant.middleware';
 
 @Module({
   imports: [
@@ -131,4 +132,11 @@ import { SERVICES } from './service';
     }
   ]
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(TenantMiddleware)
+      .forRoutes('*');
+  }
+}
