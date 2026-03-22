@@ -12,6 +12,7 @@ import {
   getTestPublicKey,
   setTenantConfig
 } from '../setup';
+import { createTrustedDevice, FAKE_DEVICE_FINGERPRINT } from '../controller/utils/create-trusted-device';
 import { createUserWithPassword } from '../controller/utils/create-user-with-password';
 import { createTwoFactorAuth } from '../controller/utils/create-two-factor-auth';
 import { expirePassword } from '../controller/utils/expire-password';
@@ -977,6 +978,127 @@ describe('Scenario: First-party sign-in workflows', () => {
       const cookie = extractCookie(tokenRes, 'refreshToken');
       expect(cookie).toBeDefined();
       expect(cookie!.flags).toContain('HttpOnly');
+    });
+  });
+
+  // ──────────────────────────────────────────────────
+  // Trusted device flows
+  // ──────────────────────────────────────────────────
+
+  describe('first login with MFA → trust device → second login skips MFA', () => {
+    it('should complete full trusted device workflow', async () => {
+      setTenantConfig({ mfaPolicy: 'REQUIRED' });
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+
+      // ── First login: MFA required, trust the device ──
+
+      const createRes1 = await request(app.getHttpServer())
+        .post(BASE)
+        .send({ tenantId: 'default' })
+        .expect(201);
+
+      const sessionId1 = createRes1.body.sessionId;
+
+      // Primary auth — no cookie yet, new device created
+      const authRes1 = await request(app.getHttpServer())
+        .post(`${BASE}/primary/password`)
+        .send({ sessionId: sessionId1, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      // Extract the deviceFingerprint cookie for later
+      const fpCookie = extractCookie(authRes1, 'deviceFingerprint');
+      expect(fpCookie).toBeDefined();
+      const fingerprint = fpCookie!.value;
+
+      // MFA validate with trustThisDevice: true
+      const code1 = speakeasy.totp({
+        secret: twoFactorAuth.secret,
+        encoding: 'base32'
+      });
+
+      const mfaRes = await request(app.getHttpServer())
+        .post(`${BASE}/mfa/totp/validate`)
+        .send({ sessionId: sessionId1, code: code1, trustThisDevice: true })
+        .expect(200);
+
+      expect(mfaRes.body.nextStep).toBe('complete');
+
+      // Exchange → token
+      const exchangeRes1 = await request(app.getHttpServer())
+        .post(`${BASE}/exchange`)
+        .send({ sessionId: sessionId1 })
+        .expect(200);
+
+      const tokenRes1 = await request(app.getHttpServer())
+        .post(`${BASE}/token`)
+        .send({ exchangeToken: exchangeRes1.body.exchangeToken })
+        .expect(200);
+
+      expect(tokenRes1.body.accessToken).toBeDefined();
+
+      // ── Second login: device trusted, MFA skipped ──
+
+      const createRes2 = await request(app.getHttpServer())
+        .post(BASE)
+        .send({ tenantId: 'default' })
+        .expect(201);
+
+      const sessionId2 = createRes2.body.sessionId;
+
+      // Primary auth — send the cookie
+      const authRes2 = await request(app.getHttpServer())
+        .post(`${BASE}/primary/password`)
+        .set('Cookie', `deviceFingerprint=${fingerprint}`)
+        .send({ sessionId: sessionId2, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      // MFA should be skipped — nextStep is complete
+      expect(authRes2.body.nextStep).toBe('complete');
+
+      // Exchange → token
+      const exchangeRes2 = await request(app.getHttpServer())
+        .post(`${BASE}/exchange`)
+        .send({ sessionId: sessionId2 })
+        .expect(200);
+
+      const tokenRes2 = await request(app.getHttpServer())
+        .post(`${BASE}/token`)
+        .send({ exchangeToken: exchangeRes2.body.exchangeToken })
+        .expect(200);
+
+      expect(tokenRes2.body.accessToken).toBeDefined();
+    });
+  });
+
+  describe('trusted device expired → MFA required again', () => {
+    it('should require MFA when device trust has expired', async () => {
+      setTenantConfig({ mfaPolicy: 'REQUIRED' });
+      const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
+      await createTwoFactorAuth(dataSource, user, true);
+
+      // Create a trusted device with expired trustedUntil
+      await createTrustedDevice(dataSource, user, {
+        trusted: true,
+        trustedUntil: new Date('2000-01-01')
+      });
+
+      const createRes = await request(app.getHttpServer())
+        .post(BASE)
+        .send({ tenantId: 'default' })
+        .expect(201);
+
+      const sessionId = createRes.body.sessionId;
+
+      // Primary auth with the expired device cookie
+      const authRes = await request(app.getHttpServer())
+        .post(`${BASE}/primary/password`)
+        .set('Cookie', `deviceFingerprint=${FAKE_DEVICE_FINGERPRINT}`)
+        .send({ sessionId, email: 'user@example.com', password: 'password123' })
+        .expect(200);
+
+      // Trust expired — MFA should be required
+      expect(authRes.body.nextStep).toBe('mfaAuth');
     });
   });
 });

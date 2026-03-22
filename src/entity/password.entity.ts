@@ -36,7 +36,7 @@ export class PasswordEntity {
   @Column({ name: 'revocation_reason', type: 'enum', enum: PasswordRevocationReason, nullable: true })
   revocationReason: PasswordRevocationReason | null = null
 
-  @Column({ name: 'revoked_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt: Date | null = null
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

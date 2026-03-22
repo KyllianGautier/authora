@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, Length } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
 
 export class SessionTotpValidateInputDto {
   @ApiProperty({ description: 'Auth session id' })
@@ -12,4 +12,9 @@ export class SessionTotpValidateInputDto {
   @IsNotEmpty()
   @Length(6, 6)
   code: string;
+
+  @ApiPropertyOptional({ description: 'Trust this device for future MFA bypass', default: false })
+  @IsOptional()
+  @IsBoolean()
+  trustThisDevice?: boolean;
 }
