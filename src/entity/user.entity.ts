@@ -1,15 +1,15 @@
 import {
   Column,
   CreateDateColumn,
-  Entity,
+  Entity, JoinColumn, ManyToOne,
   OneToMany,
-  PrimaryGeneratedColumn
+  PrimaryGeneratedColumn, Unique
 } from 'typeorm';
 import { PasswordEntity } from './password.entity';
 import { RefreshTokenEntity } from './refresh-token.entity';
 import { SignInAttemptEntity } from './sign-in-attempt.entity';
 import { TrustedDeviceEntity } from './trusted-device.entity';
-
+import { TenantEntity } from './tenant.entity';
 
 
 export enum LockReason {
@@ -35,11 +35,18 @@ export function isLockReasonEscalation(
 }
 
 @Entity('user')
+@Unique(['email', 'tenant'])
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 
-  @Column({ name: 'email', type: 'varchar', unique: true })
+  @ManyToOne(() => TenantEntity, (tenant) => tenant.users, {
+    onDelete: 'CASCADE'
+  })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: TenantEntity;
+
+  @Column({ name: 'email', type: 'varchar' })
   email: string;
 
   @OneToMany(() => PasswordEntity, (password) => password.user, {

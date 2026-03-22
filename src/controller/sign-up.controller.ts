@@ -18,6 +18,8 @@ import { CheckEmailOutputDto } from '../dto/output/check-email.output.dto';
 import { SignUpOutputDto } from '../dto/output/sign-up.output.dto';
 import { VerifyEmailOutputDto } from '../dto/output/verify-email.output.dto';
 import { SignUpService } from '../service/sign-up.service';
+import { CurrentTenant } from '../decorator/current-tenant.decorator';
+import { TenantEntity } from '../entity/tenant.entity';
 
 @ApiTags('Sign-up')
 @Controller('sign-up')
@@ -33,8 +35,8 @@ export class SignUpController {
     type: SignUpOutputDto
   })
   @ApiConflictResponse({ description: 'Email is already used' })
-  async signUp(@Body() dto: SignUpInputDto): Promise<SignUpOutputDto> {
-    return this._signUpService.signUp(dto);
+  async signUp(@Body() dto: SignUpInputDto, @CurrentTenant() tenant: TenantEntity): Promise<SignUpOutputDto> {
+    return this._signUpService.signUp(dto, tenant);
   }
 
   @Post('resend-verification-email')
@@ -60,9 +62,10 @@ export class SignUpController {
     type: CheckEmailOutputDto
   })
   async checkEmail(
-    @Body() dto: CheckEmailInputDto
+    @Body() dto: CheckEmailInputDto,
+    @CurrentTenant() tenant: TenantEntity
   ): Promise<CheckEmailOutputDto> {
-    return this._signUpService.checkEmail(dto);
+    return this._signUpService.checkEmail(dto, tenant);
   }
 
   @Post('verify')

@@ -13,6 +13,7 @@ import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
 import { REDIS_CLIENT } from '../src/config/redis.provider';
+import { TenantEntity } from '../src/entity/tenant.entity';
 import { INFRA_CONFIG, testInfraConfig } from '../src/config/infra-config';
 import type { AuthoraInfraConfig } from '../src/config/infra-config';
 import { TENANT_CONFIG, defaultTenantConfig } from '../src/config/tenant-config';
@@ -107,6 +108,12 @@ export async function resetTestState(): Promise<void> {
       `TRUNCATE TABLE "${entity.schema}"."${entity.tableName}" CASCADE`
     );
   }
+
+  // Recreate the default tenant after truncation
+  const tenantRepository = dataSource.getRepository(TenantEntity);
+  await tenantRepository.save(
+    tenantRepository.create({ slug: 'default', name: 'Default' })
+  );
 
   const storage = app.get(ThrottlerStorage);
   storage.onApplicationShutdown();

@@ -9,6 +9,7 @@ import {
   LockReason,
   UserEntity
 } from '../../entity/user.entity';
+import { TenantEntity } from '../../entity/tenant.entity';
 
 @Injectable()
 export class UserEntityService {
@@ -18,7 +19,7 @@ export class UserEntityService {
     @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
   ) {}
 
-  async create(data: Pick<UserEntity, 'email'>): Promise<UserEntity> {
+  async create(data: { email: string, tenant: TenantEntity }): Promise<UserEntity> {
     return this._repository.save(this._repository.create(data));
   }
 
@@ -37,8 +38,8 @@ export class UserEntityService {
     });
   }
 
-  async existsByEmail(email: string): Promise<boolean> {
-    return this._repository.existsBy({ email });
+  async existsByEmail(email: string, tenant: TenantEntity): Promise<boolean> {
+    return this._repository.existsBy({ email, tenant: { id: tenant.id } });
   }
 
   async lock(user: UserEntity, reason: LockReason): Promise<void> {

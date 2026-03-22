@@ -26,6 +26,9 @@ export const envValidationSchema = Joi.object({
   JWT_PRIVATE_KEY_PATH: filePath.required(),
   JWT_PUBLIC_KEY_PATH: filePath.required(),
 
+  // Multi-tenant
+  ENABLE_MULTI_TENANT: Joi.boolean().default(false),
+
   // Password strength
   PASSWORD_MIN_LENGTH: Joi.number().integer().min(8).default(8),
   PASSWORD_REQUIRE_DIGIT: Joi.boolean().default(true),
