@@ -1,12 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { HasUppercaseConstraint } from './has-uppercase.decorator';
 
 describe('HasUppercaseConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new HasUppercaseConstraint(config);
+    return new HasUppercaseConstraint({
+      ...defaultTenantConfig,
+      passwordRequireUppercase: enabled
+    });
   }
 
   it('should accept a password with an uppercase letter', () => {

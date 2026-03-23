@@ -1,13 +1,13 @@
 import { createHash } from 'crypto';
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { NoCommonPasswordConstraint } from './no-common-password.decorator';
 
 describe('NoCommonPasswordConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new NoCommonPasswordConstraint(config);
+    return new NoCommonPasswordConstraint({
+      ...defaultTenantConfig,
+      passwordForbidCommonPassword: enabled
+    });
   }
 
   function pwnedResponseFor(password: string): string {

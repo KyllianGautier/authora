@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   registerDecorator,
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface
 } from 'class-validator';
+import type { AuthoraTenantConfig } from '../../../config/tenant-config';
+import { TENANT_CONFIG } from '../../../config/tenant-config';
 
 export const SPECIAL_CHARS = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
 
@@ -14,10 +15,10 @@ export const SPECIAL_CHARS = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
 export class HasSpecialCharConstraint implements ValidatorConstraintInterface {
   private readonly _enabled: boolean;
 
-  constructor(config: ConfigService) {
-    this._enabled = config.getOrThrow<boolean>(
-      'PASSWORD_REQUIRE_SPECIAL_CHAR'
-    );
+  constructor(
+    @Inject(TENANT_CONFIG) tenantConfig: AuthoraTenantConfig
+  ) {
+    this._enabled = tenantConfig.passwordRequireSpecialChar;
   }
 
   validate(value: unknown): boolean {

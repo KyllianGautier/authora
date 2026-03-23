@@ -29,15 +29,7 @@ export const envValidationSchema = Joi.object({
   // Multi-tenant
   ENABLE_MULTI_TENANT: Joi.boolean().default(false),
 
-  // Password strength
-  PASSWORD_MIN_LENGTH: Joi.number().integer().min(8).default(8),
-  PASSWORD_REQUIRE_DIGIT: Joi.boolean().default(true),
-  PASSWORD_REQUIRE_SPECIAL_CHAR: Joi.boolean().default(true),
-  PASSWORD_REQUIRE_LOWERCASE: Joi.boolean().default(true),
-  PASSWORD_REQUIRE_UPPERCASE: Joi.boolean().default(true),
-  PASSWORD_FORBID_SEQUENTIAL_CHARS: Joi.boolean().default(false),
-  PASSWORD_FORBID_REPEATED_CHARS: Joi.boolean().default(false),
-  PASSWORD_FORBID_KEYBOARD_SEQUENCE: Joi.boolean().default(false),
-  PASSWORD_FORBID_USER_INFO: Joi.boolean().default(true),
-  PASSWORD_FORBID_COMMON_PASSWORD: Joi.boolean().default(false)
+  // Authora-UI
+  AUTHORA_UI_ENABLED: Joi.boolean().default(true),
+  AUTHORA_UI_BASE_URL: Joi.string().uri().required()
 });

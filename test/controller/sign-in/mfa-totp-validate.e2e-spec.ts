@@ -3,7 +3,7 @@ import * as speakeasy from 'speakeasy';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { defaultTenantConfig } from '../../../src/config/tenant-config';
+import { testTenantConfig } from '../../../src/config/tenant-config';
 import { DateTime } from 'luxon';
 import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
 import { TrustedDeviceEntity } from '../../../src/entity/trusted-device.entity';
@@ -303,11 +303,11 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
   });
 
   describe('temporary lock', () => {
-    it(`should return 429 after ${defaultTenantConfig.mfaAuthMaxAttempts} failed TOTP attempts`, async () => {
+    it(`should return 429 after ${testTenantConfig.mfaAuthMaxAttempts} failed TOTP attempts`, async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await createTwoFactorAuth(dataSource, user, true);
 
-      for (let i = 0; i < defaultTenantConfig.mfaAuthMaxAttempts; i++) {
+      for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts; i++) {
         const session = await createAuthSession(app, {
           userId: user.id,
           primaryAuthVerified: true
@@ -338,15 +338,15 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
         .getRepository(SignInAttemptEntity)
         .find({ where: { user: { id: user.id } }, order: { createdAt: 'ASC' } });
 
-      expect(attempts).toHaveLength(defaultTenantConfig.mfaAuthMaxAttempts + 1);
+      expect(attempts).toHaveLength(testTenantConfig.mfaAuthMaxAttempts + 1);
 
-      for (let i = 0; i < defaultTenantConfig.mfaAuthMaxAttempts; i++) {
+      for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts; i++) {
         expect(attempts[i].success).toBe(false);
         expect(attempts[i].failureReason).toBe(AuthFailureReason.InvalidMfaAuth);
       }
 
-      expect(attempts[defaultTenantConfig.mfaAuthMaxAttempts].success).toBe(false);
-      expect(attempts[defaultTenantConfig.mfaAuthMaxAttempts].failureReason).toBe(AuthFailureReason.TooManyMfaAttempts);
+      expect(attempts[testTenantConfig.mfaAuthMaxAttempts].success).toBe(false);
+      expect(attempts[testTenantConfig.mfaAuthMaxAttempts].failureReason).toBe(AuthFailureReason.TooManyMfaAttempts);
     });
 
     it('should reset the attempt counter after a successful TOTP validation', async () => {
@@ -354,7 +354,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
       const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
 
       // Fail a few times (below threshold)
-      for (let i = 0; i < defaultTenantConfig.mfaAuthMaxAttempts - 1; i++) {
+      for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts - 1; i++) {
         const session = await createAuthSession(app, {
           userId: user.id,
           primaryAuthVerified: true
@@ -385,7 +385,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
         .expect(200);
 
       // Can fail again without being locked
-      for (let i = 0; i < defaultTenantConfig.mfaAuthMaxAttempts - 1; i++) {
+      for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts - 1; i++) {
         const s = await createAuthSession(app, {
           userId: user.id,
           primaryAuthVerified: true
@@ -420,18 +420,18 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await createTwoFactorAuth(dataSource, user, true);
 
-      // Do 3 batches of defaultTenantConfig.mfaAuthMaxAttempts, simulating cooldown expiry between batches
+      // Do 3 batches of testTenantConfig.mfaAuthMaxAttempts, simulating cooldown expiry between batches
       for (let batch = 0; batch < 3; batch++) {
         if (batch > 0) {
           // Simulate cooldown expiry
           await dataSource.getRepository(UserEntity).update(user.id, {
             mfaLastFailedAttemptAt: DateTime.utc()
-              .minus({ seconds: defaultTenantConfig.mfaAuthCooldownSec + 1 })
+              .minus({ seconds: testTenantConfig.mfaAuthCooldownSec + 1 })
               .toJSDate()
           });
         }
 
-        for (let i = 0; i < defaultTenantConfig.mfaAuthMaxAttempts; i++) {
+        for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts; i++) {
           resetThrottler();
           const session = await createAuthSession(app, {
             userId: user.id,

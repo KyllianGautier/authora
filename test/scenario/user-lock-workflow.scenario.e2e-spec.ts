@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { DateTime } from 'luxon';
-import { defaultTenantConfig } from '../../src/config/tenant-config';
+import { testTenantConfig } from '../../src/config/tenant-config';
 import { LockReason, UserEntity } from '../../src/entity/user.entity';
 import {
   resetTestState,
@@ -98,7 +98,7 @@ async function triggerTokenReuse(
 }
 
 // Helper: fail N password attempts, simulating cooldown expiry via DB when needed.
-// After defaultTenantConfig.primaryAuthMaxAttempts, each attempt re-triggers the temp lock,
+// After testTenantConfig.primaryAuthMaxAttempts, each attempt re-triggers the temp lock,
 // so we backdate primaryLastFailedAttemptAt before every attempt beyond the threshold.
 async function failPasswordAttempts(
   app: INestApplication<App>,
@@ -107,12 +107,12 @@ async function failPasswordAttempts(
   count: number
 ): Promise<void> {
   for (let i = 0; i < count; i++) {
-    if (i >= defaultTenantConfig.primaryAuthMaxAttempts) {
+    if (i >= testTenantConfig.primaryAuthMaxAttempts) {
       await dataSource.getRepository(UserEntity).update(
         { email },
         {
           primaryLastFailedAttemptAt: DateTime.utc()
-            .minus({ seconds: defaultTenantConfig.primaryAuthCooldownSec + 1 })
+            .minus({ seconds: testTenantConfig.primaryAuthCooldownSec + 1 })
             .toJSDate()
         }
       );
@@ -146,7 +146,7 @@ describe('Scenario: User lock workflows', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       // Fail password to trigger temporary lock
-      for (let i = 0; i < defaultTenantConfig.primaryAuthMaxAttempts; i++) {
+      for (let i = 0; i < testTenantConfig.primaryAuthMaxAttempts; i++) {
         resetThrottler();
         const sessionId = await createSession(app);
         await attemptPassword(app, sessionId, 'user@example.com', 'wrong');
@@ -168,10 +168,10 @@ describe('Scenario: User lock workflows', () => {
   // ──────────────────────────────────────────────────
 
   describe('account lock after repeated token reuse', () => {
-    it(`should lock the account and reject login after ${defaultTenantConfig.tokenReuseMaxCompromisedFamilies} token reuse detections`, async () => {
+    it(`should lock the account and reject login after ${testTenantConfig.tokenReuseMaxCompromisedFamilies} token reuse detections`, async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
-      for (let i = 0; i < defaultTenantConfig.tokenReuseMaxCompromisedFamilies; i++) {
+      for (let i = 0; i < testTenantConfig.tokenReuseMaxCompromisedFamilies; i++) {
         await triggerTokenReuse(app, 'user@example.com', 'password123');
       }
 
@@ -195,7 +195,7 @@ describe('Scenario: User lock workflows', () => {
     it('should not lock when reuse count is below threshold and allow login', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
-      for (let i = 0; i < defaultTenantConfig.tokenReuseMaxCompromisedFamilies - 1; i++) {
+      for (let i = 0; i < testTenantConfig.tokenReuseMaxCompromisedFamilies - 1; i++) {
         await triggerTokenReuse(app, 'user@example.com', 'password123');
       }
 
@@ -226,7 +226,7 @@ describe('Scenario: User lock workflows', () => {
       const session1 = await createSession(app);
       await attemptPassword(app, session1, 'user@example.com', 'password123');
 
-      for (let i = 0; i < defaultTenantConfig.mfaAuthMaxAttempts; i++) {
+      for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts; i++) {
         await request(app.getHttpServer())
           .post(`${BASE}/mfa/totp/validate`)
           .set('X-Forwarded-For', `10.0.${i}.1`)
@@ -276,7 +276,7 @@ describe('Scenario: User lock workflows', () => {
       const { accessToken, refreshToken } = await signIn(app, 'user@example.com', 'password123');
 
       // Trigger enough token reuse to lock with SuspiciousActivity
-      for (let i = 0; i < defaultTenantConfig.tokenReuseMaxCompromisedFamilies; i++) {
+      for (let i = 0; i < testTenantConfig.tokenReuseMaxCompromisedFamilies; i++) {
         await triggerTokenReuse(app, 'user@example.com', 'password123');
       }
 
@@ -287,7 +287,7 @@ describe('Scenario: User lock workflows', () => {
       expect(lockedUser!.lockReason).toBe(LockReason.SuspiciousActivity);
 
       // Now trigger password permanent lock threshold
-      await failPasswordAttempts(app, dataSource, 'user@example.com', defaultTenantConfig.primaryAuthLockAccountThreshold);
+      await failPasswordAttempts(app, dataSource, 'user@example.com', testTenantConfig.primaryAuthLockAccountThreshold);
 
       // lockReason should still be SuspiciousActivity (not downgraded)
       const stillSuspicious = await dataSource
@@ -302,12 +302,12 @@ describe('Scenario: User lock workflows', () => {
 
       // First: get some tokens while not locked
       const tokens: { accessToken: string; refreshToken: string }[] = [];
-      for (let i = 0; i < defaultTenantConfig.tokenReuseMaxCompromisedFamilies; i++) {
+      for (let i = 0; i < testTenantConfig.tokenReuseMaxCompromisedFamilies; i++) {
         tokens.push(await signIn(app, 'user@example.com', 'password123'));
       }
 
       // Lock with TooManyAttempts
-      await failPasswordAttempts(app, dataSource, 'user@example.com', defaultTenantConfig.primaryAuthLockAccountThreshold);
+      await failPasswordAttempts(app, dataSource, 'user@example.com', testTenantConfig.primaryAuthLockAccountThreshold);
 
       const lockedUser = await dataSource
         .getRepository(UserEntity)
@@ -372,12 +372,12 @@ describe('Scenario: User lock workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       // Accumulate reuse detections below threshold
-      for (let i = 0; i < defaultTenantConfig.tokenReuseMaxCompromisedFamilies - 1; i++) {
+      for (let i = 0; i < testTenantConfig.tokenReuseMaxCompromisedFamilies - 1; i++) {
         await triggerTokenReuse(app, 'user@example.com', 'password123');
       }
 
       // Lock via password attempts
-      await failPasswordAttempts(app, dataSource, 'user@example.com', defaultTenantConfig.primaryAuthLockAccountThreshold);
+      await failPasswordAttempts(app, dataSource, 'user@example.com', testTenantConfig.primaryAuthLockAccountThreshold);
 
       // Unlock via password reset
       resetThrottler();
@@ -420,7 +420,7 @@ describe('Scenario: User lock workflows', () => {
       const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
 
       // Fail password below threshold, then succeed (resets password counter)
-      for (let i = 0; i < defaultTenantConfig.primaryAuthMaxAttempts - 1; i++) {
+      for (let i = 0; i < testTenantConfig.primaryAuthMaxAttempts - 1; i++) {
         resetThrottler();
         const sessionId = await createSession(app);
         await attemptPassword(app, sessionId, 'user@example.com', 'wrong');
@@ -431,7 +431,7 @@ describe('Scenario: User lock workflows', () => {
       await attemptPassword(app, session1, 'user@example.com', 'password123');
 
       // Fail MFA to trigger MFA temporary lock
-      for (let i = 0; i < defaultTenantConfig.mfaAuthMaxAttempts; i++) {
+      for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts; i++) {
         await request(app.getHttpServer())
           .post(`${BASE}/mfa/totp/validate`)
           .set('X-Forwarded-For', `10.0.${i}.1`)
@@ -476,7 +476,7 @@ describe('Scenario: User lock workflows', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       // Lock the account via failed attempts
-      await failPasswordAttempts(app, dataSource, 'user@example.com', defaultTenantConfig.primaryAuthLockAccountThreshold);
+      await failPasswordAttempts(app, dataSource, 'user@example.com', testTenantConfig.primaryAuthLockAccountThreshold);
 
       // Verify locked
       const lockedUser = await dataSource
@@ -558,7 +558,7 @@ describe('Scenario: User lock workflows', () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       // Lock via failed attempts
-      await failPasswordAttempts(app, dataSource, 'user@example.com', defaultTenantConfig.primaryAuthLockAccountThreshold);
+      await failPasswordAttempts(app, dataSource, 'user@example.com', testTenantConfig.primaryAuthLockAccountThreshold);
 
       // Forgot password + reset
       resetThrottler();
@@ -576,7 +576,7 @@ describe('Scenario: User lock workflows', () => {
         .expect(200);
 
       // Should be able to fail again without immediate lock
-      for (let i = 0; i < defaultTenantConfig.primaryAuthMaxAttempts - 1; i++) {
+      for (let i = 0; i < testTenantConfig.primaryAuthMaxAttempts - 1; i++) {
         resetThrottler();
         const sessionId = await createSession(app);
         const res = await attemptPassword(app, sessionId, 'user@example.com', 'wrong');

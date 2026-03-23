@@ -4,7 +4,7 @@ import * as speakeasy from 'speakeasy';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { defaultTenantConfig } from '../../src/config/tenant-config';
+import { testTenantConfig } from '../../src/config/tenant-config';
 import {
   resetTestState,
   consumeEmailQueue,
@@ -72,7 +72,7 @@ describe('Scenario: First-party sign-in workflows', () => {
       // Verify access token
       expect(tokenRes.body.type).toBe('Bearer');
       expect(tokenRes.body.expiresIn).toBe(
-        defaultTenantConfig.jwtAccessTokenExpirationSec
+        testTenantConfig.jwtAccessTokenExpirationSec
       );
 
       const decoded = jwt.verify(

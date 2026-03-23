@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 import Redis from 'ioredis';
 import { App } from 'supertest/types';
 import { REDIS_CLIENT } from '../../../src/config/redis.provider';
-import { defaultTenantConfig } from '../../../src/config/tenant-config';
+import { testInfraConfig } from '../../../src/config/infra-config';
 import { AuthSession, MfaPolicy } from '../../../src/redis-model/auth-session.model';
 
 const SESSION_PREFIX = 'auth_session:';
@@ -44,14 +44,14 @@ export async function createAuthSession(
     deviceFingerprint: options?.deviceFingerprint,
     exchanged: options?.exchanged ?? false,
     createdAt: now.toISO(),
-    expiresAt: now.plus({ seconds: defaultTenantConfig.authSessionTtlSec }).toISO()
+    expiresAt: now.plus({ seconds: testInfraConfig.authSessionTtlSec }).toISO()
   };
 
   await redis.set(
     SESSION_PREFIX + session.id,
     JSON.stringify(session),
     'EX',
-    defaultTenantConfig.authSessionTtlSec
+    testInfraConfig.authSessionTtlSec
   );
 
   if (session.userId !== undefined) {
@@ -59,7 +59,7 @@ export async function createAuthSession(
       USER_SESSION_PREFIX + session.userId,
       session.id,
       'EX',
-      defaultTenantConfig.authSessionTtlSec
+      testInfraConfig.authSessionTtlSec
     );
   }
 

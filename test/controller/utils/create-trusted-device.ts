@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { DataSource } from 'typeorm';
-import { defaultTenantConfig } from '../../../src/config/tenant-config';
+import { testTenantConfig } from '../../../src/config/tenant-config';
 import { TrustedDeviceEntity } from '../../../src/entity/trusted-device.entity';
 import { UserEntity } from '../../../src/entity/user.entity';
 import { hashCreate } from './hash';
@@ -27,7 +27,7 @@ export async function createTrustedDevice(
       lastSeenAt: now,
       trusted: options?.trusted ?? false,
       trustedUntil: options?.trustedUntil ??
-        DateTime.utc().plus({ seconds: defaultTenantConfig.trustedDeviceTtlSec }).toJSDate()
+        DateTime.utc().plus({ seconds: testTenantConfig.trustedDeviceTtlSec }).toJSDate()
     })
   );
 }

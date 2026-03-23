@@ -1,12 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { NoKeyboardSequenceConstraint } from './no-keyboard-sequence.decorator';
 
 describe('NoKeyboardSequenceConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new NoKeyboardSequenceConstraint(config);
+    return new NoKeyboardSequenceConstraint({
+      ...defaultTenantConfig,
+      passwordForbidKeyboardSequence: enabled
+    });
   }
 
   describe('number row (shared)', () => {

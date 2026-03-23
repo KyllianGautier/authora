@@ -1,12 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { HasMinLengthConstraint } from './has-min-length.decorator';
 
 describe('HasMinLengthConstraint', () => {
   function createConstraint(minLength = 8) {
-    const config = {
-      getOrThrow: jest.fn(() => minLength)
-    } as unknown as ConfigService;
-    return new HasMinLengthConstraint(config);
+    return new HasMinLengthConstraint({
+      ...defaultTenantConfig,
+      passwordMinLength: minLength
+    });
   }
 
   it('should accept a password meeting the minimum length', () => {

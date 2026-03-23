@@ -15,6 +15,10 @@ export interface AuthoraInfraConfig {
   // Delay (timing attack mitigation)
   endpointDelayMinMs: number;
   endpointDelayMaxMs: number;
+
+  // Session & exchange TTLs (seconds)
+  authSessionTtlSec: number;
+  ottExchangeTtlSec: number;
 }
 
 export const defaultInfraConfig: AuthoraInfraConfig = {
@@ -28,7 +32,10 @@ export const defaultInfraConfig: AuthoraInfraConfig = {
   throttleCombinedLimit: 5,
 
   endpointDelayMinMs: 200,
-  endpointDelayMaxMs: 400
+  endpointDelayMaxMs: 400,
+
+  authSessionTtlSec: 600,
+  ottExchangeTtlSec: 300
 };
 
 export const testInfraConfig: AuthoraInfraConfig = {
@@ -42,5 +49,8 @@ export const testInfraConfig: AuthoraInfraConfig = {
   throttleCombinedLimit: 5,
 
   endpointDelayMinMs: 1,
-  endpointDelayMaxMs: 2
+  endpointDelayMaxMs: 2,
+
+  authSessionTtlSec: 600,
+  ottExchangeTtlSec: 300
 };

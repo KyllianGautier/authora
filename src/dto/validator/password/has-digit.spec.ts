@@ -1,12 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { HasDigitConstraint } from './has-digit.decorator';
 
 describe('HasDigitConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new HasDigitConstraint(config);
+    return new HasDigitConstraint({
+      ...defaultTenantConfig,
+      passwordRequireDigit: enabled
+    });
   }
 
   it('should accept a password with a digit', () => {

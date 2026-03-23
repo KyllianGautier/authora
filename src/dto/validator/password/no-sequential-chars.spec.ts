@@ -1,12 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { NoSequentialCharsConstraint } from './no-sequential-chars.decorator';
 
 describe('NoSequentialCharsConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new NoSequentialCharsConstraint(config);
+    return new NoSequentialCharsConstraint({
+      ...defaultTenantConfig,
+      passwordForbidSequentialChars: enabled
+    });
   }
 
   it('should reject ascending letter sequences of 4+', () => {

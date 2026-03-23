@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   registerDecorator,
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface
 } from 'class-validator';
+import type { AuthoraTenantConfig } from '../../../config/tenant-config';
+import { TENANT_CONFIG } from '../../../config/tenant-config';
 
 const SEQUENCE_MIN_LENGTH = 4;
 
@@ -16,10 +17,10 @@ export class NoSequentialCharsConstraint
 {
   private readonly _enabled: boolean;
 
-  constructor(config: ConfigService) {
-    this._enabled = config.getOrThrow<boolean>(
-      'PASSWORD_FORBID_SEQUENTIAL_CHARS'
-    );
+  constructor(
+    @Inject(TENANT_CONFIG) tenantConfig: AuthoraTenantConfig
+  ) {
+    this._enabled = tenantConfig.passwordForbidSequentialChars;
   }
 
   validate(value: unknown): boolean {

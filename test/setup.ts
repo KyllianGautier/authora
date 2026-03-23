@@ -16,12 +16,12 @@ import { REDIS_CLIENT } from '../src/config/redis.provider';
 import { TenantEntity } from '../src/entity/tenant.entity';
 import { INFRA_CONFIG, testInfraConfig } from '../src/config/infra-config';
 import type { AuthoraInfraConfig } from '../src/config/infra-config';
-import { TENANT_CONFIG, defaultTenantConfig } from '../src/config/tenant-config';
+import { TENANT_CONFIG, testTenantConfig } from '../src/config/tenant-config';
 import type { AuthoraTenantConfig } from '../src/config/tenant-config';
 
 let app: INestApplication<App>;
 let initialized = false;
-let activeTenantConfig: AuthoraTenantConfig = { ...defaultTenantConfig };
+let activeTenantConfig: AuthoraTenantConfig = { ...testTenantConfig };
 let activeInfraConfig: AuthoraInfraConfig = { ...testInfraConfig };
 
 export function getTestPublicKey(): string {
@@ -86,7 +86,7 @@ export function resetThrottler(): void {
 export function setTenantConfig(
   overrides: Partial<AuthoraTenantConfig>
 ): void {
-  activeTenantConfig = { ...defaultTenantConfig, ...overrides };
+  activeTenantConfig = { ...testTenantConfig, ...overrides };
 }
 
 // Override infra config for the current test. Resets automatically in resetTestState().
@@ -98,7 +98,7 @@ export function setInfraConfig(
 
 // Truncate all tables and reset throttler state between tests
 export async function resetTestState(): Promise<void> {
-  activeTenantConfig = { ...defaultTenantConfig };
+  activeTenantConfig = { ...testTenantConfig };
   activeInfraConfig = { ...testInfraConfig };
   const dataSource = app.get(DataSource);
   const entities = dataSource.entityMetadatas;

@@ -1,4 +1,4 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import {
   HasSpecialCharConstraint,
   SPECIAL_CHARS
@@ -6,10 +6,10 @@ import {
 
 describe('HasSpecialCharConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new HasSpecialCharConstraint(config);
+    return new HasSpecialCharConstraint({
+      ...defaultTenantConfig,
+      passwordRequireSpecialChar: enabled
+    });
   }
 
   it('should accept each special character from the list', () => {

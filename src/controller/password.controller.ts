@@ -1,10 +1,11 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
   ApiTags
 } from '@nestjs/swagger';
+import type { AuthoraTenantConfig } from '../config/tenant-config';
+import { TENANT_CONFIG } from '../config/tenant-config';
 import { CheckPasswordStrengthInputDto } from '../dto/input/check-password-strength.input.dto';
 import { CheckPasswordStrengthOutputDto } from '../dto/output/check-password-strength.output.dto';
 import { PasswordRulesOutputDto } from '../dto/output/password-rules.output.dto';
@@ -33,7 +34,8 @@ export class PasswordController {
   private readonly _constraints: PasswordRule[];
 
   constructor(
-    private readonly _configService: ConfigService,
+    @Inject(TENANT_CONFIG)
+    private readonly _tenantConfig: AuthoraTenantConfig,
     private readonly _hasMinLength: HasMinLengthConstraint,
     private readonly _hasDigit: HasDigitConstraint,
     private readonly _hasSpecialChar: HasSpecialCharConstraint,
@@ -46,34 +48,16 @@ export class PasswordController {
     private readonly _noCommonPassword: NoCommonPasswordConstraint
   ) {
     this._rules = Object.assign(new PasswordRulesOutputDto(), {
-      minLength: this._configService.getOrThrow<number>('PASSWORD_MIN_LENGTH'),
-      requireDigit: this._configService.getOrThrow<boolean>(
-        'PASSWORD_REQUIRE_DIGIT'
-      ),
-      requireSpecialChar: this._configService.getOrThrow<boolean>(
-        'PASSWORD_REQUIRE_SPECIAL_CHAR'
-      ),
-      requireLowercase: this._configService.getOrThrow<boolean>(
-        'PASSWORD_REQUIRE_LOWERCASE'
-      ),
-      requireUppercase: this._configService.getOrThrow<boolean>(
-        'PASSWORD_REQUIRE_UPPERCASE'
-      ),
-      forbidSequentialChars: this._configService.getOrThrow<boolean>(
-        'PASSWORD_FORBID_SEQUENTIAL_CHARS'
-      ),
-      forbidRepeatedChars: this._configService.getOrThrow<boolean>(
-        'PASSWORD_FORBID_REPEATED_CHARS'
-      ),
-      forbidKeyboardSequence: this._configService.getOrThrow<boolean>(
-        'PASSWORD_FORBID_KEYBOARD_SEQUENCE'
-      ),
-      forbidUserInfo: this._configService.getOrThrow<boolean>(
-        'PASSWORD_FORBID_USER_INFO'
-      ),
-      forbidCommonPassword: this._configService.getOrThrow<boolean>(
-        'PASSWORD_FORBID_COMMON_PASSWORD'
-      )
+      minLength: this._tenantConfig.passwordMinLength,
+      requireDigit: this._tenantConfig.passwordRequireDigit,
+      requireSpecialChar: this._tenantConfig.passwordRequireSpecialChar,
+      requireLowercase: this._tenantConfig.passwordRequireLowercase,
+      requireUppercase: this._tenantConfig.passwordRequireUppercase,
+      forbidSequentialChars: this._tenantConfig.passwordForbidSequentialChars,
+      forbidRepeatedChars: this._tenantConfig.passwordForbidRepeatedChars,
+      forbidKeyboardSequence: this._tenantConfig.passwordForbidKeyboardSequence,
+      forbidUserInfo: this._tenantConfig.passwordForbidUserInfo,
+      forbidCommonPassword: this._tenantConfig.passwordForbidCommonPassword
     });
 
     this._constraints = [

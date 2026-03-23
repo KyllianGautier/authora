@@ -1,12 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { NoRepeatedCharsConstraint } from './no-repeated-chars.decorator';
 
 describe('NoRepeatedCharsConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new NoRepeatedCharsConstraint(config);
+    return new NoRepeatedCharsConstraint({
+      ...defaultTenantConfig,
+      passwordForbidRepeatedChars: enabled
+    });
   }
 
   it('should reject 3+ identical characters', () => {

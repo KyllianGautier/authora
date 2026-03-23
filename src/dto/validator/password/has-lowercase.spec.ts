@@ -1,12 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { HasLowercaseConstraint } from './has-lowercase.decorator';
 
 describe('HasLowercaseConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new HasLowercaseConstraint(config);
+    return new HasLowercaseConstraint({
+      ...defaultTenantConfig,
+      passwordRequireLowercase: enabled
+    });
   }
 
   it('should accept a password with a lowercase letter', () => {

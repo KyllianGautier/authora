@@ -1,13 +1,13 @@
-import { ConfigService } from '@nestjs/config';
 import { ValidationArguments } from 'class-validator';
+import { defaultTenantConfig } from '../../../config/tenant-config';
 import { NoUserInfoConstraint } from './no-user-info.decorator';
 
 describe('NoUserInfoConstraint', () => {
   function createConstraint(enabled = true) {
-    const config = {
-      getOrThrow: jest.fn(() => enabled)
-    } as unknown as ConfigService;
-    return new NoUserInfoConstraint(config);
+    return new NoUserInfoConstraint({
+      ...defaultTenantConfig,
+      passwordForbidUserInfo: enabled
+    });
   }
 
   function argsWithEmail(email: string): ValidationArguments {

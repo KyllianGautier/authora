@@ -3,6 +3,8 @@ import { createHash, randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { OTT_EXCHANGE_KEY, OTT_KEY } from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
+import { INFRA_CONFIG } from '../../config/infra-config';
+import type { AuthoraInfraConfig } from '../../config/infra-config';
 import { TENANT_CONFIG } from '../../config/tenant-config';
 import type { AuthoraTenantConfig } from '../../config/tenant-config';
 import { AuthSession } from '../../redis-model/auth-session.model';
@@ -14,6 +16,7 @@ export class OneTimeTokenRedisService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly _redis: Redis,
     @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig,
+    @Inject(INFRA_CONFIG) private readonly _infraConfig: AuthoraInfraConfig,
     private readonly _authSessionRedisService: AuthSessionRedisService
   ) {}
 
@@ -25,7 +28,7 @@ export class OneTimeTokenRedisService {
       [OneTimeTokenType.TwoFactorAuthDisabling]: this._tenantConfig.ottTwoFactorAuthDisablingTtlSec,
       [OneTimeTokenType.ForgotPassword]: this._tenantConfig.ottForgotPasswordTtlSec,
       [OneTimeTokenType.MagicLink]: this._tenantConfig.ottMagicLinkTtlSec,
-      [OneTimeTokenType.Exchange]: this._tenantConfig.ottExchangeTtlSec
+      [OneTimeTokenType.Exchange]: this._infraConfig.ottExchangeTtlSec
     };
     return map[type];
   }

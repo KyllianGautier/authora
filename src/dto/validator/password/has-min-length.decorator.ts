@@ -1,19 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   registerDecorator,
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface
 } from 'class-validator';
+import type { AuthoraTenantConfig } from '../../../config/tenant-config';
+import { TENANT_CONFIG } from '../../../config/tenant-config';
 
 @Injectable()
 @ValidatorConstraint({ name: 'hasMinLength' })
 export class HasMinLengthConstraint implements ValidatorConstraintInterface {
   private readonly _minLength: number;
 
-  constructor(config: ConfigService) {
-    this._minLength = config.getOrThrow<number>('PASSWORD_MIN_LENGTH');
+  constructor(
+    @Inject(TENANT_CONFIG) tenantConfig: AuthoraTenantConfig
+  ) {
+    this._minLength = tenantConfig.passwordMinLength;
   }
 
   validate(value: unknown): boolean {

@@ -3,7 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { defaultTenantConfig } from '../../src/config/tenant-config';
+import { testTenantConfig } from '../../src/config/tenant-config';
 import { RefreshTokenEntity } from '../../src/entity/refresh-token.entity';
 import {
   resetTestState,
@@ -90,7 +90,7 @@ describe('Scenario: Refresh token workflows', () => {
       expect(decoded.email).toBe('user@example.com');
       expect(refreshRes.body.type).toBe('Bearer');
       expect(refreshRes.body.expiresIn).toBe(
-        defaultTenantConfig.jwtAccessTokenExpirationSec
+        testTenantConfig.jwtAccessTokenExpirationSec
       );
 
       // Verify new refresh token cookie

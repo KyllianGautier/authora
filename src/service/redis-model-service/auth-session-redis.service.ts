@@ -7,8 +7,8 @@ import {
   AUTH_SESSION_USER_KEY
 } from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
-import { TENANT_CONFIG } from '../../config/tenant-config';
-import type { AuthoraTenantConfig } from '../../config/tenant-config';
+import { INFRA_CONFIG } from '../../config/infra-config';
+import type { AuthoraInfraConfig } from '../../config/infra-config';
 import { AuthSession, MfaPolicy } from '../../redis-model/auth-session.model';
 
 export interface CreateAuthSessionOptions {
@@ -29,7 +29,7 @@ export interface CreateAuthSessionOptions {
 export class AuthSessionRedisService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly _redis: Redis,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    @Inject(INFRA_CONFIG) private readonly _infraConfig: AuthoraInfraConfig
   ) {}
 
   async create(options: CreateAuthSessionOptions): Promise<AuthSession> {
@@ -51,16 +51,16 @@ export class AuthSessionRedisService {
       deviceTrusted: options.deviceTrusted ?? false,
       exchanged: false,
       createdAt: now.toISO(),
-      expiresAt: now.plus({ seconds: this._tenantConfig.authSessionTtlSec }).toISO()
+      expiresAt: now.plus({ seconds: this._infraConfig.authSessionTtlSec }).toISO()
     };
 
     const key = AUTH_SESSION_KEY(session.id);
 
-    await this._redis.set(key, JSON.stringify(session), 'EX', this._tenantConfig.authSessionTtlSec);
+    await this._redis.set(key, JSON.stringify(session), 'EX', this._infraConfig.authSessionTtlSec);
 
     if (session.userId !== undefined) {
       const userKey = AUTH_SESSION_USER_KEY(session.userId);
-      await this._redis.set(userKey, session.id, 'EX', this._tenantConfig.authSessionTtlSec);
+      await this._redis.set(userKey, session.id, 'EX', this._infraConfig.authSessionTtlSec);
     }
 
     return session;
