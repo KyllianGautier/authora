@@ -1,11 +1,12 @@
 import { PasswordRevocationReason } from '../entity/password.entity';
-import { JobService } from './job.service';
-import type { AuthoraTenantConfig } from '../config/tenant-config';
 import { defaultTenantConfig } from '../config/tenant-config';
+import { TenantSetting } from '../config/settings';
+import { JobService } from './job.service';
+import type { SettingsService } from './settings.service';
 
 describe('JobService', () => {
   let service: JobService;
-  let tenantConfig: AuthoraTenantConfig;
+  let tenantConfig: Record<string, unknown>;
 
   const mockExecute = jest.fn();
   const mockAndWhere = jest.fn().mockReturnValue({ execute: mockExecute });
@@ -16,10 +17,19 @@ describe('JobService', () => {
     createQueryBuilder: jest.fn().mockReturnValue({ update: mockUpdate })
   };
 
+  const mockSettingsService: Partial<SettingsService> = {
+    get: jest.fn().mockImplementation(
+      (key: TenantSetting) => Promise.resolve(tenantConfig[key])
+    )
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     tenantConfig = { ...defaultTenantConfig, passwordExpirationEnabled: true };
-    service = new JobService(mockRepository as any, tenantConfig);
+    service = new JobService(
+      mockRepository as any,
+      mockSettingsService as SettingsService
+    );
   });
 
   it('should not execute when password expiration is disabled', async () => {

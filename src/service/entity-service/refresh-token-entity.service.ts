@@ -5,9 +5,9 @@ import Redis from 'ioredis';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
 import { TOKEN_REUSE_KEY } from '../../config/redis-keys';
-import { TENANT_CONFIG } from '../../config/tenant-config';
-import type { AuthoraTenantConfig } from '../../config/tenant-config';
+import { TenantSetting } from '../../config/settings';
 import { REDIS_CLIENT } from '../../config/redis.provider';
+import { SettingsService } from '../settings.service';
 import { RefreshTokenEntity } from '../../entity/refresh-token.entity';
 import { LockReason, UserEntity } from '../../entity/user.entity';
 import { HashService } from '../hash.service';
@@ -21,7 +21,7 @@ export class RefreshTokenEntityService {
     private readonly _hashService: HashService,
     private readonly _userEntityService: UserEntityService,
     @Inject(REDIS_CLIENT) private readonly _redis: Redis,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   async create(user: UserEntity, expirationSeconds: number): Promise<string> {
@@ -140,11 +140,16 @@ export class RefreshTokenEntityService {
     const key = TOKEN_REUSE_KEY(user.id);
     const count = await this._redis.incr(key);
 
+    const tenantId = user.tenant?.id ?? '';
+
     if (count === 1) {
-      await this._redis.expire(key, this._tenantConfig.tokenReuseWindowSec);
+      const windowSec = await this._settingsService.get(TenantSetting.TokenReuseWindowSec, tenantId);
+      await this._redis.expire(key, windowSec);
     }
 
-    if (count >= this._tenantConfig.tokenReuseMaxCompromisedFamilies) {
+    const maxFamilies = await this._settingsService.get(TenantSetting.TokenReuseMaxCompromisedFamilies, tenantId);
+
+    if (count >= maxFamilies) {
       await this._userEntityService.lock(user, LockReason.SuspiciousActivity);
     }
 

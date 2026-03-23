@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { testTenantConfig } from '../../src/config/tenant-config';
+import { MfaPolicy } from '../../src/redis-model/auth-session.model';
 import {
   resetTestState,
   consumeEmailQueue,
@@ -844,7 +845,7 @@ describe('Scenario: First-party sign-in workflows', () => {
 
   describe('expired password → reset → resume same session → exchange → token', () => {
     it('should resume the same session after resetting an expired password', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'OldP@ssw0rd!');
       await expirePassword(dataSource, user);
 
@@ -963,7 +964,7 @@ describe('Scenario: First-party sign-in workflows', () => {
 
   describe('first login with MFA → trust device → second login skips MFA', () => {
     it('should complete full trusted device workflow', async () => {
-      setTenantConfig({ mfaPolicy: 'REQUIRED' });
+      await setTenantConfig({ mfaPolicy: MfaPolicy.Required });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
 
@@ -1047,7 +1048,7 @@ describe('Scenario: First-party sign-in workflows', () => {
 
   describe('trusted device expired → MFA required again', () => {
     it('should require MFA when device trust has expired', async () => {
-      setTenantConfig({ mfaPolicy: 'REQUIRED' });
+      await setTenantConfig({ mfaPolicy: MfaPolicy.Required });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await createTwoFactorAuth(dataSource, user, true);
 

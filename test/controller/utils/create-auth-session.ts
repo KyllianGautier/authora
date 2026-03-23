@@ -4,8 +4,9 @@ import { DateTime } from 'luxon';
 import Redis from 'ioredis';
 import { App } from 'supertest/types';
 import { REDIS_CLIENT } from '../../../src/config/redis.provider';
-import { testInfraConfig } from '../../../src/config/infra-config';
+import { testAuthoraConfig } from '../../../src/config/authora-config';
 import { AuthSession, MfaPolicy } from '../../../src/redis-model/auth-session.model';
+
 
 const SESSION_PREFIX = 'auth_session:';
 const USER_SESSION_PREFIX = 'auth_session:user:';
@@ -37,21 +38,21 @@ export async function createAuthSession(
     mode: 'first-party',
     primaryAuthVerified: options?.primaryAuthVerified ?? false,
     rememberMe: options?.rememberMe ?? false,
-    mfaPolicy: options?.mfaPolicy ?? 'DISABLED',
+    mfaPolicy: options?.mfaPolicy ?? MfaPolicy.Disabled,
     mfaSetup: options?.mfaSetup ?? false,
     mfaVerified: options?.mfaVerified ?? false,
     deviceTrusted: options?.deviceTrusted ?? false,
     deviceFingerprint: options?.deviceFingerprint,
     exchanged: options?.exchanged ?? false,
     createdAt: now.toISO(),
-    expiresAt: now.plus({ seconds: testInfraConfig.authSessionTtlSec }).toISO()
+    expiresAt: now.plus({ seconds: testAuthoraConfig.authSessionTtlSec }).toISO()
   };
 
   await redis.set(
     SESSION_PREFIX + session.id,
     JSON.stringify(session),
     'EX',
-    testInfraConfig.authSessionTtlSec
+    testAuthoraConfig.authSessionTtlSec
   );
 
   if (session.userId !== undefined) {
@@ -59,7 +60,7 @@ export async function createAuthSession(
       USER_SESSION_PREFIX + session.userId,
       session.id,
       'EX',
-      testInfraConfig.authSessionTtlSec
+      testAuthoraConfig.authSessionTtlSec
     );
   }
 

@@ -150,7 +150,7 @@ describe('POST /account/delete', () => {
     });
 
     it('should allow account deletion even when password is expired', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(
         dataSource,
         'user@example.com',

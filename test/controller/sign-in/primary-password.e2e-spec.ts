@@ -296,7 +296,7 @@ describe('POST /auth/sign-in/primary/password', () => {
 
   describe('password expiration', () => {
     it('should return 401 with nextStep reset_password when password is expired', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await expirePassword(dataSource, user);
       const session = await createAuthSession(app);
@@ -320,7 +320,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     });
 
     it('should not update the session when password is expired', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await expirePassword(dataSource, user);
       const session = await createAuthSession(app);
@@ -337,7 +337,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     });
 
     it('should record a sign-in attempt with PasswordExpired reason', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       await expirePassword(dataSource, user);
       const session = await createAuthSession(app);
@@ -357,7 +357,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     });
 
     it('should return 200 when password is not yet expired', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
       const session = await createAuthSession(app);
 

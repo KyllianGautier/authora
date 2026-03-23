@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException
@@ -10,8 +9,8 @@ import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
 import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verify.input.dto';
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
-import { TENANT_CONFIG } from '../config/tenant-config';
-import type { AuthoraTenantConfig } from '../config/tenant-config';
+import { TenantSetting } from '../config/settings';
+import { SettingsService } from './settings.service';
 import { LockReason } from '../entity/user.entity';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { EmailService } from './email.service';
@@ -30,7 +29,7 @@ export class AccountService {
     private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _emailService: EmailService,
     private readonly _hashService: HashService,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   async changePassword(dto: ChangePasswordInputDto): Promise<void> {
@@ -82,7 +81,8 @@ export class AccountService {
 
     const token = await this._oneTimeTokenRedisService.create(
       user.id,
-      OneTimeTokenType.ForgotPassword
+      OneTimeTokenType.ForgotPassword,
+      user.tenant?.id ?? ''
     );
 
     await this._emailService.sendForgotPassword(email, token);
@@ -120,8 +120,12 @@ export class AccountService {
     );
 
     // Unlock the account if it was locked due to too many failed attempts
+    const unlockOnPasswordReset = await this._settingsService.get(
+      TenantSetting.UnlockOnPasswordReset, user.tenant?.id ?? ''
+    );
+
     if (
-      this._tenantConfig.unlockOnPasswordReset &&
+      unlockOnPasswordReset &&
       user.isLocked &&
       user.lockReason === LockReason.TooManyAttempts
     ) {
@@ -157,7 +161,8 @@ export class AccountService {
 
     const verificationToken = await this._oneTimeTokenRedisService.create(
       user.id,
-      OneTimeTokenType.AccountDeletion
+      OneTimeTokenType.AccountDeletion,
+      user.tenant?.id ?? ''
     );
 
     await this._emailService.sendAccountDeletionVerification(

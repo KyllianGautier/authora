@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
-import { TENANT_CONFIG } from '../../config/tenant-config';
-import type { AuthoraTenantConfig } from '../../config/tenant-config';
+import { TenantSetting } from '../../config/settings';
+import { SettingsService } from '../settings.service';
 import { UserEntity } from '../../entity/user.entity';
 import { PasswordEntity, PasswordRevocationReason } from '../../entity/password.entity';
 import { HashService } from '../hash.service';
@@ -14,7 +14,7 @@ export class PasswordEntityService {
     @InjectRepository(PasswordEntity)
     private readonly _repository: Repository<PasswordEntity>,
     private readonly _hashService: HashService,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   async create(data: {
@@ -55,8 +55,15 @@ export class PasswordEntityService {
       return 'invalid';
     }
 
-    if (this._tenantConfig.passwordExpirationEnabled && DateTime.fromMillis(currentPassword.createdAt.getTime() + this._tenantConfig.passwordMaxAgeSec * 1_000) < DateTime.utc()) {
-      return 'expired';
+    const tenantId = user.tenant?.id ?? '';
+    const expirationEnabled = await this._settingsService.get(TenantSetting.PasswordExpirationEnabled, tenantId);
+
+    if (expirationEnabled) {
+      const maxAgeSec = await this._settingsService.get(TenantSetting.PasswordMaxAgeSec, tenantId);
+
+      if (DateTime.fromMillis(currentPassword.createdAt.getTime() + maxAgeSec * 1_000) < DateTime.utc()) {
+        return 'expired';
+      }
     }
 
     return 'valid';

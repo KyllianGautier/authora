@@ -13,3 +13,9 @@ export const OTT_EXCHANGE_KEY = (tokenHash: string) =>
 // Token reuse tracking
 export const TOKEN_REUSE_KEY = (userId: string) =>
   `token_reuse:${userId}`;
+
+// Settings cache
+export const SETTINGS_AUTHORA_KEY = (key: string) =>
+  `settings:authora:${key}`;
+export const SETTINGS_TENANT_KEY = (tenantId: string, key: string) =>
+  `settings:tenant:${tenantId}:${key}`;

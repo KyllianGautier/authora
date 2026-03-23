@@ -1,22 +1,21 @@
 import {
   CallHandler,
   ExecutionContext,
-  Inject,
   Injectable,
   NestInterceptor
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
-import { delay } from 'rxjs/operators';
-import { INFRA_CONFIG } from '../config/infra-config';
-import type { AuthoraInfraConfig } from '../config/infra-config';
+import { Observable, from } from 'rxjs';
+import { delay, switchMap } from 'rxjs/operators';
+import { AuthoraSetting } from '../config/settings';
 import { DELAY_KEY } from '../decorator/delay.decorator';
+import { SettingsService } from '../service/settings.service';
 
 @Injectable()
 export class DelayInterceptor implements NestInterceptor {
   constructor(
     private readonly _reflector: Reflector,
-    @Inject(INFRA_CONFIG) private readonly _infraConfig: AuthoraInfraConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -29,10 +28,20 @@ export class DelayInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const delayMs =
-      Math.random() * (this._infraConfig.endpointDelayMaxMs - this._infraConfig.endpointDelayMinMs) +
-      this._infraConfig.endpointDelayMinMs;
+    return from(this._getDelayMs()).pipe(
+      switchMap((delayMs) => next.handle().pipe(delay(delayMs)))
+    );
+  }
 
-    return next.handle().pipe(delay(delayMs));
+  private async _getDelayMs(): Promise<number> {
+    const {
+      endpointDelayMinMs: min,
+      endpointDelayMaxMs: max
+    } = await this._settingsService.getMany([
+      AuthoraSetting.EndpointDelayMinMs,
+      AuthoraSetting.EndpointDelayMaxMs
+    ]);
+
+    return Math.random() * (max - min) + min;
   }
 }

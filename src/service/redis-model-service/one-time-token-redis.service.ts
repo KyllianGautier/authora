@@ -3,10 +3,8 @@ import { createHash, randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { OTT_EXCHANGE_KEY, OTT_KEY } from '../../config/redis-keys';
 import { REDIS_CLIENT } from '../../config/redis.provider';
-import { INFRA_CONFIG } from '../../config/infra-config';
-import type { AuthoraInfraConfig } from '../../config/infra-config';
-import { TENANT_CONFIG } from '../../config/tenant-config';
-import type { AuthoraTenantConfig } from '../../config/tenant-config';
+import { AuthoraSetting, TenantSetting } from '../../config/settings';
+import { SettingsService } from '../settings.service';
 import { AuthSession } from '../../redis-model/auth-session.model';
 import { OneTimeTokenType } from '../../redis-model/one-time-token.model';
 import { AuthSessionRedisService } from './auth-session-redis.service';
@@ -15,28 +13,31 @@ import { AuthSessionRedisService } from './auth-session-redis.service';
 export class OneTimeTokenRedisService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly _redis: Redis,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig,
-    @Inject(INFRA_CONFIG) private readonly _infraConfig: AuthoraInfraConfig,
+    private readonly _settingsService: SettingsService,
     private readonly _authSessionRedisService: AuthSessionRedisService
   ) {}
 
-  private _getTtlSecondsForType(type: OneTimeTokenType): number {
-    const map: Record<OneTimeTokenType, number> = {
-      [OneTimeTokenType.AccountDeletion]: this._tenantConfig.ottAccountDeletionTtlSec,
-      [OneTimeTokenType.TwoFactorAuthVerify]: this._tenantConfig.ottTwoFactorAuthVerifyTtlSec,
-      [OneTimeTokenType.TwoFactorAuthValidate]: this._tenantConfig.ottTwoFactorAuthValidateTtlSec,
-      [OneTimeTokenType.TwoFactorAuthDisabling]: this._tenantConfig.ottTwoFactorAuthDisablingTtlSec,
-      [OneTimeTokenType.ForgotPassword]: this._tenantConfig.ottForgotPasswordTtlSec,
-      [OneTimeTokenType.MagicLink]: this._tenantConfig.ottMagicLinkTtlSec,
-      [OneTimeTokenType.Exchange]: this._infraConfig.ottExchangeTtlSec
+  private async _getTtlSecondsForType(type: OneTimeTokenType, tenantId: string): Promise<number> {
+    if (type === OneTimeTokenType.Exchange) {
+      return this._settingsService.get(AuthoraSetting.OttExchangeTtlSec);
+    }
+
+    const map: Record<string, TenantSetting> = {
+      [OneTimeTokenType.AccountDeletion]: TenantSetting.OttAccountDeletionTtlSec,
+      [OneTimeTokenType.TwoFactorAuthVerify]: TenantSetting.OttTwoFactorAuthVerifyTtlSec,
+      [OneTimeTokenType.TwoFactorAuthValidate]: TenantSetting.OttTwoFactorAuthValidateTtlSec,
+      [OneTimeTokenType.TwoFactorAuthDisabling]: TenantSetting.OttTwoFactorAuthDisablingTtlSec,
+      [OneTimeTokenType.ForgotPassword]: TenantSetting.OttForgotPasswordTtlSec,
+      [OneTimeTokenType.MagicLink]: TenantSetting.OttMagicLinkTtlSec
     };
-    return map[type];
+
+    return this._settingsService.get(map[type], tenantId);
   }
 
-  async create(userId: string, type: OneTimeTokenType): Promise<string> {
+  async create(userId: string, type: OneTimeTokenType, tenantId: string): Promise<string> {
     const clearToken = randomBytes(32).toString('hex');
     const tokenHash = this._sha256(clearToken);
-    const ttl = this._getTtlSecondsForType(type);
+    const ttl = await this._getTtlSecondsForType(type, tenantId);
 
     const key = OTT_KEY(userId, type);
 
@@ -51,7 +52,7 @@ export class OneTimeTokenRedisService {
   ): Promise<string> {
     const clearToken = randomBytes(32).toString('hex');
     const tokenHash = this._sha256(clearToken);
-    const ttl = this._getTtlSecondsForType(OneTimeTokenType.Exchange);
+    const ttl = await this._getTtlSecondsForType(OneTimeTokenType.Exchange, '');
 
     const key = OTT_KEY(userId, OneTimeTokenType.Exchange);
 

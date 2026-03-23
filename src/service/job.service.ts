@@ -1,11 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
-import { TENANT_CONFIG } from '../config/tenant-config';
-import type { AuthoraTenantConfig } from '../config/tenant-config';
+import { TenantSetting } from '../config/settings';
 import { PasswordEntity, PasswordRevocationReason } from '../entity/password.entity';
+import { SettingsService } from './settings.service';
 
 @Injectable()
 export class JobService {
@@ -14,17 +14,22 @@ export class JobService {
   constructor(
     @InjectRepository(PasswordEntity)
     private readonly _passwordRepository: Repository<PasswordEntity>,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   @Cron('0 3 * * *')
   async revokeExpiredPasswords(): Promise<void> {
-    if (!this._tenantConfig.passwordExpirationEnabled) {
+    // TODO: iterate over all tenants when multi-tenant is enabled
+    const enabled = await this._settingsService.get(TenantSetting.PasswordExpirationEnabled, '');
+
+    if (!enabled) {
       return;
     }
 
+    const passwordMaxAgeSec = await this._settingsService.get(TenantSetting.PasswordMaxAgeSec, '');
+
     const expirationDate = DateTime.utc()
-      .minus({ seconds: this._tenantConfig.passwordMaxAgeSec })
+      .minus({ seconds: passwordMaxAgeSec })
       .toJSDate();
 
     const result = await this._passwordRepository

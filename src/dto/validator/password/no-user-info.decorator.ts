@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   registerDecorator,
   ValidationArguments,
@@ -6,24 +6,19 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface
 } from 'class-validator';
-import type { AuthoraTenantConfig } from '../../../config/tenant-config';
-import { TENANT_CONFIG } from '../../../config/tenant-config';
+import { TenantSetting } from '../../../config/settings';
+import { SettingsService } from '../../../service/settings.service';
 
 const USER_INFO_MIN_LENGTH = 3;
 
 @Injectable()
-@ValidatorConstraint({ name: 'noUserInfo' })
+@ValidatorConstraint({ name: 'noUserInfo', async: true })
 export class NoUserInfoConstraint implements ValidatorConstraintInterface {
-  private readonly _enabled: boolean;
+  constructor(private readonly _settingsService: SettingsService) {}
 
-  constructor(
-    @Inject(TENANT_CONFIG) tenantConfig: AuthoraTenantConfig
-  ) {
-    this._enabled = tenantConfig.passwordForbidUserInfo;
-  }
-
-  validate(value: unknown, args?: ValidationArguments): boolean {
-    if (!this._enabled) return true;
+  async validate(value: unknown, args?: ValidationArguments): Promise<boolean> {
+    const enabled = await this._settingsService.get(TenantSetting.PasswordForbidUserInfo, '');
+    if (!enabled) return true;
     if (typeof value !== 'string') return true;
 
     const emailField = args?.constraints?.[0] as string | undefined;

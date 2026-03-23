@@ -11,8 +11,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EMAIL_QUEUE } from './config/constants';
-import { INFRA_CONFIG, defaultInfraConfig, testInfraConfig } from './config/infra-config';
-import { TENANT_CONFIG, defaultTenantConfig } from './config/tenant-config';
+import { defaultAuthoraConfig, testAuthoraConfig } from './config/authora-config';
+import { defaultTenantConfig } from './config/tenant-config';
 import { envValidationSchema } from './config/env.validation';
 import { redisProvider } from './config/redis.provider';
 import { CONTROLLERS } from './controller';
@@ -73,7 +73,7 @@ import { TenantMiddleware } from './middleware/tenant.middleware';
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const infra = process.env.NODE_ENV === 'test' ? testInfraConfig : defaultInfraConfig;
+        const infra = process.env.NODE_ENV === 'test' ? testAuthoraConfig : defaultAuthoraConfig;
         return {
           throttlers: [
             { name: 'origin', ttl: infra.throttleTtlMs, limit: infra.throttleOriginLimit },
@@ -118,14 +118,6 @@ import { TenantMiddleware } from './middleware/tenant.middleware';
     ...SERVICES,
     ...PASSWORD_CONSTRAINTS,
     redisProvider,
-    {
-      provide: TENANT_CONFIG,
-      useValue: defaultTenantConfig
-    },
-    {
-      provide: INFRA_CONFIG,
-      useValue: process.env.NODE_ENV === 'test' ? testInfraConfig : defaultInfraConfig
-    },
     {
       provide: APP_INTERCEPTOR,
       useClass: DelayInterceptor

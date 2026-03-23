@@ -30,13 +30,13 @@ export class ApiKeyBootstrapService implements OnApplicationBootstrap {
     // Check that the default tenant has been bootstrapped:
     await this._tenantBootstrap.onApplicationBootstrap();
 
-    const defaultTenant: TenantEntity | null = await this._tenantService.findBySlug(DEFAULT_TENANT_SLUG);
+    const defaultTenant = await this._tenantService.findBySlug(DEFAULT_TENANT_SLUG);
 
     if (defaultTenant === null) {
       throw new Error('Default tenant not found');
     }
 
-    const apiKey: ApiKeyEntity | null = await this._apiKeysService.findActiveForTenant(defaultTenant);
+    const apiKey = await this._apiKeysService.findActiveForTenant(defaultTenant);
 
     if (apiKey !== null) return;
 

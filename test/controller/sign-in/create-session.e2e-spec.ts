@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
+import { MfaPolicy } from '../../../src/redis-model/auth-session.model';
 import { resetTestState, consumeEmailQueue, getTestApp } from '../../setup';
 import { getAuthSession } from '../utils/get-auth-session';
 import { getDefaultTenant } from '../utils/get-default-tenant';
@@ -42,7 +43,7 @@ describe('POST /auth/sign-in', () => {
       expect(session!.userId).toBeUndefined();
       expect(session!.primaryAuthVerified).toBe(false);
       expect(session!.rememberMe).toBe(false);
-      expect(session!.mfaPolicy).toBe('DISABLED');
+      expect(session!.mfaPolicy).toBe(MfaPolicy.Disabled);
       expect(session!.mfaSetup).toBe(false);
       expect(session!.mfaVerified).toBe(false);
       expect(session!.deviceTrusted).toBe(false);
