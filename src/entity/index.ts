@@ -6,8 +6,10 @@ import { TwoFactorAuthEntity } from './two-factor-auth.entity';
 import { UserEntity } from './user.entity';
 import { SignInAttemptEntity } from './sign-in-attempt.entity';
 import { TenantEntity } from './tenant.entity';
+import { ApiKeyEntity } from './api-key.entity';
 
 export const ENTITIES = [
+  ApiKeyEntity,
   PasswordEntity,
   RefreshTokenEntity,
   RegistrationEntity,
