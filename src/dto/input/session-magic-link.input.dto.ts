@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsLocale, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import type { SessionMagicLinkInput } from '@kylliangautier/authora-types';
 
-export class SessionMagicLinkInputDto {
+export class SessionMagicLinkInputDto implements SessionMagicLinkInput {
   @ApiProperty({ description: 'Auth session id' })
   @IsString()
   @IsNotEmpty()

@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { AuthSessionStatusOutput } from '@kylliangautier/authora-types';
 import { AuthSession } from '../../redis-model/auth-session.model';
 
 export type AuthSessionNextStep = 'primaryAuth' | 'mfaSetup' | 'mfaAuth' | 'complete';
 
-export class AuthSessionStatusOutputDto {
+export class AuthSessionStatusOutputDto implements AuthSessionStatusOutput {
   @ApiProperty({ description: 'Auth session id' })
   sessionId: string;
 
