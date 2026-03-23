@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
-import type { SessionTokenInput } from '@kylliangautier/authora-types';
+import type { SignInTokenInput } from '@kylliangautier/authora-types';
 
-export class SessionTokenInputDto implements SessionTokenInput {
+export class SignInTokenInputDto implements SignInTokenInput {
   @ApiProperty({ description: 'Exchange token (one-time token)' })
   @IsString()
   @IsNotEmpty()

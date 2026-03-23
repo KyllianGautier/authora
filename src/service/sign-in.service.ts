@@ -19,10 +19,10 @@ import { TrustedDeviceEntity } from '../entity/trusted-device.entity';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
 import { AuthSession } from '../redis-model/auth-session.model';
-import { SessionPasswordInputDto } from '../dto/input/session-password.input.dto';
-import { SessionMagicLinkInputDto } from '../dto/input/session-magic-link.input.dto';
-import { SessionMagicLinkValidateInputDto } from '../dto/input/session-magic-link-validate.input.dto';
-import { SessionTotpValidateInputDto } from '../dto/input/session-totp-validate.input.dto';
+import { SignInPasswordInputDto } from '../dto/input/sign-in-password.input.dto';
+import { SignInMagicLinkInputDto } from '../dto/input/sign-in-magic-link.input.dto';
+import { SignInMagicLinkValidateInputDto } from '../dto/input/sign-in-magic-link-validate.input.dto';
+import { SignInTotpValidateInputDto } from '../dto/input/sign-in-totp-validate.input.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
 import { AuthSessionRedisService } from './redis-model-service/auth-session-redis.service';
 import { EmailService } from './email.service';
@@ -64,7 +64,7 @@ export class SignInService {
 
   async primaryAuthPassword(
     sessionId: string,
-    dto: SessionPasswordInputDto,
+    dto: SignInPasswordInputDto,
     ip: string,
     userAgent: string,
     deviceFingerprint: string | undefined
@@ -145,7 +145,7 @@ export class SignInService {
 
   async primaryAuthMagicLink(
     sessionId: string,
-    dto: SessionMagicLinkInputDto
+    dto: SignInMagicLinkInputDto
   ): Promise<void> {
     const session = await this._getSession(sessionId);
 
@@ -172,7 +172,7 @@ export class SignInService {
 
   async primaryAuthMagicLinkValidate(
     sessionId: string,
-    dto: SessionMagicLinkValidateInputDto,
+    dto: SignInMagicLinkValidateInputDto,
     ip: string,
     userAgent: string,
     deviceFingerprint: string | undefined
@@ -213,7 +213,7 @@ export class SignInService {
 
   async mfaAuthTotpValidate(
     sessionId: string,
-    dto: SessionTotpValidateInputDto,
+    dto: SignInTotpValidateInputDto,
     ip: string,
     userAgent: string
   ): Promise<AuthSession> {

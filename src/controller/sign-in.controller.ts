@@ -23,12 +23,12 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
-import { SessionPasswordInputDto } from '../dto/input/session-password.input.dto';
-import { SessionMagicLinkInputDto } from '../dto/input/session-magic-link.input.dto';
-import { SessionMagicLinkValidateInputDto } from '../dto/input/session-magic-link-validate.input.dto';
-import { SessionTotpValidateInputDto } from '../dto/input/session-totp-validate.input.dto';
-import { SessionExchangeInputDto } from '../dto/input/session-exchange.input.dto';
-import { SessionTokenInputDto } from '../dto/input/session-token.input.dto';
+import { SignInPasswordInputDto } from '../dto/input/sign-in-password.input.dto';
+import { SignInMagicLinkInputDto } from '../dto/input/sign-in-magic-link.input.dto';
+import { SignInMagicLinkValidateInputDto } from '../dto/input/sign-in-magic-link-validate.input.dto';
+import { SignInTotpValidateInputDto } from '../dto/input/sign-in-totp-validate.input.dto';
+import { SignInExchangeInputDto } from '../dto/input/sign-in-exchange.input.dto';
+import { SignInTokenInputDto } from '../dto/input/sign-in-token.input.dto';
 import { AuthSessionStatusOutputDto } from '../dto/output/auth-session-status.output.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
 import type { AuthoraTenantConfig } from '../config/tenant-config';
@@ -66,7 +66,7 @@ export class SignInController {
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async primaryAuthPassword(
-    @Body() dto: SessionPasswordInputDto,
+    @Body() dto: SignInPasswordInputDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ): Promise<AuthSessionStatusOutputDto> {
@@ -92,7 +92,7 @@ export class SignInController {
   @ApiAcceptedResponse({ description: 'Magic link sent if account exists' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async primaryAuthMagicLink(
-    @Body() dto: SessionMagicLinkInputDto
+    @Body() dto: SignInMagicLinkInputDto
   ): Promise<{ message: string }> {
     await this._signInService.primaryAuthMagicLink(dto.sessionId, dto);
     return { message: 'If the account exists, the magic link will be sent via email' };
@@ -106,7 +106,7 @@ export class SignInController {
   @ApiUnauthorizedResponse({ description: 'Invalid token' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async primaryAuthMagicLinkValidate(
-    @Query() dto: SessionMagicLinkValidateInputDto,
+    @Query() dto: SignInMagicLinkValidateInputDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ): Promise<AuthSessionStatusOutputDto> {
@@ -133,7 +133,7 @@ export class SignInController {
   @ApiUnauthorizedResponse({ description: 'Invalid code or primary auth required' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async mfaAuthTotpValidate(
-    @Body() dto: SessionTotpValidateInputDto,
+    @Body() dto: SignInTotpValidateInputDto,
     @Req() req: Request
   ): Promise<AuthSessionStatusOutputDto> {
     const session = await this._signInService.mfaAuthTotpValidate(
@@ -151,7 +151,7 @@ export class SignInController {
   @ApiUnauthorizedResponse({ description: 'Authentication incomplete' })
   @ApiNotFoundResponse({ description: 'Session not found or expired' })
   async exchange(
-    @Body() dto: SessionExchangeInputDto
+    @Body() dto: SignInExchangeInputDto
   ): Promise<{ exchangeToken: string }> {
     const exchangeToken = await this._signInService.exchange(dto.sessionId);
     return { exchangeToken };
@@ -165,7 +165,7 @@ export class SignInController {
   @ApiOkResponse({ description: 'Tokens generated', type: SignInOutputDto })
   @ApiUnauthorizedResponse({ description: 'Invalid or expired exchange token' })
   async token(
-    @Body() dto: SessionTokenInputDto,
+    @Body() dto: SignInTokenInputDto,
     @Res({ passthrough: true }) res: Response
   ): Promise<SignInOutputDto> {
     const { refreshToken, ...body } = await this._signInService.token(

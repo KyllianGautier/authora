@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import type { SessionPasswordInput } from '@kylliangautier/authora-types';
+import type { SignInPasswordInput } from '@kylliangautier/authora-types';
 
-export class SessionPasswordInputDto implements SessionPasswordInput {
+export class SignInPasswordInputDto implements SignInPasswordInput {
   @ApiProperty({ description: 'Auth session id' })
   @IsString()
   @IsNotEmpty()

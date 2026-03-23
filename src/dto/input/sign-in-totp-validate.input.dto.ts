@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
-import type { SessionTotpValidateInput } from '@kylliangautier/authora-types';
+import type { SignInTotpValidateInput } from '@kylliangautier/authora-types';
 
-export class SessionTotpValidateInputDto implements SessionTotpValidateInput {
+export class SignInTotpValidateInputDto implements SignInTotpValidateInput {
   @ApiProperty({ description: 'Auth session id' })
   @IsString()
   @IsNotEmpty()
