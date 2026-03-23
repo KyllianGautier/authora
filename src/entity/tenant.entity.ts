@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { UserEntity } from './user.entity';
 import { RegistrationEntity } from './registration.entity';
+import { ApiKeyEntity } from './api-key.entity';
 
 
 export enum IntegrationMode {
@@ -20,6 +21,14 @@ export class TenantEntity {
   @Column({ name: 'name' })
   name: string;
 
+  @Column({
+    name: 'integration_mode',
+    type: 'enum',
+    enum: IntegrationMode,
+    default: IntegrationMode.Hybrid
+  })
+  integrationMode: IntegrationMode;
+
   @OneToMany(() => RegistrationEntity, (registration) => registration.tenant, {
     orphanedRowAction: 'delete'
   })
@@ -30,13 +39,10 @@ export class TenantEntity {
   })
   users: UserEntity[];
 
-  @Column({
-    name: 'integration_mode',
-    type: 'enum',
-    enum: IntegrationMode,
-    default: IntegrationMode.Hybrid
+  @OneToMany(() => ApiKeyEntity, (apiKey) => apiKey.tenant, {
+    orphanedRowAction: 'delete'
   })
-  integrationMode: IntegrationMode;
+  apiKeys: ApiKeyEntity[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
