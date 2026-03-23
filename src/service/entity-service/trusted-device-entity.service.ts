@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
-import { TRUSTED_DEVICE_TTL_SEC } from '../../config/constants';
+import type { AuthoraTenantConfig } from '../../config/tenant-config';
+import { TENANT_CONFIG } from '../../config/tenant-config';
 import { TrustedDeviceEntity } from '../../entity/trusted-device.entity';
 import { UserEntity } from '../../entity/user.entity';
 import { HashService } from '../hash.service';
@@ -13,7 +14,9 @@ export class TrustedDeviceEntityService {
   constructor(
     @InjectRepository(TrustedDeviceEntity)
     private readonly _repository: Repository<TrustedDeviceEntity>,
-    private readonly _hashService: HashService
+    private readonly _hashService: HashService,
+    @Inject(TENANT_CONFIG)
+    private readonly _tenantConfig: AuthoraTenantConfig
   ) {}
 
   async findByFingerprint(
@@ -107,7 +110,7 @@ export class TrustedDeviceEntityService {
 
   async trust(device: TrustedDeviceEntity): Promise<void> {
     const trustedUntil = DateTime.utc()
-      .plus({ seconds: TRUSTED_DEVICE_TTL_SEC })
+      .plus({ seconds: this._tenantConfig.trustedDeviceTtlSec })
       .toJSDate();
 
     await this._repository.update(device.id, { trusted: true, trustedUntil });

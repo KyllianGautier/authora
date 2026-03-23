@@ -27,7 +27,7 @@ export interface AuthoraTenantConfig {
   jwtRefreshTokenLongExpirationSec: number;
 
   // One-time token TTLs (seconds)
-  emailVerificationTokenTtlSec: number;
+  ottEmailVerificationTtlSec: number;
   ottAccountDeletionTtlSec: number;
   ottTwoFactorAuthVerifyTtlSec: number;
   ottTwoFactorAuthValidateTtlSec: number;
@@ -39,6 +39,10 @@ export interface AuthoraTenantConfig {
   // Token reuse detection
   tokenReuseMaxCompromisedFamilies: number;
   tokenReuseWindowSec: number;
+
+  // Trusted devices
+  trustedDeviceTtlSec: number;
+  deviceFingerprintCookieMaxAgeDays: number;
 }
 
 export const defaultTenantConfig: AuthoraTenantConfig = {
@@ -60,7 +64,7 @@ export const defaultTenantConfig: AuthoraTenantConfig = {
   jwtRefreshTokenShortExpirationSec: 86_400,
   jwtRefreshTokenLongExpirationSec: 2_592_000,
 
-  emailVerificationTokenTtlSec: 86_400,
+  ottEmailVerificationTtlSec: 86_400,
   ottAccountDeletionTtlSec: 3_600,
   ottTwoFactorAuthVerifyTtlSec: 86_400,
   ottTwoFactorAuthValidateTtlSec: 86_400,
@@ -70,5 +74,8 @@ export const defaultTenantConfig: AuthoraTenantConfig = {
   ottExchangeTtlSec: 300,
 
   tokenReuseMaxCompromisedFamilies: 3,
-  tokenReuseWindowSec: 86_400
+  tokenReuseWindowSec: 86_400,
+
+  trustedDeviceTtlSec: 5_184_000, // 60 days
+  deviceFingerprintCookieMaxAgeDays: 365
 };

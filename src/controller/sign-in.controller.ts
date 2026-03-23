@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Post,
   Query,
   Req,
@@ -30,7 +31,8 @@ import { SessionExchangeInputDto } from '../dto/input/session-exchange.input.dto
 import { SessionTokenInputDto } from '../dto/input/session-token.input.dto';
 import { AuthSessionStatusOutputDto } from '../dto/output/auth-session-status.output.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
-import { DEVICE_FINGERPRINT_COOKIE_MAX_AGE_DAYS } from '../config/constants';
+import type { AuthoraTenantConfig } from '../config/tenant-config';
+import { TENANT_CONFIG } from '../config/tenant-config';
 import { SignInService } from '../service/sign-in.service';
 import { CurrentTenant } from '../decorator/current-tenant.decorator';
 import { TenantEntity } from '../entity/tenant.entity';
@@ -38,7 +40,11 @@ import { TenantEntity } from '../entity/tenant.entity';
 @ApiTags('Sign-in')
 @Controller('auth/sign-in')
 export class SignInController {
-  constructor(private readonly _signInService: SignInService) {}
+  constructor(
+    private readonly _signInService: SignInService,
+    @Inject(TENANT_CONFIG)
+    private readonly _tenantConfig: AuthoraTenantConfig
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -241,7 +247,12 @@ export class SignInController {
       secure: true,
       sameSite: 'strict',
       path: '/',
-      maxAge: DEVICE_FINGERPRINT_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1_000
+      maxAge:
+        this._tenantConfig.deviceFingerprintCookieMaxAgeDays *
+        24 *
+        60 *
+        60 *
+        1_000
     });
   }
 }

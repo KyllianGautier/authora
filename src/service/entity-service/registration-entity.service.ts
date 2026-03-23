@@ -66,7 +66,7 @@ export class RegistrationEntityService {
 
   private _computeEmailVerificationTokenExpiresAt(): Date {
     return DateTime.utc()
-      .plus({ seconds: this._tenantConfig.emailVerificationTokenTtlSec })
+      .plus({ seconds: this._tenantConfig.ottEmailVerificationTtlSec })
       .toJSDate();
   }
 }

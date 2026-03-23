@@ -3,7 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import { JWT_ACCESS_TOKEN_EXPIRATION_SEC } from '../../../src/config/constants';
+import { defaultTenantConfig } from '../../../src/config/tenant-config';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import {
@@ -80,7 +80,7 @@ describe('POST /auth/sign-in/token', () => {
       // Verify access token
       expect(response.body.type).toBe('Bearer');
       expect(response.body.expiresIn).toBe(
-        JWT_ACCESS_TOKEN_EXPIRATION_SEC
+        defaultTenantConfig.jwtAccessTokenExpirationSec
       );
       const decoded = jwt.verify(
         response.body.accessToken,

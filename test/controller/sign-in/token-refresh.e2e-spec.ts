@@ -3,10 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
-import {
-  JWT_ACCESS_TOKEN_EXPIRATION_SEC,
-  TOKEN_REUSE_MAX_COMPROMISED_FAMILIES
-} from '../../../src/config/constants';
+import { defaultTenantConfig } from '../../../src/config/tenant-config';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
 import { LockReason, UserEntity } from '../../../src/entity/user.entity';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
@@ -154,7 +151,7 @@ describe('POST /auth/sign-in/token/refresh', () => {
       // Verify new access token
       expect(response.body.type).toBe('Bearer');
       expect(response.body.expiresIn).toBe(
-        JWT_ACCESS_TOKEN_EXPIRATION_SEC
+        defaultTenantConfig.jwtAccessTokenExpirationSec
       );
 
       const decoded = jwt.verify(
@@ -304,14 +301,14 @@ describe('POST /auth/sign-in/token/refresh', () => {
       expect(active).toHaveLength(0);
     });
 
-    it(`should lock the user after ${TOKEN_REUSE_MAX_COMPROMISED_FAMILIES} reuse detections`, async () => {
+    it(`should lock the user after ${defaultTenantConfig.tokenReuseMaxCompromisedFamilies} reuse detections`, async () => {
       const user = await createUserWithPassword(
         dataSource,
         'user@example.com',
         'password123'
       );
 
-      for (let i = 0; i < TOKEN_REUSE_MAX_COMPROMISED_FAMILIES; i++) {
+      for (let i = 0; i < defaultTenantConfig.tokenReuseMaxCompromisedFamilies; i++) {
         const { accessToken, refreshToken } = await signInUser(app, user.id);
 
         // Rotate to create a revoked token
@@ -346,7 +343,7 @@ describe('POST /auth/sign-in/token/refresh', () => {
         'password123'
       );
 
-      for (let i = 0; i < TOKEN_REUSE_MAX_COMPROMISED_FAMILIES - 1; i++) {
+      for (let i = 0; i < defaultTenantConfig.tokenReuseMaxCompromisedFamilies - 1; i++) {
         const { accessToken, refreshToken } = await signInUser(app, user.id);
 
         const refreshRes = await request(app.getHttpServer())

@@ -3,11 +3,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { DateTime } from 'luxon';
-import {
-  PRIMARY_AUTH_COOLDOWN_SEC,
-  PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD,
-  PRIMARY_AUTH_MAX_ATTEMPTS
-} from '../../../src/config/constants';
+import { defaultTenantConfig } from '../../../src/config/tenant-config';
 import { PasswordEntity, PasswordRevocationReason } from '../../../src/entity/password.entity';
 import { AuthFailureReason, SignInAttemptEntity } from '../../../src/entity/sign-in-attempt.entity';
 import { TrustedDeviceEntity } from '../../../src/entity/trusted-device.entity';
@@ -375,10 +371,10 @@ describe('POST /auth/sign-in/primary/password', () => {
   });
 
   describe('temporary lock', () => {
-    it(`should return 429 after ${PRIMARY_AUTH_MAX_ATTEMPTS} failed attempts`, async () => {
+    it(`should return 429 after ${defaultTenantConfig.primaryAuthMaxAttempts} failed attempts`, async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
-      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS; i++) {
+      for (let i = 0; i < defaultTenantConfig.primaryAuthMaxAttempts; i++) {
         resetThrottler();
         const session = await createAuthSession(app);
         await request(app.getHttpServer())
@@ -402,15 +398,15 @@ describe('POST /auth/sign-in/primary/password', () => {
         .getRepository(SignInAttemptEntity)
         .find({ where: { user: { id: user.id } }, order: { createdAt: 'ASC' } });
 
-      expect(attempts).toHaveLength(PRIMARY_AUTH_MAX_ATTEMPTS + 1);
+      expect(attempts).toHaveLength(defaultTenantConfig.primaryAuthMaxAttempts + 1);
 
-      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS; i++) {
+      for (let i = 0; i < defaultTenantConfig.primaryAuthMaxAttempts; i++) {
         expect(attempts[i].success).toBe(false);
         expect(attempts[i].failureReason).toBe(AuthFailureReason.InvalidPasswordAuth);
       }
 
-      expect(attempts[PRIMARY_AUTH_MAX_ATTEMPTS].success).toBe(false);
-      expect(attempts[PRIMARY_AUTH_MAX_ATTEMPTS].failureReason).toBe(AuthFailureReason.TooManyAttempts);
+      expect(attempts[defaultTenantConfig.primaryAuthMaxAttempts].success).toBe(false);
+      expect(attempts[defaultTenantConfig.primaryAuthMaxAttempts].failureReason).toBe(AuthFailureReason.TooManyAttempts);
     });
 
     it('should allow login after cooldown expires', async () => {
@@ -418,9 +414,9 @@ describe('POST /auth/sign-in/primary/password', () => {
 
       // Simulate a temp lock that has expired
       await dataSource.getRepository(UserEntity).update(user.id, {
-        primaryFailedAttemptCount: PRIMARY_AUTH_MAX_ATTEMPTS,
+        primaryFailedAttemptCount: defaultTenantConfig.primaryAuthMaxAttempts,
         primaryLastFailedAttemptAt: DateTime.utc()
-          .minus({ seconds: PRIMARY_AUTH_COOLDOWN_SEC + 1 })
+          .minus({ seconds: defaultTenantConfig.primaryAuthCooldownSec + 1 })
           .toJSDate()
       });
 
@@ -436,7 +432,7 @@ describe('POST /auth/sign-in/primary/password', () => {
     it('should reset the attempt counter after a successful login', async () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
-      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS - 1; i++) {
+      for (let i = 0; i < defaultTenantConfig.primaryAuthMaxAttempts - 1; i++) {
         resetThrottler();
         const session = await createAuthSession(app);
         await request(app.getHttpServer())
@@ -455,7 +451,7 @@ describe('POST /auth/sign-in/primary/password', () => {
         .expect(200);
 
       // Can fail again without being locked
-      for (let i = 0; i < PRIMARY_AUTH_MAX_ATTEMPTS - 1; i++) {
+      for (let i = 0; i < defaultTenantConfig.primaryAuthMaxAttempts - 1; i++) {
         resetThrottler();
         const s = await createAuthSession(app);
         await request(app.getHttpServer())
@@ -475,16 +471,16 @@ describe('POST /auth/sign-in/primary/password', () => {
   });
 
   describe('permanent lock', () => {
-    it(`should permanently lock after ${PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD} failed attempts`, async () => {
+    it(`should permanently lock after ${defaultTenantConfig.primaryAuthLockAccountThreshold} failed attempts`, async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       // Do attempts in batches, simulating cooldown expiry between batches via DB
-      for (let i = 0; i < PRIMARY_AUTH_LOCK_ACCOUNT_THRESHOLD; i++) {
-        if (i >= PRIMARY_AUTH_MAX_ATTEMPTS) {
+      for (let i = 0; i < defaultTenantConfig.primaryAuthLockAccountThreshold; i++) {
+        if (i >= defaultTenantConfig.primaryAuthMaxAttempts) {
           // Simulate cooldown expiry by backdating primaryLastFailedAttemptAt
           await dataSource.getRepository(UserEntity).update(user.id, {
             primaryLastFailedAttemptAt: DateTime.utc()
-              .minus({ seconds: PRIMARY_AUTH_COOLDOWN_SEC + 1 })
+              .minus({ seconds: defaultTenantConfig.primaryAuthCooldownSec + 1 })
               .toJSDate()
           });
         }
