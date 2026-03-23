@@ -44,7 +44,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       expect(createRes.body.nextStep).toBe('primaryAuth');
@@ -106,7 +105,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -145,7 +143,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -200,7 +197,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -245,7 +241,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -280,7 +275,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -314,7 +308,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -359,7 +352,6 @@ describe('Scenario: First-party sign-in workflows', () => {
     it('should reject exchange before primary auth', async () => {
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const response = await request(app.getHttpServer())
@@ -373,7 +365,6 @@ describe('Scenario: First-party sign-in workflows', () => {
     it('should reject TOTP before primary auth', async () => {
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const response = await request(app.getHttpServer())
@@ -387,7 +378,6 @@ describe('Scenario: First-party sign-in workflows', () => {
     it('should reject magic-link validate without requesting it first', async () => {
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const response = await request(app.getHttpServer())
@@ -409,7 +399,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -461,7 +450,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -506,7 +494,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -560,7 +547,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -618,12 +604,10 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const session1Res = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const session2Res = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const session1 = session1Res.body.sessionId;
@@ -669,12 +653,10 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const session1Res = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const session2Res = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       await request(app.getHttpServer())
@@ -744,12 +726,10 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const session1Res = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const session2Res = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const realRes = await request(app.getHttpServer())
@@ -776,7 +756,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -817,7 +796,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -873,7 +851,6 @@ describe('Scenario: First-party sign-in workflows', () => {
       // Start sign-in flow
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -938,7 +915,6 @@ describe('Scenario: First-party sign-in workflows', () => {
       // Start sign-in flow
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -995,7 +971,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes1 = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId1 = createRes1.body.sessionId;
@@ -1041,7 +1016,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes2 = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId2 = createRes2.body.sessionId;
@@ -1085,7 +1059,6 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;

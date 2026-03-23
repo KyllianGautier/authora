@@ -62,7 +62,6 @@ describe('Scenario: Forgot password workflows', () => {
       // Step 4: Sign in with the new password via sign-in flow
       const createSessionRes = await request(app.getHttpServer())
         .post(SIGN_IN_BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createSessionRes.body.sessionId;

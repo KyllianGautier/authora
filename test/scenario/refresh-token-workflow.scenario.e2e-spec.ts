@@ -25,7 +25,6 @@ async function signIn(
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const createRes = await request(app.getHttpServer())
     .post(BASE)
-    .send({ tenantId: 'default' })
     .expect(201);
 
   const sessionId = createRes.body.sessionId;

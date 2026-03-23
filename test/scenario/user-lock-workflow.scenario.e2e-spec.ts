@@ -31,7 +31,6 @@ async function createSession(
 ): Promise<string> {
   const res = await request(app.getHttpServer())
     .post(BASE)
-    .send({ tenantId: 'default' })
     .expect(201);
 
   return res.body.sessionId as string;

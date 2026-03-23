@@ -19,7 +19,6 @@ import { TrustedDeviceEntity } from '../entity/trusted-device.entity';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
 import { AuthSession } from '../redis-model/auth-session.model';
-import { CreateSessionInputDto } from '../dto/input/create-session.input.dto';
 import { SessionPasswordInputDto } from '../dto/input/session-password.input.dto';
 import { SessionMagicLinkInputDto } from '../dto/input/session-magic-link.input.dto';
 import { SessionMagicLinkValidateInputDto } from '../dto/input/session-magic-link-validate.input.dto';
@@ -34,6 +33,7 @@ import { RefreshTokenEntityService } from './entity-service/refresh-token-entity
 import { TrustedDeviceEntityService } from './entity-service/trusted-device-entity.service';
 import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
+import { TenantEntity } from '../entity/tenant.entity';
 
 @Injectable()
 export class SignInService {
@@ -53,9 +53,9 @@ export class SignInService {
     @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
   ) {}
 
-  async createSession(dto: CreateSessionInputDto): Promise<AuthSession> {
+  async createSession(tenant: TenantEntity): Promise<AuthSession> {
     return this._authSessionRedisService.create({
-      tenantId: dto.tenantId,
+      tenantId: tenant.id,
       mode: 'first-party',
       primaryAuthVerified: false,
       mfaPolicy: 'DISABLED'

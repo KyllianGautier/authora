@@ -22,7 +22,6 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
-import { CreateSessionInputDto } from '../dto/input/create-session.input.dto';
 import { SessionPasswordInputDto } from '../dto/input/session-password.input.dto';
 import { SessionMagicLinkInputDto } from '../dto/input/session-magic-link.input.dto';
 import { SessionMagicLinkValidateInputDto } from '../dto/input/session-magic-link-validate.input.dto';
@@ -33,6 +32,8 @@ import { AuthSessionStatusOutputDto } from '../dto/output/auth-session-status.ou
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
 import { DEVICE_FINGERPRINT_COOKIE_MAX_AGE_DAYS } from '../config/constants';
 import { SignInService } from '../service/sign-in.service';
+import { CurrentTenant } from '../decorator/current-tenant.decorator';
+import { TenantEntity } from '../entity/tenant.entity';
 
 @ApiTags('Sign-in')
 @Controller('auth/sign-in')
@@ -44,9 +45,9 @@ export class SignInController {
   @ApiOperation({ summary: 'Create a new auth session' })
   @ApiCreatedResponse({ description: 'Session created', type: AuthSessionStatusOutputDto })
   async createSession(
-    @Body() dto: CreateSessionInputDto
+    @CurrentTenant() tenant: TenantEntity
   ): Promise<AuthSessionStatusOutputDto> {
-    const session = await this._signInService.createSession(dto);
+    const session = await this._signInService.createSession(tenant);
     return AuthSessionStatusOutputDto.fromSession(session);
   }
 

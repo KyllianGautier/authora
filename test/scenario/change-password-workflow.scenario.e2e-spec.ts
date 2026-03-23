@@ -21,7 +21,6 @@ async function signIn(
 ): Promise<{ accessToken: string; refreshTokenCookie: string }> {
   const createRes = await request(app.getHttpServer())
     .post(SIGN_IN_BASE)
-    .send({ tenantId: 'default' })
     .expect(201);
 
   await request(app.getHttpServer())
@@ -81,7 +80,6 @@ describe('Scenario: Change password workflows', () => {
       // Sign-in with new password should succeed
       const createRes = await request(app.getHttpServer())
         .post(SIGN_IN_BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const authRes = await request(app.getHttpServer())
@@ -112,7 +110,6 @@ describe('Scenario: Change password workflows', () => {
 
       const createRes = await request(app.getHttpServer())
         .post(SIGN_IN_BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const authRes = await request(app.getHttpServer())
@@ -181,7 +178,6 @@ describe('Scenario: Change password workflows', () => {
       // Only the latest password works
       const createRes = await request(app.getHttpServer())
         .post(SIGN_IN_BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -193,7 +189,6 @@ describe('Scenario: Change password workflows', () => {
 
       const session2 = await request(app.getHttpServer())
         .post(SIGN_IN_BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       await request(app.getHttpServer())
@@ -203,7 +198,6 @@ describe('Scenario: Change password workflows', () => {
 
       const session3 = await request(app.getHttpServer())
         .post(SIGN_IN_BASE)
-        .send({ tenantId: 'default' })
         .expect(201);
 
       const authRes = await request(app.getHttpServer())
