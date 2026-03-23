@@ -15,7 +15,7 @@ describe('POST /auth/sign-in/primary/magic-link', () => {
   beforeAll(async () => {
     app = await getTestApp();
     dataSource = app.get(DataSource);
-  }, 60_000);
+  }, 20_000);
 
   beforeEach(async () => {
     await resetTestState();

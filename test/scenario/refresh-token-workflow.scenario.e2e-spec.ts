@@ -58,7 +58,7 @@ describe('Scenario: Refresh token workflows', () => {
   beforeAll(async () => {
     app = await getTestApp();
     dataSource = app.get(DataSource);
-  }, 60_000);
+  }, 20_000);
 
   beforeEach(async () => {
     await resetTestState();

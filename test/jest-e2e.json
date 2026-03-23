@@ -8,5 +8,5 @@
   },
   "globalSetup": "./global-setup.ts",
   "globalTeardown": "./global-teardown.ts",
-  "testTimeout": 30000
+  "testTimeout": 10000
 }
