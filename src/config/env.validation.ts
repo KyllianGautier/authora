@@ -31,5 +31,10 @@ export const envValidationSchema = Joi.object({
 
   // Authora-UI
   AUTHORA_UI_ENABLED: Joi.boolean().default(true),
-  AUTHORA_UI_BASE_URL: Joi.string().uri().required()
+  AUTHORA_UI_BASE_URL: Joi.string().uri().required(),
+
+  // Admin
+  AUTHORA_ADMIN_EMAIL: Joi.string().email().required(),
+  AUTHORA_SUPER_ADMIN_USERNAME: Joi.string().required(),
+  AUTHORA_SUPER_ADMIN_PASSWORD: Joi.string().required()
 });

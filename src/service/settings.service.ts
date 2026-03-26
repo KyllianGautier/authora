@@ -27,6 +27,8 @@ import { AuthoraConfigEntityService } from './entity-service/authora-config-enti
 import { TenantConfigEntityService } from './entity-service/tenant-config-entity.service';
 import { TenantEntityService } from './entity-service/tenant-entity.service';
 import { TenantConfigEntity } from '../entity/tenant-config.entity';
+import { TenantConfigBootstrapService } from './bootstrap/tenant-config-bootstrap.service';
+import { AuthoraConfigBootstrapService } from './bootstrap/authora-config-bootstrap.service';
 
 const AUTHORA_KEYS = new Set<string>(Object.values(AuthoraSetting));
 
@@ -38,12 +40,17 @@ export class SettingsService implements OnApplicationBootstrap {
     @Inject(REDIS_CLIENT) private readonly _redis: Redis,
     private readonly _authoraConfigEntityService: AuthoraConfigEntityService,
     private readonly _tenantConfigEntityService: TenantConfigEntityService,
-    private readonly _tenantEntityService: TenantEntityService
+    private readonly _tenantEntityService: TenantEntityService,
+    private readonly _authoraConfigBootstrapService: AuthoraConfigBootstrapService,
+    private readonly _tenantConfigBootstrapService: TenantConfigBootstrapService
   ) {}
 
   // ── Bootstrap ────────────────────────────────────────
 
   async onApplicationBootstrap(): Promise<void> {
+    await this._authoraConfigBootstrapService.onApplicationBootstrap();
+    await this._tenantConfigBootstrapService.onApplicationBootstrap();
+
     await this.refreshAuthoraCache();
   }
 

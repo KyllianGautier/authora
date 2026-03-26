@@ -8,6 +8,7 @@ export const DEFAULT_TENANT_SLUG = 'default';
 
 @Injectable()
 export class TenantBootstrapService implements OnApplicationBootstrap {
+  private _bootstrapPromise: Promise<void> | null = null;
 
   constructor(
     private readonly _tenantService: TenantEntityService,
@@ -16,6 +17,14 @@ export class TenantBootstrapService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    if (this._bootstrapPromise === null) {
+      this._bootstrapPromise = this._bootstrap();
+    }
+
+    return this._bootstrapPromise;
+  }
+
+  private async _bootstrap(): Promise<void> {
     if (this._configService.getOrThrow('ENABLE_MULTI_TENANT')) return;
 
     const defaultTenant: TenantEntity | null = await this._tenantService.findBySlug(DEFAULT_TENANT_SLUG);

@@ -7,7 +7,8 @@ import { SettingsService } from '../settings.service';
 import {
   isLockReasonEscalation,
   LockReason,
-  UserEntity
+  UserEntity,
+  UserRole
 } from '../../entity/user.entity';
 import { TenantEntity } from '../../entity/tenant.entity';
 
@@ -19,7 +20,7 @@ export class UserEntityService {
     private readonly _settingsService: SettingsService
   ) {}
 
-  async create(data: { email: string, tenant: TenantEntity }): Promise<UserEntity> {
+  async create(data: { email: string; tenant: TenantEntity; role?: UserRole }): Promise<UserEntity> {
     return this._repository.save(this._repository.create(data));
   }
 

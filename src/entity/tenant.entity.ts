@@ -6,9 +6,9 @@ import { UserEntity } from './user.entity';
 
 
 export enum IntegrationMode {
-  FirstParty = 'first-party',
-  ThirdParty = 'third-party',
-  Hybrid = 'hybrid',
+  FirstParty = 'FIRST_PARTY',
+  ThirdParty = 'THIRD_PARTY',
+  Hybrid = 'HYBRID'
 }
 
 @Entity('tenant')

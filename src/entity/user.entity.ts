@@ -12,6 +12,12 @@ import { TrustedDeviceEntity } from './trusted-device.entity';
 import { TenantEntity } from './tenant.entity';
 
 
+export enum UserRole {
+  User = 'USER',
+  Admin = 'ADMIN',
+  FirstAdmin = 'FIRST_ADMIN'
+}
+
 export enum LockReason {
   TooManyAttempts = 'TOO_MANY_ATTEMPTS',
   AdminManual = 'ADMIN_MANUAL',
@@ -48,6 +54,9 @@ export class UserEntity {
 
   @Column({ name: 'email', type: 'varchar' })
   email: string;
+
+  @Column({ name: 'role', type: 'enum', enum: UserRole, default: UserRole.User })
+  role: UserRole;
 
   @OneToMany(() => PasswordEntity, (password) => password.user, {
     orphanedRowAction: 'delete'

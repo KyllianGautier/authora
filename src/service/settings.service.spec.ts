@@ -10,6 +10,8 @@ import { SettingsService } from './settings.service';
 import type { AuthoraConfigEntityService } from './entity-service/authora-config-entity.service';
 import type { TenantConfigEntityService } from './entity-service/tenant-config-entity.service';
 import type { TenantEntityService } from './entity-service/tenant-entity.service';
+import type { AuthoraConfigBootstrapService } from './bootstrap/authora-config-bootstrap.service';
+import type { TenantConfigBootstrapService } from './bootstrap/tenant-config-bootstrap.service';
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -77,11 +79,21 @@ describe('SettingsService', () => {
       findBySlug: jest.fn().mockResolvedValue(fakeTenant)
     };
 
+    const mockAuthoraConfigBootstrap: Partial<AuthoraConfigBootstrapService> = {
+      onApplicationBootstrap: jest.fn().mockResolvedValue(undefined)
+    };
+
+    const mockTenantConfigBootstrap: Partial<TenantConfigBootstrapService> = {
+      onApplicationBootstrap: jest.fn().mockResolvedValue(undefined)
+    };
+
     service = new SettingsService(
       mockRedis,
       mockAuthoraConfigEntityService as AuthoraConfigEntityService,
       mockTenantConfigEntityService as TenantConfigEntityService,
-      mockTenantEntityService as TenantEntityService
+      mockTenantEntityService as TenantEntityService,
+      mockAuthoraConfigBootstrap as AuthoraConfigBootstrapService,
+      mockTenantConfigBootstrap as TenantConfigBootstrapService
     );
   });
 
