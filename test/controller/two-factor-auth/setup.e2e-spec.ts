@@ -169,7 +169,7 @@ describe('POST /2fa/setup', () => {
     });
 
     it('should allow 2FA setup even when password is expired', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(
         dataSource,
         'user@example.com',

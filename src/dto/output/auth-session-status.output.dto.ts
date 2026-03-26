@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { AuthSessionStatusOutput } from '@kylliangautier/authora-types';
-import { AuthSession } from '../../redis-model/auth-session.model';
+import { AuthSession, MfaPolicy } from '../../redis-model/auth-session.model';
 
 export type AuthSessionNextStep = 'primaryAuth' | 'mfaSetup' | 'mfaAuth' | 'complete';
 
@@ -26,7 +26,7 @@ export class AuthSessionStatusOutputDto implements AuthSessionStatusOutput {
       return 'primaryAuth';
     }
 
-    if (session.mfaPolicy === 'REQUIRED') {
+    if (session.mfaPolicy === MfaPolicy.Required) {
       if (!session.mfaSetup) {
         return 'mfaSetup';
       }
@@ -35,7 +35,7 @@ export class AuthSessionStatusOutputDto implements AuthSessionStatusOutput {
       }
     }
 
-    if (session.mfaPolicy === 'OPTIONAL') {
+    if (session.mfaPolicy === MfaPolicy.Optional) {
       if (session.mfaSetup && !session.mfaVerified && !session.deviceTrusted) {
         return 'mfaAuth';
       }

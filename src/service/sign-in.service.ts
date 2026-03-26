@@ -1,7 +1,6 @@
 import {
   HttpException,
   HttpStatus,
-  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException
@@ -9,8 +8,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TENANT_CONFIG } from '../config/tenant-config';
-import type { AuthoraTenantConfig } from '../config/tenant-config';
+import { TenantSetting } from '../config/settings';
+import { SettingsService } from './settings.service';
 import { LockReason } from '../entity/user.entity';
 import { AuthFailureReason } from '../entity/sign-in-attempt.entity';
 import { SignInAttemptEntityService } from './entity-service/sign-in-attempt-entity.service';
@@ -18,7 +17,7 @@ import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { TrustedDeviceEntity } from '../entity/trusted-device.entity';
 import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
-import { AuthSession } from '../redis-model/auth-session.model';
+import { AuthSession, MfaPolicy } from '../redis-model/auth-session.model';
 import { SignInPasswordInputDto } from '../dto/input/sign-in-password.input.dto';
 import { SignInMagicLinkInputDto } from '../dto/input/sign-in-magic-link.input.dto';
 import { SignInMagicLinkValidateInputDto } from '../dto/input/sign-in-magic-link-validate.input.dto';
@@ -50,7 +49,7 @@ export class SignInService {
     private readonly _jwtService: JwtService,
     @InjectRepository(TwoFactorAuthEntity)
     private readonly _twoFactorAuthRepository: Repository<TwoFactorAuthEntity>,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   async createSession(tenant: TenantEntity): Promise<AuthSession> {
@@ -58,7 +57,7 @@ export class SignInService {
       tenantId: tenant.id,
       mode: 'first-party',
       primaryAuthVerified: false,
-      mfaPolicy: 'DISABLED'
+      mfaPolicy: MfaPolicy.Disabled
     });
   }
 
@@ -86,7 +85,7 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
-    if (this._userEntityService.isPasswordTemporarilyLocked(user)) {
+    if (await this._userEntityService.isPasswordTemporarilyLocked(user)) {
       await this._signInAttemptEntityService.create(
         user, ip, userAgent, false, AuthFailureReason.TooManyAttempts
       );
@@ -108,7 +107,11 @@ export class SignInService {
       const attempts =
         await this._userEntityService.recordFailedPasswordAttempt(user);
 
-      if (attempts >= this._tenantConfig.primaryAuthLockAccountThreshold) {
+      const threshold = await this._settingsService.get(
+        TenantSetting.PrimaryAuthLockAccountThreshold, session.tenantId
+      );
+
+      if (attempts >= threshold) {
         await this._userEntityService.lock(user, LockReason.TooManyAttempts);
       }
 
@@ -164,7 +167,8 @@ export class SignInService {
 
     const token = await this._oneTimeTokenRedisService.create(
       user.id,
-      OneTimeTokenType.MagicLink
+      OneTimeTokenType.MagicLink,
+      session.tenantId
     );
 
     await this._emailService.sendMagicLink(email, token, sessionId, dto.locale);
@@ -240,7 +244,7 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
-    if (this._userEntityService.isMfaTemporarilyLocked(user)) {
+    if (await this._userEntityService.isMfaTemporarilyLocked(user)) {
       await this._signInAttemptEntityService.create(
         user, ip, userAgent, false, AuthFailureReason.TooManyMfaAttempts
       );
@@ -276,7 +280,7 @@ export class SignInService {
       );
 
       if (device !== null) {
-        await this._trustedDeviceEntityService.trust(device);
+        await this._trustedDeviceEntityService.trust(device, session.tenantId);
         session.deviceTrusted = true;
       }
     }
@@ -294,7 +298,7 @@ export class SignInService {
     }
 
     if (
-      session.mfaPolicy !== 'DISABLED' &&
+      session.mfaPolicy !== MfaPolicy.Disabled &&
       !session.mfaVerified &&
       !session.deviceTrusted
     ) {
@@ -349,8 +353,8 @@ export class SignInService {
 
     // Generate the refresh token with expiration based on rememberMe
     const refreshTokenExpirationSeconds = consumedSession.rememberMe
-      ? this._tenantConfig.jwtRefreshTokenLongExpirationSec
-      : this._tenantConfig.jwtRefreshTokenShortExpirationSec;
+      ? await this._settingsService.get(TenantSetting.JwtRefreshTokenLongExpirationSec, consumedSession.tenantId)
+      : await this._settingsService.get(TenantSetting.JwtRefreshTokenShortExpirationSec, consumedSession.tenantId);
 
     const refreshToken = await this._refreshTokenEntityService.create(
       user,
@@ -360,7 +364,7 @@ export class SignInService {
     return {
       accessToken,
       type: 'Bearer',
-      expiresIn: this._tenantConfig.jwtAccessTokenExpirationSec,
+      expiresIn: await this._settingsService.get(TenantSetting.JwtAccessTokenExpirationSec, consumedSession.tenantId),
       refreshToken
     };
   }
@@ -429,7 +433,7 @@ export class SignInService {
     return {
       accessToken: newAccessToken,
       type: 'Bearer',
-      expiresIn: this._tenantConfig.jwtAccessTokenExpirationSec,
+      expiresIn: await this._settingsService.get(TenantSetting.JwtAccessTokenExpirationSec, user.tenant?.id ?? ''),
       refreshToken: newRefreshToken
     };
   }
@@ -505,7 +509,7 @@ export class SignInService {
     const hasVerifiedMfa = twoFactorAuth !== null && twoFactorAuth.isVerified;
 
     session.mfaSetup = hasVerifiedMfa;
-    session.mfaPolicy = this._tenantConfig.mfaPolicy;
+    session.mfaPolicy = await this._settingsService.get(TenantSetting.MfaPolicy, session.tenantId);
     session.deviceTrusted = this._trustedDeviceEntityService.isTrusted(device);
   }
 }

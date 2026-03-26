@@ -1,26 +1,21 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   registerDecorator,
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface
 } from 'class-validator';
-import type { AuthoraTenantConfig } from '../../../config/tenant-config';
-import { TENANT_CONFIG } from '../../../config/tenant-config';
+import { TenantSetting } from '../../../config/settings';
+import { SettingsService } from '../../../service/settings.service';
 
 @Injectable()
-@ValidatorConstraint({ name: 'hasDigit' })
+@ValidatorConstraint({ name: 'hasDigit', async: true })
 export class HasDigitConstraint implements ValidatorConstraintInterface {
-  private readonly _enabled: boolean;
+  constructor(private readonly _settingsService: SettingsService) {}
 
-  constructor(
-    @Inject(TENANT_CONFIG) tenantConfig: AuthoraTenantConfig
-  ) {
-    this._enabled = tenantConfig.passwordRequireDigit;
-  }
-
-  validate(value: unknown): boolean {
-    if (!this._enabled) return true;
+  async validate(value: unknown): Promise<boolean> {
+    const enabled = await this._settingsService.get(TenantSetting.PasswordRequireDigit, '');
+    if (!enabled) return true;
     return typeof value === 'string' && /\d/.test(value);
   }
 

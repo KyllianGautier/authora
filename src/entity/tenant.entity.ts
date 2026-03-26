@@ -1,7 +1,8 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { UserEntity } from './user.entity';
-import { RegistrationEntity } from './registration.entity';
 import { ApiKeyEntity } from './api-key.entity';
+import { RegistrationEntity } from './registration.entity';
+import { TenantConfigEntity } from './tenant-config.entity';
+import { UserEntity } from './user.entity';
 
 
 export enum IntegrationMode {
@@ -43,6 +44,11 @@ export class TenantEntity {
     orphanedRowAction: 'delete'
   })
   apiKeys: ApiKeyEntity[];
+
+  @OneToMany(() => TenantConfigEntity, (config) => config.tenant, {
+    orphanedRowAction: 'delete'
+  })
+  configs: TenantConfigEntity[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

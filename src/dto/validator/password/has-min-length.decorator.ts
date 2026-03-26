@@ -1,30 +1,27 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   registerDecorator,
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface
 } from 'class-validator';
-import type { AuthoraTenantConfig } from '../../../config/tenant-config';
-import { TENANT_CONFIG } from '../../../config/tenant-config';
+import { TenantSetting } from '../../../config/settings';
+import { SettingsService } from '../../../service/settings.service';
 
 @Injectable()
-@ValidatorConstraint({ name: 'hasMinLength' })
+@ValidatorConstraint({ name: 'hasMinLength', async: true })
 export class HasMinLengthConstraint implements ValidatorConstraintInterface {
-  private readonly _minLength: number;
+  private _lastMinLength = 8;
 
-  constructor(
-    @Inject(TENANT_CONFIG) tenantConfig: AuthoraTenantConfig
-  ) {
-    this._minLength = tenantConfig.passwordMinLength;
-  }
+  constructor(private readonly _settingsService: SettingsService) {}
 
-  validate(value: unknown): boolean {
-    return typeof value === 'string' && value.length >= this._minLength;
+  async validate(value: unknown): Promise<boolean> {
+    this._lastMinLength = await this._settingsService.get(TenantSetting.PasswordMinLength, '');
+    return typeof value === 'string' && value.length >= this._lastMinLength;
   }
 
   defaultMessage(): string {
-    return `Password must contain at least ${this._minLength} characters`;
+    return `Password must contain at least ${this._lastMinLength} characters`;
   }
 }
 

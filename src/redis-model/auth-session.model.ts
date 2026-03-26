@@ -1,4 +1,8 @@
-export type MfaPolicy = 'REQUIRED' | 'OPTIONAL' | 'DISABLED';
+export enum MfaPolicy {
+  Required = 'REQUIRED',
+  Optional = 'OPTIONAL',
+  Disabled = 'DISABLED'
+}
 
 export interface AuthSession {
   // Identity:

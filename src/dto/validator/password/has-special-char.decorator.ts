@@ -1,28 +1,23 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   registerDecorator,
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface
 } from 'class-validator';
-import type { AuthoraTenantConfig } from '../../../config/tenant-config';
-import { TENANT_CONFIG } from '../../../config/tenant-config';
+import { TenantSetting } from '../../../config/settings';
+import { SettingsService } from '../../../service/settings.service';
 
 export const SPECIAL_CHARS = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
 
 @Injectable()
-@ValidatorConstraint({ name: 'hasSpecialChar' })
+@ValidatorConstraint({ name: 'hasSpecialChar', async: true })
 export class HasSpecialCharConstraint implements ValidatorConstraintInterface {
-  private readonly _enabled: boolean;
+  constructor(private readonly _settingsService: SettingsService) {}
 
-  constructor(
-    @Inject(TENANT_CONFIG) tenantConfig: AuthoraTenantConfig
-  ) {
-    this._enabled = tenantConfig.passwordRequireSpecialChar;
-  }
-
-  validate(value: unknown): boolean {
-    if (!this._enabled) return true;
+  async validate(value: unknown): Promise<boolean> {
+    const enabled = await this._settingsService.get(TenantSetting.PasswordRequireSpecialChar, '');
+    if (!enabled) return true;
     return (
       typeof value === 'string' &&
       [...value].some((c) => SPECIAL_CHARS.includes(c))

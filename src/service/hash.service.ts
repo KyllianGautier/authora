@@ -1,20 +1,30 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { INFRA_CONFIG } from '../config/infra-config';
-import type { AuthoraInfraConfig } from '../config/infra-config';
+import { AuthoraSetting } from '../config/settings';
+import { SettingsService } from './settings.service';
 
 @Injectable()
 export class HashService {
   constructor(
-    @Inject(INFRA_CONFIG) private readonly _infraConfig: AuthoraInfraConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   async hash(value: string): Promise<string> {
+    const {
+      hashMemoryCost: memoryCost,
+      hashTimeCost: timeCost,
+      hashParallelism: parallelism
+    } = await this._settingsService.getMany([
+      AuthoraSetting.HashMemoryCost,
+      AuthoraSetting.HashTimeCost,
+      AuthoraSetting.HashParallelism
+    ]);
+
     return argon2.hash(value, {
       type: argon2.argon2id,
-      memoryCost: this._infraConfig.hashMemoryCost,
-      timeCost: this._infraConfig.hashTimeCost,
-      parallelism: this._infraConfig.hashParallelism
+      memoryCost,
+      timeCost,
+      parallelism
     });
   }
 

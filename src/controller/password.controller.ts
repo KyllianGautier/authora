@@ -1,11 +1,11 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
   ApiTags
 } from '@nestjs/swagger';
-import type { AuthoraTenantConfig } from '../config/tenant-config';
-import { TENANT_CONFIG } from '../config/tenant-config';
+import { TenantSetting } from '../config/settings';
+import { SettingsService } from '../service/settings.service';
 import { CheckPasswordStrengthInputDto } from '../dto/input/check-password-strength.input.dto';
 import { CheckPasswordStrengthOutputDto } from '../dto/output/check-password-strength.output.dto';
 import { PasswordRulesOutputDto } from '../dto/output/password-rules.output.dto';
@@ -30,12 +30,10 @@ interface PasswordRule {
 @ApiTags('Password')
 @Controller('password')
 export class PasswordController {
-  private readonly _rules: PasswordRulesOutputDto;
   private readonly _constraints: PasswordRule[];
 
   constructor(
-    @Inject(TENANT_CONFIG)
-    private readonly _tenantConfig: AuthoraTenantConfig,
+    private readonly _settingsService: SettingsService,
     private readonly _hasMinLength: HasMinLengthConstraint,
     private readonly _hasDigit: HasDigitConstraint,
     private readonly _hasSpecialChar: HasSpecialCharConstraint,
@@ -47,19 +45,6 @@ export class PasswordController {
     private readonly _noUserInfo: NoUserInfoConstraint,
     private readonly _noCommonPassword: NoCommonPasswordConstraint
   ) {
-    this._rules = Object.assign(new PasswordRulesOutputDto(), {
-      minLength: this._tenantConfig.passwordMinLength,
-      requireDigit: this._tenantConfig.passwordRequireDigit,
-      requireSpecialChar: this._tenantConfig.passwordRequireSpecialChar,
-      requireLowercase: this._tenantConfig.passwordRequireLowercase,
-      requireUppercase: this._tenantConfig.passwordRequireUppercase,
-      forbidSequentialChars: this._tenantConfig.passwordForbidSequentialChars,
-      forbidRepeatedChars: this._tenantConfig.passwordForbidRepeatedChars,
-      forbidKeyboardSequence: this._tenantConfig.passwordForbidKeyboardSequence,
-      forbidUserInfo: this._tenantConfig.passwordForbidUserInfo,
-      forbidCommonPassword: this._tenantConfig.passwordForbidCommonPassword
-    });
-
     this._constraints = [
       this._hasMinLength,
       this._hasDigit,
@@ -79,8 +64,35 @@ export class PasswordController {
     description: 'Password strength rules',
     type: PasswordRulesOutputDto
   })
-  getRules(): PasswordRulesOutputDto {
-    return this._rules;
+  async getRules(): Promise<PasswordRulesOutputDto> {
+    // TODO: use tenant context when multi-tenant is enabled
+    const tenantId = '';
+
+    const settings = await this._settingsService.getMany([
+      TenantSetting.PasswordMinLength,
+      TenantSetting.PasswordRequireDigit,
+      TenantSetting.PasswordRequireSpecialChar,
+      TenantSetting.PasswordRequireLowercase,
+      TenantSetting.PasswordRequireUppercase,
+      TenantSetting.PasswordForbidSequentialChars,
+      TenantSetting.PasswordForbidRepeatedChars,
+      TenantSetting.PasswordForbidKeyboardSequence,
+      TenantSetting.PasswordForbidUserInfo,
+      TenantSetting.PasswordForbidCommonPassword
+    ], tenantId);
+
+    return Object.assign(new PasswordRulesOutputDto(), {
+      minLength: settings.passwordMinLength,
+      requireDigit: settings.passwordRequireDigit,
+      requireSpecialChar: settings.passwordRequireSpecialChar,
+      requireLowercase: settings.passwordRequireLowercase,
+      requireUppercase: settings.passwordRequireUppercase,
+      forbidSequentialChars: settings.passwordForbidSequentialChars,
+      forbidRepeatedChars: settings.passwordForbidRepeatedChars,
+      forbidKeyboardSequence: settings.passwordForbidKeyboardSequence,
+      forbidUserInfo: settings.passwordForbidUserInfo,
+      forbidCommonPassword: settings.passwordForbidCommonPassword
+    });
   }
 
   @Post('check-strength')

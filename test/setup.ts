@@ -14,15 +14,18 @@ import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
 import { REDIS_CLIENT } from '../src/config/redis.provider';
 import { TenantEntity } from '../src/entity/tenant.entity';
-import { INFRA_CONFIG, testInfraConfig } from '../src/config/infra-config';
-import type { AuthoraInfraConfig } from '../src/config/infra-config';
-import { TENANT_CONFIG, testTenantConfig } from '../src/config/tenant-config';
-import type { AuthoraTenantConfig } from '../src/config/tenant-config';
+import { AuthoraConfigEntity } from '../src/entity/authora-config.entity';
+import { TenantConfigEntity } from '../src/entity/tenant-config.entity';
+import { testAuthoraConfig } from '../src/config/authora-config';
+import type { AuthoraConfig } from '../src/config/authora-config';
+import { testTenantConfig } from '../src/config/tenant-config';
+import type { TenantConfig } from '../src/config/tenant-config';
+import { AuthoraSetting, TenantSetting } from '../src/config/settings';
+import { SETTINGS_AUTHORA_KEY, SETTINGS_TENANT_KEY } from '../src/config/redis-keys';
+import { SettingsService } from '../src/service/settings.service';
 
 let app: INestApplication<App>;
 let initialized = false;
-let activeTenantConfig: AuthoraTenantConfig = { ...testTenantConfig };
-let activeInfraConfig: AuthoraInfraConfig = { ...testInfraConfig };
 
 export function getTestPublicKey(): string {
   return readFileSync(process.env.JWT_PUBLIC_KEY_PATH!, 'utf8');
@@ -38,25 +41,12 @@ export function getTestPrivateKey(): string {
 export async function getTestApp(): Promise<INestApplication<App>> {
   if (initialized) return app;
 
-  const tenantConfigProxy = new Proxy({} as AuthoraTenantConfig, {
-    get: (_target, prop) => (activeTenantConfig as any)[prop]
-  });
-
-  const infraConfigProxy = new Proxy({} as AuthoraInfraConfig, {
-    get: (_target, prop) => (activeInfraConfig as any)[prop]
-  });
-
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule]
   })
     // Replace Redis-backed throttle storage with in-memory
     .overrideProvider(ThrottlerStorage)
     .useClass(ThrottlerStorageService)
-    // Use proxies so configs can be swapped per-test
-    .overrideProvider(TENANT_CONFIG)
-    .useValue(tenantConfigProxy)
-    .overrideProvider(INFRA_CONFIG)
-    .useValue(infraConfigProxy)
     .compile();
 
   app = moduleFixture.createNestApplication();
@@ -71,6 +61,9 @@ export async function getTestApp(): Promise<INestApplication<App>> {
   app.getHttpAdapter().getInstance().set('trust proxy', true);
   await app.init();
 
+  // Seed test configs into Redis via SettingsService
+  await _seedTestSettings();
+
   initialized = true;
   return app;
 }
@@ -83,31 +76,53 @@ export function resetThrottler(): void {
 }
 
 // Override tenant config for the current test. Resets automatically in resetTestState().
-export function setTenantConfig(
-  overrides: Partial<AuthoraTenantConfig>
-): void {
-  activeTenantConfig = { ...testTenantConfig, ...overrides };
+export async function setTenantConfig(
+  overrides: Partial<TenantConfig>
+): Promise<void> {
+  const redis = app.get<Redis>(REDIS_CLIENT);
+  const dataSource = app.get(DataSource);
+  const tenant = await dataSource.getRepository(TenantEntity).findOneBy({ slug: 'default' });
+  const tenantId = tenant?.id ?? '';
+  const config = { ...testTenantConfig, ...overrides };
+
+  const pipeline = redis.pipeline();
+
+  for (const key of Object.values(TenantSetting)) {
+    const value = (config as any)[key];
+    const serialized = typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value);
+    pipeline.set(SETTINGS_TENANT_KEY(tenantId, key), serialized);
+    pipeline.set(SETTINGS_TENANT_KEY('', key), serialized);
+  }
+
+  await pipeline.exec();
 }
 
-// Override infra config for the current test. Resets automatically in resetTestState().
-export function setInfraConfig(
-  overrides: Partial<AuthoraInfraConfig>
-): void {
-  activeInfraConfig = { ...testInfraConfig, ...overrides };
+// Override authora config for the current test. Resets automatically in resetTestState().
+export async function setAuthoraConfig(
+  overrides: Partial<AuthoraConfig>
+): Promise<void> {
+  const redis = app.get<Redis>(REDIS_CLIENT);
+  const config = { ...testAuthoraConfig, ...overrides };
+
+  const pipeline = redis.pipeline();
+
+  for (const key of Object.values(AuthoraSetting)) {
+    const value = (config as any)[key];
+    pipeline.set(
+      SETTINGS_AUTHORA_KEY(key),
+      typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value)
+    );
+  }
+
+  await pipeline.exec();
 }
 
 // Truncate all tables and reset throttler state between tests
 export async function resetTestState(): Promise<void> {
-  activeTenantConfig = { ...testTenantConfig };
-  activeInfraConfig = { ...testInfraConfig };
   const dataSource = app.get(DataSource);
   const entities = dataSource.entityMetadatas;
-  for (const entity of entities) {
-    const repository = dataSource.getRepository(entity.name);
-    await repository.query(
-      `TRUNCATE TABLE "${entity.schema}"."${entity.tableName}" CASCADE`
-    );
-  }
+  const tableNames = entities.map((e) => `"${e.schema}"."${e.tableName}"`).join(', ');
+  await dataSource.query(`TRUNCATE TABLE ${tableNames} CASCADE`);
 
   // Recreate the default tenant after truncation
   const tenantRepository = dataSource.getRepository(TenantEntity);
@@ -115,25 +130,30 @@ export async function resetTestState(): Promise<void> {
     tenantRepository.create({ slug: 'default', name: 'Default' })
   );
 
+  // Recreate the default configs after truncation
+  const authoraConfigRepo = dataSource.getRepository(AuthoraConfigEntity);
+  await authoraConfigRepo.save(
+    authoraConfigRepo.create({ name: 'Default', isActive: true })
+  );
+
+  const tenant = await tenantRepository.findOneBy({ slug: 'default' });
+  const tenantConfigRepo = dataSource.getRepository(TenantConfigEntity);
+  await tenantConfigRepo.save(
+    tenantConfigRepo.create({ name: 'Default', isActive: true, tenant: tenant! })
+  );
+
   const storage = app.get(ThrottlerStorage);
   storage.onApplicationShutdown();
   storage.storage.clear();
 
-  // Flush auth sessions, one-time tokens, and token reuse counters from Redis
+  // Flush Redis and re-seed test settings
   const redis = app.get<Redis>(REDIS_CLIENT);
-  const keys = await redis.keys('auth_session:*');
-  const ottKeys = await redis.keys('ott:*');
-  const ottExchangeKeys = await redis.keys('ott_exchange:*');
-  const tokenReuseKeys = await redis.keys('token_reuse:*');
-  const allKeys = [
-    ...keys,
-    ...ottKeys,
-    ...ottExchangeKeys,
-    ...tokenReuseKeys
-  ];
+  const allKeys = await redis.keys('*');
   if (allKeys.length > 0) {
     await redis.del(...allKeys);
   }
+
+  await _seedTestSettings();
 }
 
 // Drain all messages from the RabbitMQ email queue and return their parsed payloads
@@ -156,4 +176,32 @@ export async function consumeEmailQueue(): Promise<
   await connection.close();
 
   return messages;
+}
+
+// Seed the test settings into Redis
+async function _seedTestSettings(): Promise<void> {
+  const redis = app.get<Redis>(REDIS_CLIENT);
+  const dataSource = app.get(DataSource);
+  const tenant = await dataSource.getRepository(TenantEntity).findOneBy({ slug: 'default' });
+  const tenantId = tenant?.id ?? '';
+
+  const pipeline = redis.pipeline();
+
+  for (const key of Object.values(AuthoraSetting)) {
+    const value = (testAuthoraConfig as any)[key];
+    pipeline.set(
+      SETTINGS_AUTHORA_KEY(key),
+      typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value)
+    );
+  }
+
+  for (const key of Object.values(TenantSetting)) {
+    const value = (testTenantConfig as any)[key];
+    const serialized = typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value);
+    pipeline.set(SETTINGS_TENANT_KEY(tenantId, key), serialized);
+    // Also seed with empty tenantId for services that lack tenant context
+    pipeline.set(SETTINGS_TENANT_KEY('', key), serialized);
+  }
+
+  await pipeline.exec();
 }

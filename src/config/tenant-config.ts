@@ -1,8 +1,6 @@
 import { MfaPolicy } from '../redis-model/auth-session.model';
 
-export const TENANT_CONFIG = 'TENANT_CONFIG';
-
-export interface AuthoraTenantConfig {
+export interface TenantConfig {
   // Authentication
   jwtAccessTokenExpirationSec: number;
   jwtRefreshTokenShortExpirationSec: number;
@@ -57,7 +55,7 @@ export interface AuthoraTenantConfig {
   emailMfaSetup: boolean;
 }
 
-export const defaultTenantConfig: AuthoraTenantConfig = {
+export const defaultTenantConfig: TenantConfig = {
   // Authentication
   jwtAccessTokenExpirationSec: 900,
   jwtRefreshTokenShortExpirationSec: 86_400,
@@ -70,7 +68,7 @@ export const defaultTenantConfig: AuthoraTenantConfig = {
   unlockOnPasswordReset: true,
 
   // MFA
-  mfaPolicy: 'DISABLED',
+  mfaPolicy: MfaPolicy.Disabled,
   mfaAuthMaxAttempts: 3,
   mfaAuthCooldownSec: 300,
 
@@ -112,7 +110,7 @@ export const defaultTenantConfig: AuthoraTenantConfig = {
   emailMfaSetup: true
 };
 
-export const testTenantConfig: AuthoraTenantConfig = {
+export const testTenantConfig: TenantConfig = {
   ...defaultTenantConfig,
   passwordExpirationEnabled: true,
   passwordMaxAgeSec: 60,

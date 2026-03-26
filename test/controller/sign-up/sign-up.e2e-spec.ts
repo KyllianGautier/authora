@@ -48,11 +48,12 @@ describe('POST /sign-up', () => {
         .send({ email: 'user@example.com' })
         .expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(response.body.message).toHaveLength(3);
+      expect(response.body.message).toEqual(expect.arrayContaining([
         'Password must contain at least 8 characters',
         'password should not be empty',
         'password must be a string'
-      ]);
+      ]));
     });
 
     it('should return 400 when password is empty', async () => {
@@ -61,10 +62,11 @@ describe('POST /sign-up', () => {
         .send({ email: 'user@example.com', password: '' })
         .expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(response.body.message).toHaveLength(2);
+      expect(response.body.message).toEqual(expect.arrayContaining([
         'Password must contain at least 8 characters',
         'password should not be empty'
-      ]);
+      ]));
     });
 
     it('should return 400 when body is empty', async () => {
@@ -73,12 +75,13 @@ describe('POST /sign-up', () => {
         .send({})
         .expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(response.body.message).toHaveLength(4);
+      expect(response.body.message).toEqual(expect.arrayContaining([
         'email must be an email',
         'Password must contain at least 8 characters',
         'password should not be empty',
         'password must be a string'
-      ]);
+      ]));
     });
   });
 

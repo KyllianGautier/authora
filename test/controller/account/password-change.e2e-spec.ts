@@ -86,11 +86,12 @@ describe('POST /account/password/change', () => {
         .send({ email: 'user@example.com', currentPassword: 'oldPass123' })
         .expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(response.body.message).toHaveLength(3);
+      expect(response.body.message).toEqual(expect.arrayContaining([
         'Password must contain at least 8 characters',
         'newPassword should not be empty',
         'newPassword must be a string'
-      ]);
+      ]));
     });
 
     it('should return 400 when newPassword is empty', async () => {
@@ -103,10 +104,11 @@ describe('POST /account/password/change', () => {
         })
         .expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(response.body.message).toHaveLength(2);
+      expect(response.body.message).toEqual(expect.arrayContaining([
         'Password must contain at least 8 characters',
         'newPassword should not be empty'
-      ]);
+      ]));
     });
 
     it('should return 400 when newPassword is the same as currentPassword', async () => {
@@ -130,7 +132,8 @@ describe('POST /account/password/change', () => {
         .send({})
         .expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(response.body.message).toHaveLength(7);
+      expect(response.body.message).toEqual(expect.arrayContaining([
         'email must be an email',
         'currentPassword should not be empty',
         'currentPassword must be a string',
@@ -138,7 +141,7 @@ describe('POST /account/password/change', () => {
         'New password must be different from current password',
         'newPassword should not be empty',
         'newPassword must be a string'
-      ]);
+      ]));
     });
   });
 
@@ -282,7 +285,7 @@ describe('POST /account/password/change', () => {
     });
 
     it('should allow password change even when current password is expired', async () => {
-      setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
+      await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'oldPassword');
       await expirePassword(dataSource, user);
 

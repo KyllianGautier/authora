@@ -1,13 +1,23 @@
 import { createHash } from 'crypto';
 import { defaultTenantConfig } from '../../../config/tenant-config';
+import { TenantSetting } from '../../../config/settings';
+import type { SettingsService } from '../../../service/settings.service';
 import { NoCommonPasswordConstraint } from './no-common-password.decorator';
 
 describe('NoCommonPasswordConstraint', () => {
   function createConstraint(enabled = true) {
-    return new NoCommonPasswordConstraint({
+    const config = {
       ...defaultTenantConfig,
       passwordForbidCommonPassword: enabled
-    });
+    };
+    const mockSettingsService = {
+      get: jest
+        .fn()
+        .mockImplementation((key: TenantSetting) =>
+          Promise.resolve((config as any)[key])
+        )
+    } as unknown as SettingsService;
+    return new NoCommonPasswordConstraint(mockSettingsService);
   }
 
   function pwnedResponseFor(password: string): string {

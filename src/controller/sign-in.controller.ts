@@ -4,7 +4,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Inject,
   Post,
   Query,
   Req,
@@ -31,9 +30,9 @@ import { SignInExchangeInputDto } from '../dto/input/sign-in-exchange.input.dto'
 import { SignInTokenInputDto } from '../dto/input/sign-in-token.input.dto';
 import { AuthSessionStatusOutputDto } from '../dto/output/auth-session-status.output.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
-import type { AuthoraTenantConfig } from '../config/tenant-config';
-import { TENANT_CONFIG } from '../config/tenant-config';
+import { TenantSetting } from '../config/settings';
 import { SignInService } from '../service/sign-in.service';
+import { SettingsService } from '../service/settings.service';
 import { CurrentTenant } from '../decorator/current-tenant.decorator';
 import { TenantEntity } from '../entity/tenant.entity';
 
@@ -42,8 +41,7 @@ import { TenantEntity } from '../entity/tenant.entity';
 export class SignInController {
   constructor(
     private readonly _signInService: SignInService,
-    @Inject(TENANT_CONFIG)
-    private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   @Post()
@@ -79,7 +77,7 @@ export class SignInController {
         req.cookies?.deviceFingerprint as string | undefined
       );
 
-    this._setDeviceFingerprintCookie(res, deviceFingerprint);
+    await this._setDeviceFingerprintCookie(res, deviceFingerprint, session.tenantId);
 
     return AuthSessionStatusOutputDto.fromSession(session);
   }
@@ -119,7 +117,7 @@ export class SignInController {
         req.cookies?.deviceFingerprint as string | undefined
       );
 
-    this._setDeviceFingerprintCookie(res, deviceFingerprint);
+    await this._setDeviceFingerprintCookie(res, deviceFingerprint, session.tenantId);
 
     return AuthSessionStatusOutputDto.fromSession(session);
   }
@@ -239,20 +237,20 @@ export class SignInController {
     return { message: 'Token revoked' };
   }
 
-  private _setDeviceFingerprintCookie(
+  private async _setDeviceFingerprintCookie(
     res: Response,
-    fingerprint: string
-  ): void {
+    fingerprint: string,
+    tenantId: string
+  ): Promise<void> {
+    const maxAgeDays = await this._settingsService.get(
+      TenantSetting.DeviceFingerprintCookieMaxAgeDays, tenantId
+    );
+
     res.cookie('deviceFingerprint', fingerprint, {
       secure: true,
       sameSite: 'strict',
       path: '/',
-      maxAge:
-        this._tenantConfig.deviceFingerprintCookieMaxAgeDays *
-        24 *
-        60 *
-        60 *
-        1_000
+      maxAge: maxAgeDays * 24 * 60 * 60 * 1_000
     });
   }
 }

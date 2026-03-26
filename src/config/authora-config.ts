@@ -1,6 +1,4 @@
-export const INFRA_CONFIG = 'INFRA_CONFIG';
-
-export interface AuthoraInfraConfig {
+export interface AuthoraConfig {
   // Argon2id hashing
   hashMemoryCost: number;
   hashTimeCost: number;
@@ -21,7 +19,7 @@ export interface AuthoraInfraConfig {
   ottExchangeTtlSec: number;
 }
 
-export const defaultInfraConfig: AuthoraInfraConfig = {
+export const defaultAuthoraConfig: AuthoraConfig = {
   hashMemoryCost: 65_536,
   hashTimeCost: 3,
   hashParallelism: 4,
@@ -38,7 +36,7 @@ export const defaultInfraConfig: AuthoraInfraConfig = {
   ottExchangeTtlSec: 300
 };
 
-export const testInfraConfig: AuthoraInfraConfig = {
+export const testAuthoraConfig: AuthoraConfig = {
   hashMemoryCost: 1_024,
   hashTimeCost: 1,
   hashParallelism: 1,

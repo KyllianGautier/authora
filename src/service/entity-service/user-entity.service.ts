@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
-import { TENANT_CONFIG } from '../../config/tenant-config';
-import type { AuthoraTenantConfig } from '../../config/tenant-config';
+import { TenantSetting } from '../../config/settings';
+import { SettingsService } from '../settings.service';
 import {
   isLockReasonEscalation,
   LockReason,
@@ -16,7 +16,7 @@ export class UserEntityService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly _repository: Repository<UserEntity>,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   async create(data: { email: string, tenant: TenantEntity }): Promise<UserEntity> {
@@ -79,10 +79,18 @@ export class UserEntityService {
     return result.raw[0].primary_failed_attempt_count as number;
   }
 
-  isPasswordTemporarilyLocked(user: UserEntity): boolean {
+  async isPasswordTemporarilyLocked(user: UserEntity): Promise<boolean> {
+    const {
+      primaryAuthMaxAttempts: maxAttempts,
+      primaryAuthCooldownSec: cooldownSec
+    } = await this._settingsService.getMany([
+      TenantSetting.PrimaryAuthMaxAttempts,
+      TenantSetting.PrimaryAuthCooldownSec
+    ], user.tenant?.id ?? '');
+
     return (
-      user.primaryFailedAttemptCount >= this._tenantConfig.primaryAuthMaxAttempts &&
-      !this._isCooldownExpired(user.primaryLastFailedAttemptAt, this._tenantConfig.primaryAuthCooldownSec)
+      user.primaryFailedAttemptCount >= maxAttempts &&
+      !this._isCooldownExpired(user.primaryLastFailedAttemptAt, cooldownSec)
     );
   }
 
@@ -110,10 +118,18 @@ export class UserEntityService {
     return result.raw[0].mfa_failed_attempt_count as number;
   }
 
-  isMfaTemporarilyLocked(user: UserEntity): boolean {
+  async isMfaTemporarilyLocked(user: UserEntity): Promise<boolean> {
+    const {
+      mfaAuthMaxAttempts: maxAttempts,
+      mfaAuthCooldownSec: cooldownSec
+    } = await this._settingsService.getMany([
+      TenantSetting.MfaAuthMaxAttempts,
+      TenantSetting.MfaAuthCooldownSec
+    ], user.tenant?.id ?? '');
+
     return (
-      user.mfaFailedAttemptCount >= this._tenantConfig.mfaAuthMaxAttempts &&
-      !this._isCooldownExpired(user.mfaLastFailedAttemptAt, this._tenantConfig.mfaAuthCooldownSec)
+      user.mfaFailedAttemptCount >= maxAttempts &&
+      !this._isCooldownExpired(user.mfaLastFailedAttemptAt, cooldownSec)
     );
   }
 

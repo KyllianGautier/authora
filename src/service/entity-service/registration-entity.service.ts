@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DateTime } from 'luxon';
 import { Repository } from 'typeorm';
-import { TENANT_CONFIG } from '../../config/tenant-config';
-import type { AuthoraTenantConfig } from '../../config/tenant-config';
+import { TenantSetting } from '../../config/settings';
+import { SettingsService } from '../settings.service';
 import { RegistrationEntity } from '../../entity/registration.entity';
 import { HashService } from '../hash.service';
 import { TenantEntity } from '../../entity/tenant.entity';
@@ -14,7 +14,7 @@ export class RegistrationEntityService {
     @InjectRepository(RegistrationEntity)
     private readonly _repository: Repository<RegistrationEntity>,
     private readonly _hashService: HashService,
-    @Inject(TENANT_CONFIG) private readonly _tenantConfig: AuthoraTenantConfig
+    private readonly _settingsService: SettingsService
   ) {}
 
   async create(data: {
@@ -35,7 +35,7 @@ export class RegistrationEntityService {
         passwordHash,
         emailVerificationTokenHash,
         emailVerificationTokenExpiresAt:
-          this._computeEmailVerificationTokenExpiresAt()
+          await this._computeEmailVerificationTokenExpiresAt(data.tenant.id)
       })
     );
   }
@@ -56,7 +56,7 @@ export class RegistrationEntityService {
       clearEmailVerificationToken
     );
     registration.emailVerificationTokenExpiresAt =
-      this._computeEmailVerificationTokenExpiresAt();
+      await this._computeEmailVerificationTokenExpiresAt(registration.tenant?.id ?? '');
     return this._repository.save(registration);
   }
 
@@ -64,9 +64,11 @@ export class RegistrationEntityService {
     await this._repository.remove(registration);
   }
 
-  private _computeEmailVerificationTokenExpiresAt(): Date {
+  private async _computeEmailVerificationTokenExpiresAt(tenantId: string): Promise<Date> {
+    const ttlSec = await this._settingsService.get(TenantSetting.OttEmailVerificationTtlSec, tenantId);
+
     return DateTime.utc()
-      .plus({ seconds: this._tenantConfig.ottEmailVerificationTtlSec })
+      .plus({ seconds: ttlSec })
       .toJSDate();
   }
 }
