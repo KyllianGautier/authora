@@ -1,7 +1,7 @@
 export enum OneTimeTokenType {
-  TwoFactorAuthVerify = 'TWO_FACTOR_AUTH_VERIFY',
-  TwoFactorAuthValidate = 'TWO_FACTOR_AUTH_VALIDATE',
-  TwoFactorAuthDisabling = 'TWO_FACTOR_AUTH_DISABLING',
+  MultiFactorAuthVerify = 'MULTI_FACTOR_AUTH_VERIFY',
+  MultiFactorAuthValidate = 'MULTI_FACTOR_AUTH_VALIDATE',
+  MultiFactorAuthDisabling = 'MULTI_FACTOR_AUTH_DISABLING',
   AccountDeletion = 'ACCOUNT_DELETION',
   ForgotPassword = 'FORGOT_PASSWORD',
   MagicLink = 'MAGIC_LINK',

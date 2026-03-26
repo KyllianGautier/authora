@@ -3,7 +3,7 @@ import { PasswordController } from './password.controller';
 import { SignInController } from './sign-in.controller';
 import { SignUpController } from './sign-up.controller';
 import { StatusController } from './status.controller';
-import { TwoFactorAuthController } from './two-factor-auth.controller';
+import { MultiFactorAuthController } from './multi-factor-auth.controller';
 
 export const CONTROLLERS = [
   AccountController,
@@ -11,5 +11,5 @@ export const CONTROLLERS = [
   SignInController,
   SignUpController,
   StatusController,
-  TwoFactorAuthController
+  MultiFactorAuthController
 ];

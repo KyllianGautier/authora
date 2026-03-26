@@ -5,17 +5,17 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
-import { TwoFactorAuthEntity } from '../../../src/entity/two-factor-auth.entity';
+import { MultiFactorAuthEntity } from '../../../src/entity/multi-factor-auth.entity';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
 import { createOneTimeToken } from '../utils/create-one-time-token';
 import { getOneTimeToken } from '../utils/get-one-time-token';
 import { createRefreshToken } from '../utils/create-refresh-token';
-import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
+import { createMultiFactorAuth } from '../utils/create-multi-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 
 // Disables 2FA for a user after verifying password + TOTP code.
-// Removes the TwoFactorAuth record and revokes all active refresh tokens and one-time tokens.
-describe('POST /2fa/disable', () => {
+// Removes the MultiFactorAuth record and revokes all active refresh tokens and one-time tokens.
+describe('POST /mfa/disable', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
 
@@ -40,7 +40,7 @@ describe('POST /2fa/disable', () => {
   describe('validation', () => {
     it('should return 400 when email is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({ password: 'password123', code: '123456' })
         .expect(400);
 
@@ -49,7 +49,7 @@ describe('POST /2fa/disable', () => {
 
     it('should return 400 when email is invalid', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'not-an-email',
           password: 'password123',
@@ -62,7 +62,7 @@ describe('POST /2fa/disable', () => {
 
     it('should return 400 when password is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({ email: 'user@example.com', code: '123456' })
         .expect(400);
 
@@ -74,7 +74,7 @@ describe('POST /2fa/disable', () => {
 
     it('should return 400 when password is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({ email: 'user@example.com', password: '', code: '123456' })
         .expect(400);
 
@@ -85,7 +85,7 @@ describe('POST /2fa/disable', () => {
 
     it('should return 400 when code is missing', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({ email: 'user@example.com', password: 'password123' })
         .expect(400);
 
@@ -97,7 +97,7 @@ describe('POST /2fa/disable', () => {
 
     it('should return 400 when code is too short', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -112,7 +112,7 @@ describe('POST /2fa/disable', () => {
 
     it('should return 400 when code is too long', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -127,7 +127,7 @@ describe('POST /2fa/disable', () => {
 
     it('should return 400 when body is empty', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({})
         .expect(400);
 
@@ -144,7 +144,7 @@ describe('POST /2fa/disable', () => {
   describe('behavior', () => {
     it('should return 401 when user does not exist', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'unknown@example.com',
           password: 'password123',
@@ -163,7 +163,7 @@ describe('POST /2fa/disable', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'wrongPassword',
@@ -182,7 +182,7 @@ describe('POST /2fa/disable', () => {
       );
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -201,11 +201,11 @@ describe('POST /2fa/disable', () => {
         'password123'
       );
 
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, false);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, false);
       const code = generateTotpCode(twoFactorAuth.secret);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -223,10 +223,10 @@ describe('POST /2fa/disable', () => {
         'password123'
       );
 
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -244,11 +244,11 @@ describe('POST /2fa/disable', () => {
         'password123'
       );
 
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const code = generateTotpCode(twoFactorAuth.secret);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -257,11 +257,11 @@ describe('POST /2fa/disable', () => {
         .expect(200);
 
       expect(response.body.message).toBe(
-        'Two-factor authentication disabled'
+        'Multi-factor authentication disabled'
       );
 
       const found = await dataSource
-        .getRepository(TwoFactorAuthEntity)
+        .getRepository(MultiFactorAuthEntity)
         .findOne({ where: { user: { email: 'user@example.com' } } });
 
       expect(found).toBeNull();
@@ -274,11 +274,11 @@ describe('POST /2fa/disable', () => {
         'password123'
       );
 
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const code = generateTotpCode(twoFactorAuth.secret);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'User@Example.COM',
           password: 'password123',
@@ -287,7 +287,7 @@ describe('POST /2fa/disable', () => {
         .expect(200);
 
       expect(response.body.message).toBe(
-        'Two-factor authentication disabled'
+        'Multi-factor authentication disabled'
       );
     });
 
@@ -301,11 +301,11 @@ describe('POST /2fa/disable', () => {
 
       await createRefreshToken(dataSource, user);
 
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const code = generateTotpCode(twoFactorAuth.secret);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -314,7 +314,7 @@ describe('POST /2fa/disable', () => {
         .expect(200);
 
       expect(response.body.message).toBe(
-        'Two-factor authentication disabled'
+        'Multi-factor authentication disabled'
       );
 
       const activeTokens = await dataSource
@@ -334,11 +334,11 @@ describe('POST /2fa/disable', () => {
 
       await createOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
 
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const code = generateTotpCode(twoFactorAuth.secret);
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -347,7 +347,7 @@ describe('POST /2fa/disable', () => {
         .expect(200);
 
       expect(response.body.message).toBe(
-        'Two-factor authentication disabled'
+        'Multi-factor authentication disabled'
       );
 
       const token = await getOneTimeToken(app, user.id, OneTimeTokenType.AccountDeletion);
@@ -362,12 +362,12 @@ describe('POST /2fa/disable', () => {
     it('should return 429 when combined rate limit is exceeded', async () => {
       for (let i = 0; i < 5; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/2fa/disable')
+          .post('/api/v1/mfa/disable')
           .send({ email: 'combined@example.com', password: 'password123', code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({ email: 'combined@example.com', password: 'password123', code: '000000' });
 
       expect(response.status).toBe(429);
@@ -377,13 +377,13 @@ describe('POST /2fa/disable', () => {
     it('should return 429 when identity rate limit is exceeded', async () => {
       for (let i = 0; i < 10; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/2fa/disable')
+          .post('/api/v1/mfa/disable')
           .set('X-Forwarded-For', `10.0.0.${i}`)
           .send({ email: 'identity@example.com', password: 'password123', code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .set('X-Forwarded-For', '10.0.0.99')
         .send({ email: 'identity@example.com', password: 'password123', code: '000000' });
 
@@ -394,12 +394,12 @@ describe('POST /2fa/disable', () => {
     it('should return 429 when origin rate limit is exceeded', async () => {
       for (let i = 0; i < 30; i++) {
         await request(app.getHttpServer())
-          .post('/api/v1/2fa/disable')
+          .post('/api/v1/mfa/disable')
           .send({ email: `origin-${i}@example.com`, password: 'password123', code: '000000' });
       }
 
       const response = await request(app.getHttpServer())
-        .post('/api/v1/2fa/disable')
+        .post('/api/v1/mfa/disable')
         .send({ email: 'origin-final@example.com', password: 'password123', code: '000000' });
 
       expect(response.status).toBe(429);

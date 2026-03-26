@@ -64,9 +64,9 @@ export enum TenantSetting {
   // One-time token TTLs (seconds)
   OttEmailVerificationTtlSec = 'ottEmailVerificationTtlSec',
   OttAccountDeletionTtlSec = 'ottAccountDeletionTtlSec',
-  OttTwoFactorAuthVerifyTtlSec = 'ottTwoFactorAuthVerifyTtlSec',
-  OttTwoFactorAuthValidateTtlSec = 'ottTwoFactorAuthValidateTtlSec',
-  OttTwoFactorAuthDisablingTtlSec = 'ottTwoFactorAuthDisablingTtlSec',
+  OttMultiFactorAuthVerifyTtlSec = 'ottMultiFactorAuthVerifyTtlSec',
+  OttMultiFactorAuthValidateTtlSec = 'ottMultiFactorAuthValidateTtlSec',
+  OttMultiFactorAuthDisablingTtlSec = 'ottMultiFactorAuthDisablingTtlSec',
   OttForgotPasswordTtlSec = 'ottForgotPasswordTtlSec',
   OttMagicLinkTtlSec = 'ottMagicLinkTtlSec',
 

@@ -124,14 +124,14 @@ export class TenantConfigEntity implements TenantConfig {
   @Column({ name: 'ott_account_deletion_ttl_sec', type: 'int', default: defaultTenantConfig.ottAccountDeletionTtlSec })
   ottAccountDeletionTtlSec: number;
 
-  @Column({ name: 'ott_two_factor_auth_verify_ttl_sec', type: 'int', default: defaultTenantConfig.ottTwoFactorAuthVerifyTtlSec })
-  ottTwoFactorAuthVerifyTtlSec: number;
+  @Column({ name: 'ott_multi_factor_auth_verify_ttl_sec', type: 'int', default: defaultTenantConfig.ottMultiFactorAuthVerifyTtlSec })
+  ottMultiFactorAuthVerifyTtlSec: number;
 
-  @Column({ name: 'ott_two_factor_auth_validate_ttl_sec', type: 'int', default: defaultTenantConfig.ottTwoFactorAuthValidateTtlSec })
-  ottTwoFactorAuthValidateTtlSec: number;
+  @Column({ name: 'ott_multi_factor_auth_validate_ttl_sec', type: 'int', default: defaultTenantConfig.ottMultiFactorAuthValidateTtlSec })
+  ottMultiFactorAuthValidateTtlSec: number;
 
-  @Column({ name: 'ott_two_factor_auth_disabling_ttl_sec', type: 'int', default: defaultTenantConfig.ottTwoFactorAuthDisablingTtlSec })
-  ottTwoFactorAuthDisablingTtlSec: number;
+  @Column({ name: 'ott_multi_factor_auth_disabling_ttl_sec', type: 'int', default: defaultTenantConfig.ottMultiFactorAuthDisablingTtlSec })
+  ottMultiFactorAuthDisablingTtlSec: number;
 
   @Column({ name: 'ott_forgot_password_ttl_sec', type: 'int', default: defaultTenantConfig.ottForgotPasswordTtlSec })
   ottForgotPasswordTtlSec: number;

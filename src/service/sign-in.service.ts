@@ -15,7 +15,7 @@ import { AuthFailureReason } from '../entity/sign-in-attempt.entity';
 import { SignInAttemptEntityService } from './entity-service/sign-in-attempt-entity.service';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { TrustedDeviceEntity } from '../entity/trusted-device.entity';
-import { TwoFactorAuthEntity } from '../entity/two-factor-auth.entity';
+import { MultiFactorAuthEntity } from '../entity/multi-factor-auth.entity';
 import { UserEntity } from '../entity/user.entity';
 import { AuthSession, MfaPolicy } from '../redis-model/auth-session.model';
 import { SignInPasswordInputDto } from '../dto/input/sign-in-password.input.dto';
@@ -30,7 +30,7 @@ import { PasswordEntityService } from './entity-service/password-entity.service'
 import { PasswordRevocationReason } from '../entity/password.entity';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
 import { TrustedDeviceEntityService } from './entity-service/trusted-device-entity.service';
-import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
+import { MultiFactorAuthEntityService } from './entity-service/multi-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
 import { TenantEntity } from '../entity/tenant.entity';
 
@@ -42,13 +42,13 @@ export class SignInService {
     private readonly _passwordEntityService: PasswordEntityService,
     private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
-    private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService,
+    private readonly _multiFactorAuthEntityService: MultiFactorAuthEntityService,
     private readonly _signInAttemptEntityService: SignInAttemptEntityService,
     private readonly _trustedDeviceEntityService: TrustedDeviceEntityService,
     private readonly _emailService: EmailService,
     private readonly _jwtService: JwtService,
-    @InjectRepository(TwoFactorAuthEntity)
-    private readonly _twoFactorAuthRepository: Repository<TwoFactorAuthEntity>,
+    @InjectRepository(MultiFactorAuthEntity)
+    private readonly _multiFactorAuthRepository: Repository<MultiFactorAuthEntity>,
     private readonly _settingsService: SettingsService
   ) {}
 
@@ -252,7 +252,7 @@ export class SignInService {
     }
 
     const totpResult =
-      await this._twoFactorAuthEntityService.validateTotpForUser(user, dto.code);
+      await this._multiFactorAuthEntityService.validateTotpForUser(user, dto.code);
 
     if (totpResult === 'not_found') {
       throw new InvalidCredentialsException();
@@ -502,7 +502,7 @@ export class SignInService {
     user: UserEntity,
     device: TrustedDeviceEntity
   ): Promise<void> {
-    const twoFactorAuth = await this._twoFactorAuthRepository.findOne({
+    const twoFactorAuth = await this._multiFactorAuthRepository.findOne({
       where: { user: { id: user.id } }
     });
 

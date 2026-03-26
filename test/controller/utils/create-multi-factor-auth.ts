@@ -1,14 +1,14 @@
 import * as speakeasy from 'speakeasy';
 import { DataSource } from 'typeorm';
-import { TwoFactorAuthEntity } from '../../../src/entity/two-factor-auth.entity';
+import { MultiFactorAuthEntity } from '../../../src/entity/multi-factor-auth.entity';
 import { UserEntity } from '../../../src/entity/user.entity';
 
-export async function createTwoFactorAuth(
+export async function createMultiFactorAuth(
   dataSource: DataSource,
   user: UserEntity,
   isVerified: boolean
-): Promise<TwoFactorAuthEntity> {
-  const repo = dataSource.getRepository(TwoFactorAuthEntity);
+): Promise<MultiFactorAuthEntity> {
+  const repo = dataSource.getRepository(MultiFactorAuthEntity);
   const { base32: secret } = speakeasy.generateSecret();
 
   return repo.save(

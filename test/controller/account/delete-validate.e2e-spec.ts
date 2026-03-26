@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 import { OneTimeTokenType } from '../../../src/redis-model/one-time-token.model';
 import { PasswordEntity } from '../../../src/entity/password.entity';
 import { RefreshTokenEntity } from '../../../src/entity/refresh-token.entity';
-import { TwoFactorAuthEntity } from '../../../src/entity/two-factor-auth.entity';
+import { MultiFactorAuthEntity } from '../../../src/entity/multi-factor-auth.entity';
 import { UserEntity } from '../../../src/entity/user.entity';
 import { consumeEmailQueue, getTestApp, resetTestState } from '../../setup';
 import {
@@ -13,7 +13,7 @@ import {
   FAKE_ONE_TIME_TOKEN
 } from '../utils/create-one-time-token';
 import { createRefreshToken } from '../utils/create-refresh-token';
-import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
+import { createMultiFactorAuth } from '../utils/create-multi-factor-auth';
 import { createUserWithPassword } from '../utils/create-user-with-password';
 
 
@@ -162,7 +162,7 @@ describe('POST /account/delete/validate', () => {
       );
 
       await createRefreshToken(dataSource, user);
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
       await createOneTimeToken(
         app,
         user.id,
@@ -194,7 +194,7 @@ describe('POST /account/delete/validate', () => {
       expect(refreshTokens).toHaveLength(0);
 
       const twoFactorAuth = await dataSource
-        .getRepository(TwoFactorAuthEntity)
+        .getRepository(MultiFactorAuthEntity)
         .findOneBy({ user: { id: user.id } });
 
       expect(twoFactorAuth).toBeNull();

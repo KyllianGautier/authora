@@ -12,7 +12,7 @@ import {
   consumeEmailQueue,
   getTestApp
 } from '../setup';
-import { createTwoFactorAuth } from '../controller/utils/create-two-factor-auth';
+import { createMultiFactorAuth } from '../controller/utils/create-multi-factor-auth';
 import { createUserWithPassword } from '../controller/utils/create-user-with-password';
 import { extractCookie } from '../controller/utils/extract-cookie';
 
@@ -219,7 +219,7 @@ describe('Scenario: User lock workflows', () => {
   describe('MFA temporary lock across sign-in flows', () => {
     it('should block MFA validation on a new sign-in after temporary lock', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
 
       // First sign-in: password OK, then fail MFA to trigger temporary lock
       resetThrottler();
@@ -417,7 +417,7 @@ describe('Scenario: User lock workflows', () => {
   describe('password and MFA lock independence', () => {
     it('should keep MFA counter independent from password counter reset', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
 
       // Fail password below threshold, then succeed (resets password counter)
       for (let i = 0; i < testTenantConfig.primaryAuthMaxAttempts - 1; i++) {

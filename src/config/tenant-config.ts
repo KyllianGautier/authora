@@ -42,9 +42,9 @@ export interface TenantConfig {
   // One-time token TTLs (seconds)
   ottEmailVerificationTtlSec: number;
   ottAccountDeletionTtlSec: number;
-  ottTwoFactorAuthVerifyTtlSec: number;
-  ottTwoFactorAuthValidateTtlSec: number;
-  ottTwoFactorAuthDisablingTtlSec: number;
+  ottMultiFactorAuthVerifyTtlSec: number;
+  ottMultiFactorAuthValidateTtlSec: number;
+  ottMultiFactorAuthDisablingTtlSec: number;
   ottForgotPasswordTtlSec: number;
   ottMagicLinkTtlSec: number;
 
@@ -97,9 +97,9 @@ export const defaultTenantConfig: TenantConfig = {
   // One-time token TTLs (seconds)
   ottEmailVerificationTtlSec: 86_400,
   ottAccountDeletionTtlSec: 3_600,
-  ottTwoFactorAuthVerifyTtlSec: 86_400,
-  ottTwoFactorAuthValidateTtlSec: 86_400,
-  ottTwoFactorAuthDisablingTtlSec: 86_400,
+  ottMultiFactorAuthVerifyTtlSec: 86_400,
+  ottMultiFactorAuthValidateTtlSec: 86_400,
+  ottMultiFactorAuthDisablingTtlSec: 86_400,
   ottForgotPasswordTtlSec: 3_600,
   ottMagicLinkTtlSec: 300,
 

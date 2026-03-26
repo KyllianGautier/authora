@@ -12,7 +12,7 @@ import { resetTestState, resetThrottler, consumeEmailQueue, getTestApp } from '.
 import { createAuthSession } from '../utils/create-auth-session';
 import { createTrustedDevice, FAKE_DEVICE_FINGERPRINT } from '../utils/create-trusted-device';
 import { createUserWithPassword } from '../utils/create-user-with-password';
-import { createTwoFactorAuth } from '../utils/create-two-factor-auth';
+import { createMultiFactorAuth } from '../utils/create-multi-factor-auth';
 import { getAuthSession } from '../utils/get-auth-session';
 
 // Validates a TOTP code for MFA within an existing auth session.
@@ -124,7 +124,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should return 401 when TOTP code is invalid', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
       const session = await createAuthSession(app, {
         userId: user.id,
         primaryAuthVerified: true
@@ -154,7 +154,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should return 200 with nextStep complete after valid TOTP code', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const session = await createAuthSession(app, {
         userId: user.id,
         primaryAuthVerified: true
@@ -191,7 +191,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should trust the device when trustThisDevice is true', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const device = await createTrustedDevice(dataSource, user);
       const session = await createAuthSession(app, {
         userId: user.id,
@@ -223,7 +223,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should not trust the device when trustThisDevice is false', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const device = await createTrustedDevice(dataSource, user);
       const session = await createAuthSession(app, {
         userId: user.id,
@@ -250,7 +250,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should not trust the device when trustThisDevice is omitted', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const device = await createTrustedDevice(dataSource, user);
       const session = await createAuthSession(app, {
         userId: user.id,
@@ -277,7 +277,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should not trust the device when session has no deviceFingerprint', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
       const device = await createTrustedDevice(dataSource, user);
       const session = await createAuthSession(app, {
         userId: user.id,
@@ -305,7 +305,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
   describe('temporary lock', () => {
     it(`should return 429 after ${testTenantConfig.mfaAuthMaxAttempts} failed TOTP attempts`, async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
 
       for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts; i++) {
         const session = await createAuthSession(app, {
@@ -351,7 +351,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should reset the attempt counter after a successful TOTP validation', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
 
       // Fail a few times (below threshold)
       for (let i = 0; i < testTenantConfig.mfaAuthMaxAttempts - 1; i++) {
@@ -418,7 +418,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should not permanently lock the user after many MFA failures', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
 
       // Do 3 batches of testTenantConfig.mfaAuthMaxAttempts, simulating cooldown expiry between batches
       for (let batch = 0; batch < 3; batch++) {
@@ -456,7 +456,7 @@ describe('POST /auth/sign-in/mfa/totp/validate', () => {
 
     it('should return 401 when user is permanently locked for another reason', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
 
       await dataSource.getRepository(UserEntity).update(user.id, {
         isLocked: true,

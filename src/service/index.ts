@@ -7,7 +7,7 @@ import { REDIS_MODEL_SERVICES } from './redis-model-service';
 import { SettingsService } from './settings.service';
 import { SignInService } from './sign-in.service';
 import { SignUpService } from './sign-up.service';
-import { TwoFactorAuthService } from './two-factor-auth.service';
+import { MultiFactorAuthService } from './multi-factor-auth.service';
 import { BOOTSTRAP_SERVICES } from './bootstrap';
 
 export const SERVICES = [
@@ -21,5 +21,5 @@ export const SERVICES = [
   SettingsService,
   SignInService,
   SignUpService,
-  TwoFactorAuthService
+  MultiFactorAuthService
 ];

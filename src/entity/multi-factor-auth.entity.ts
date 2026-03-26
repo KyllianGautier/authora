@@ -8,8 +8,8 @@ import {
 } from 'typeorm';
 import { UserEntity } from './user.entity';
 
-@Entity('two_factor_auth')
-export class TwoFactorAuthEntity {
+@Entity('multi_factor_auth')
+export class MultiFactorAuthEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
   id: string;
 

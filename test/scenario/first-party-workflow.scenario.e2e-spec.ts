@@ -15,7 +15,7 @@ import {
 } from '../setup';
 import { createTrustedDevice, FAKE_DEVICE_FINGERPRINT } from '../controller/utils/create-trusted-device';
 import { createUserWithPassword } from '../controller/utils/create-user-with-password';
-import { createTwoFactorAuth } from '../controller/utils/create-two-factor-auth';
+import { createMultiFactorAuth } from '../controller/utils/create-multi-factor-auth';
 import { expirePassword } from '../controller/utils/expire-password';
 import { extractCookie } from '../controller/utils/extract-cookie';
 
@@ -194,7 +194,7 @@ describe('Scenario: First-party sign-in workflows', () => {
   describe('password sign-in with 2FA setup (mfaPolicy DISABLED)', () => {
     it('should skip MFA and complete full workflow when policy is DISABLED', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
@@ -491,7 +491,7 @@ describe('Scenario: First-party sign-in workflows', () => {
 
     it('should complete full workflow after retrying with correct TOTP', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
 
       const createRes = await request(app.getHttpServer())
         .post(BASE)
@@ -966,7 +966,7 @@ describe('Scenario: First-party sign-in workflows', () => {
     it('should complete full trusted device workflow', async () => {
       await setTenantConfig({ mfaPolicy: MfaPolicy.Required });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      const twoFactorAuth = await createTwoFactorAuth(dataSource, user, true);
+      const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
 
       // ── First login: MFA required, trust the device ──
 
@@ -1050,7 +1050,7 @@ describe('Scenario: First-party sign-in workflows', () => {
     it('should require MFA when device trust has expired', async () => {
       await setTenantConfig({ mfaPolicy: MfaPolicy.Required });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-      await createTwoFactorAuth(dataSource, user, true);
+      await createMultiFactorAuth(dataSource, user, true);
 
       // Create a trusted device with expired trustedUntil
       await createTrustedDevice(dataSource, user, {

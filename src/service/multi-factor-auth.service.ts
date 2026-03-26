@@ -1,23 +1,23 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as QRCode from 'qrcode';
-import { DisableMultiFactorAuthInputDto } from '../dto/input/disable-two-factor-auth.input.dto';
-import { SetupMultiFactorAuthInputDto } from '../dto/input/setup-two-factor-auth.input.dto';
-import { VerifyMultiFactorAuthInputDto } from '../dto/input/verify-two-factor-auth.input.dto';
-import { SetupMultiFactorAuthOutputDto } from '../dto/output/setup-two-factor-auth.output.dto';
+import { DisableMultiFactorAuthInputDto } from '../dto/input/disable-multi-factor-auth.input.dto';
+import { SetupMultiFactorAuthInputDto } from '../dto/input/setup-multi-factor-auth.input.dto';
+import { VerifyMultiFactorAuthInputDto } from '../dto/input/verify-multi-factor-auth.input.dto';
+import { SetupMultiFactorAuthOutputDto } from '../dto/output/setup-multi-factor-auth.output.dto';
 import { OneTimeTokenRedisService } from './redis-model-service/one-time-token-redis.service';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
-import { TwoFactorAuthEntityService } from './entity-service/two-factor-auth-entity.service';
+import { MultiFactorAuthEntityService } from './entity-service/multi-factor-auth-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
 
 @Injectable()
-export class TwoFactorAuthService {
+export class MultiFactorAuthService {
   constructor(
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
-    private readonly _twoFactorAuthEntityService: TwoFactorAuthEntityService
+    private readonly _multiFactorAuthEntityService: MultiFactorAuthEntityService
   ) {}
 
   async setup(
@@ -39,11 +39,11 @@ export class TwoFactorAuthService {
       throw new InvalidCredentialsException();
     }
 
-    // Create a two-factor authentication with a TOTP secret for the user
-    const twoFactorAuth = await this._twoFactorAuthEntityService.create(user);
+    // Create a multi-factor authentication with a TOTP secret for the user
+    const twoFactorAuth = await this._multiFactorAuthEntityService.create(user);
 
     // Generate the otpauth URI and the QR code
-    const otpauthUri = this._twoFactorAuthEntityService.buildOtpauthUri(
+    const otpauthUri = this._multiFactorAuthEntityService.buildOtpauthUri(
       twoFactorAuth,
       email
     );
@@ -71,8 +71,8 @@ export class TwoFactorAuthService {
       throw new InvalidCredentialsException();
     }
 
-    // Verify the 6-digits code, enable 2FA, and return the recovery codes
-    return this._twoFactorAuthEntityService.verifyForUser(
+    // Verify the 6-digits code, enable MFA, and return the recovery codes
+    return this._multiFactorAuthEntityService.verifyForUser(
       user,
       dto.code
     );
@@ -95,8 +95,8 @@ export class TwoFactorAuthService {
       throw new InvalidCredentialsException();
     }
 
-    // Verify the 6-digits code and remove the two-factor authentication
-    await this._twoFactorAuthEntityService.disableForUser(
+    // Verify the 6-digits code and remove the multi-factor authentication
+    await this._multiFactorAuthEntityService.disableForUser(
       user,
       dto.code
     );

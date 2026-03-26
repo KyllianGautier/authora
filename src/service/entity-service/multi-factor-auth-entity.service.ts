@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import * as speakeasy from 'speakeasy';
 import { Repository } from 'typeorm';
-import { TwoFactorAuthEntity } from '../../entity/two-factor-auth.entity';
+import { MultiFactorAuthEntity } from '../../entity/multi-factor-auth.entity';
 import { UserEntity } from '../../entity/user.entity';
 import { HashService } from '../hash.service';
 
@@ -15,20 +15,20 @@ const RECOVERY_CODE_COUNT = 10;
 const TOTP_ISSUER = 'Authora';
 
 @Injectable()
-export class TwoFactorAuthEntityService {
+export class MultiFactorAuthEntityService {
   constructor(
-    @InjectRepository(TwoFactorAuthEntity)
-    private readonly _repository: Repository<TwoFactorAuthEntity>,
+    @InjectRepository(MultiFactorAuthEntity)
+    private readonly _repository: Repository<MultiFactorAuthEntity>,
     private readonly _hashService: HashService
   ) {}
 
-  async create(user: UserEntity): Promise<TwoFactorAuthEntity> {
+  async create(user: UserEntity): Promise<MultiFactorAuthEntity> {
     const existing = await this._repository.findOne({
       where: { user: { id: user.id } }
     });
 
     if (existing !== null && existing.isVerified) {
-      throw new TwoFactorAuthAlreadyEnabledException();
+      throw new MultiFactorAuthAlreadyEnabledException();
     }
 
     if (existing !== null) {
@@ -59,7 +59,7 @@ export class TwoFactorAuthEntityService {
     });
 
     if (twoFactorAuth === null) {
-      throw new TwoFactorAuthNotFoundException();
+      throw new MultiFactorAuthNotFoundException();
     }
 
     const isCodeValid = speakeasy.totp.verify({
@@ -70,7 +70,7 @@ export class TwoFactorAuthEntityService {
     });
 
     if (!isCodeValid) {
-      throw new TwoFactorAuthCodeInvalidException();
+      throw new MultiFactorAuthCodeInvalidException();
     }
 
     const clearRecoveryCodes = Array.from({ length: RECOVERY_CODE_COUNT }, () =>
@@ -119,7 +119,7 @@ export class TwoFactorAuthEntityService {
     });
 
     if (twoFactorAuth === null) {
-      throw new TwoFactorAuthNotFoundException();
+      throw new MultiFactorAuthNotFoundException();
     }
 
     const isCodeValid = speakeasy.totp.verify({
@@ -130,13 +130,13 @@ export class TwoFactorAuthEntityService {
     });
 
     if (!isCodeValid) {
-      throw new TwoFactorAuthCodeInvalidException();
+      throw new MultiFactorAuthCodeInvalidException();
     }
 
     await this._repository.remove(twoFactorAuth);
   }
 
-  buildOtpauthUri(twoFactorAuth: TwoFactorAuthEntity, email: string): string {
+  buildOtpauthUri(twoFactorAuth: MultiFactorAuthEntity, email: string): string {
     return speakeasy.otpauthURL({
       secret: twoFactorAuth.secret,
       encoding: 'base32',
@@ -154,19 +154,19 @@ export class TwoFactorAuthEntityService {
   }
 }
 
-export class TwoFactorAuthAlreadyEnabledException extends ConflictException {
+export class MultiFactorAuthAlreadyEnabledException extends ConflictException {
   constructor() {
-    super('Two-factor authentication is already enabled');
+    super('Multi-factor authentication is already enabled');
   }
 }
 
-export class TwoFactorAuthNotFoundException extends UnauthorizedException {
+export class MultiFactorAuthNotFoundException extends UnauthorizedException {
   constructor() {
     super('Invalid credentials');
   }
 }
 
-export class TwoFactorAuthCodeInvalidException extends UnauthorizedException {
+export class MultiFactorAuthCodeInvalidException extends UnauthorizedException {
   constructor() {
     super('Invalid credentials');
   }

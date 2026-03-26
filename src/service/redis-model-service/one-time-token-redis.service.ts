@@ -24,9 +24,9 @@ export class OneTimeTokenRedisService {
 
     const map: Record<string, TenantSetting> = {
       [OneTimeTokenType.AccountDeletion]: TenantSetting.OttAccountDeletionTtlSec,
-      [OneTimeTokenType.TwoFactorAuthVerify]: TenantSetting.OttTwoFactorAuthVerifyTtlSec,
-      [OneTimeTokenType.TwoFactorAuthValidate]: TenantSetting.OttTwoFactorAuthValidateTtlSec,
-      [OneTimeTokenType.TwoFactorAuthDisabling]: TenantSetting.OttTwoFactorAuthDisablingTtlSec,
+      [OneTimeTokenType.MultiFactorAuthVerify]: TenantSetting.OttMultiFactorAuthVerifyTtlSec,
+      [OneTimeTokenType.MultiFactorAuthValidate]: TenantSetting.OttMultiFactorAuthValidateTtlSec,
+      [OneTimeTokenType.MultiFactorAuthDisabling]: TenantSetting.OttMultiFactorAuthDisablingTtlSec,
       [OneTimeTokenType.ForgotPassword]: TenantSetting.OttForgotPasswordTtlSec,
       [OneTimeTokenType.MagicLink]: TenantSetting.OttMagicLinkTtlSec
     };
