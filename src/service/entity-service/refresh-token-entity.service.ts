@@ -58,6 +58,15 @@ export class RefreshTokenEntityService {
     });
   }
 
+  async findAllActiveForUser(
+    user: UserEntity
+  ): Promise<RefreshTokenEntity[]> {
+    return this._repository.find({
+      where: { user: { id: user.id }, revoked: false },
+      order: { createdAt: 'DESC' }
+    });
+  }
+
   async findByUserIncludingRevoked(
     user: UserEntity,
     clearToken: string

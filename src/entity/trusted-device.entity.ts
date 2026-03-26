@@ -39,9 +39,6 @@ export class TrustedDeviceEntity {
   @Column({ name: 'trusted_until', type: 'timestamptz', nullable: true })
   trustedUntil: Date | null;
 
-  @Column({ name: 'revoked', default: false })
-  revoked: boolean = false;
-
   @Column({ name: 'first_seen_at', type: 'timestamptz' })
   firstSeenAt: Date;
 

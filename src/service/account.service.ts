@@ -15,8 +15,12 @@ import { LockReason } from '../entity/user.entity';
 import { OneTimeTokenType } from '../redis-model/one-time-token.model';
 import { EmailService } from './email.service';
 import { HashService } from './hash.service';
+import { RefreshTokenEntity } from '../entity/refresh-token.entity';
+import { TrustedDeviceEntity } from '../entity/trusted-device.entity';
+import { UserEntity } from '../entity/user.entity';
 import { PasswordEntityService } from './entity-service/password-entity.service';
 import { RefreshTokenEntityService } from './entity-service/refresh-token-entity.service';
+import { TrustedDeviceEntityService } from './entity-service/trusted-device-entity.service';
 import { UserEntityService } from './entity-service/user-entity.service';
 import { OneTimeTokenRedisService } from './redis-model-service/one-time-token-redis.service';
 
@@ -28,6 +32,7 @@ export class AccountService {
     private readonly _refreshTokenEntityService: RefreshTokenEntityService,
     private readonly _oneTimeTokenRedisService: OneTimeTokenRedisService,
     private readonly _emailService: EmailService,
+    private readonly _trustedDeviceEntityService: TrustedDeviceEntityService,
     private readonly _hashService: HashService,
     private readonly _settingsService: SettingsService
   ) {}
@@ -188,6 +193,49 @@ export class AccountService {
     );
 
     await this._userEntityService.delete(user);
+  }
+
+  async listDevices(user: UserEntity): Promise<TrustedDeviceEntity[]> {
+    return this._trustedDeviceEntityService.findAllForUser(user);
+  }
+
+  async distrustDevice(user: UserEntity, deviceId: string): Promise<TrustedDeviceEntity> {
+    const device = await this._trustedDeviceEntityService.findById(deviceId);
+
+    if (device === null || device.user?.id !== user.id) {
+      throw new DeviceNotFoundException();
+    }
+
+    await this._trustedDeviceEntityService.distrust(device);
+
+    device.trusted = false;
+    device.trustedUntil = null;
+
+    return device;
+  }
+
+  async listSessions(user: UserEntity): Promise<RefreshTokenEntity[]> {
+    return this._refreshTokenEntityService.findAllActiveForUser(user);
+  }
+
+  async revokeAllSessions(user: UserEntity): Promise<void> {
+    await this._refreshTokenEntityService.revokeAllForUser(user);
+  }
+
+  async deleteDevice(user: UserEntity, deviceId: string): Promise<void> {
+    const device = await this._trustedDeviceEntityService.findById(deviceId);
+
+    if (device === null || device.user?.id !== user.id) {
+      throw new DeviceNotFoundException();
+    }
+
+    await this._trustedDeviceEntityService.delete(device);
+  }
+}
+
+export class DeviceNotFoundException extends NotFoundException {
+  constructor() {
+    super('Device not found');
   }
 }
 

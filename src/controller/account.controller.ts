@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   UseGuards
 } from '@nestjs/common';
@@ -23,6 +25,8 @@ import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
 import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verify.input.dto';
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
+import { DeviceOutputDto } from '../dto/output/device.output.dto';
+import { SessionOutputDto } from '../dto/output/session.output.dto';
 import { AccountService } from '../service/account.service';
 
 @ApiTags('Account')
@@ -93,6 +97,74 @@ export class AccountController {
   ): Promise<{ message: string }> {
     await this._accountService.resetPassword(dto);
     return { message: 'Password reset successfully' };
+  }
+
+  @Get('device')
+  @ApiOperation({ summary: 'List all devices for the current user' })
+  @ApiOkResponse({ description: 'List of devices', type: [DeviceOutputDto] })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  async listDevices(): Promise<DeviceOutputDto[]> {
+    // TODO: get user from JWT auth guard
+    const user = null as any;
+
+    const devices = await this._accountService.listDevices(user);
+
+    return devices.map(DeviceOutputDto.fromEntity);
+  }
+
+  @Post('device/:id/distrust')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove trust from a device' })
+  @ApiOkResponse({ description: 'Device distrusted', type: DeviceOutputDto })
+  @ApiNotFoundResponse({ description: 'Device not found' })
+  async distrustDevice(@Param('id') id: string): Promise<DeviceOutputDto> {
+    // TODO: get user from JWT auth guard
+    const user = null as any;
+
+    const device = await this._accountService.distrustDevice(user, id);
+
+    return DeviceOutputDto.fromEntity(device);
+  }
+
+  @Delete('device/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a device' })
+  @ApiOkResponse({ description: 'Device deleted' })
+  @ApiNotFoundResponse({ description: 'Device not found' })
+  async deleteDevice(@Param('id') id: string): Promise<{ message: string }> {
+    // TODO: get user from JWT auth guard
+    const user = null as any;
+
+    await this._accountService.deleteDevice(user, id);
+
+    return { message: 'Device deleted' };
+  }
+
+  @Get('session')
+  @ApiOperation({ summary: 'List all active sessions for the current user' })
+  @ApiOkResponse({ description: 'List of active sessions', type: [SessionOutputDto] })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  async listSessions(): Promise<SessionOutputDto[]> {
+    // TODO: get user from JWT auth guard
+    const user = null as any;
+
+    const sessions = await this._accountService.listSessions(user);
+
+    return sessions.map(SessionOutputDto.fromEntity);
+  }
+
+  @Post('session/revoke-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke all active sessions' })
+  @ApiOkResponse({ description: 'All sessions revoked' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  async revokeAllSessions(): Promise<{ message: string }> {
+    // TODO: get user from JWT auth guard
+    const user = null as any;
+
+    await this._accountService.revokeAllSessions(user);
+
+    return { message: 'All sessions revoked' };
   }
 
   @Post('unlock')

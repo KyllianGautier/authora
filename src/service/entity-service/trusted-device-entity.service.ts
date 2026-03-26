@@ -23,7 +23,7 @@ export class TrustedDeviceEntityService {
     fingerprint: string
   ): Promise<TrustedDeviceEntity | null> {
     const devices = await this._repository.find({
-      where: { user: { id: user.id }, revoked: false }
+      where: { user: { id: user.id } }
     });
 
     for (const device of devices) {
@@ -40,10 +40,16 @@ export class TrustedDeviceEntityService {
     return null;
   }
 
+  async findAllForUser(user: UserEntity): Promise<TrustedDeviceEntity[]> {
+    return this._repository.find({
+      where: { user: { id: user.id } },
+      order: { lastSeenAt: 'DESC' }
+    });
+  }
+
   isTrusted(device: TrustedDeviceEntity): boolean {
     return (
       device.trusted &&
-      !device.revoked &&
       DateTime.fromJSDate(device.trustedUntil!) > DateTime.utc()
     );
   }
@@ -107,6 +113,13 @@ export class TrustedDeviceEntityService {
     );
   }
 
+  async findById(id: string): Promise<TrustedDeviceEntity | null> {
+    return this._repository.findOne({
+      where: { id },
+      relations: { user: true }
+    });
+  }
+
   async trust(device: TrustedDeviceEntity, tenantId: string): Promise<void> {
     const ttlSec = await this._settingsService.get(TenantSetting.TrustedDeviceTtlSec, tenantId);
     const trustedUntil = DateTime.utc()
@@ -126,21 +139,15 @@ export class TrustedDeviceEntityService {
     });
   }
 
-  async revoke(device: TrustedDeviceEntity): Promise<void> {
-    await this._repository.update(device.id, { revoked: true });
+  async distrust(device: TrustedDeviceEntity): Promise<void> {
+    await this._repository.update(device.id, { trusted: false, trustedUntil: null });
   }
 
-  async revokeAllForUser(user: UserEntity): Promise<void> {
-    await this._repository.update(
-      { user: { id: user.id }, revoked: false },
-      { revoked: true }
-    );
+  async delete(device: TrustedDeviceEntity): Promise<void> {
+    await this._repository.remove(device);
   }
 
-  async findAllForUser(user: UserEntity): Promise<TrustedDeviceEntity[]> {
-    return this._repository.find({
-      where: { user: { id: user.id }, revoked: false },
-      order: { lastSeenAt: 'DESC' }
-    });
+  async deleteAllForUser(user: UserEntity): Promise<void> {
+    await this._repository.delete({ user: { id: user.id } });
   }
 }
