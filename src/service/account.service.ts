@@ -90,7 +90,7 @@ export class AccountService {
       user.tenant?.id ?? ''
     );
 
-    await this._emailService.sendForgotPassword(email, token);
+    await this._emailService.sendForgotPassword(email, token, user.tenant?.id ?? '');
   }
 
   async resetPassword(dto: ForgotPasswordVerifyInputDto): Promise<void> {

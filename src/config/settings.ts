@@ -23,6 +23,10 @@ export enum AuthoraSetting {
 }
 
 export enum TenantSetting {
+  // Integration
+  IntegrationMode = 'integrationMode',
+  AuthoraUiBaseUrl = 'authoraUiBaseUrl',
+
   // Authentication
   JwtAccessTokenExpirationSec = 'jwtAccessTokenExpirationSec',
   JwtRefreshTokenShortExpirationSec = 'jwtRefreshTokenShortExpirationSec',

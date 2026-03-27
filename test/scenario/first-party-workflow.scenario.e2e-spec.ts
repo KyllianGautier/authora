@@ -40,11 +40,12 @@ describe('Scenario: First-party sign-in workflows', () => {
   // ──────────────────────────────────────────────────
 
   describe('password sign-in (no MFA)', () => {
-    it('should complete: create → password → exchange → token', async () => {
+    it('should complete: create → password → exchange-session', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       expect(createRes.body.nextStep).toBe('primaryAuth');
@@ -58,16 +59,9 @@ describe('Scenario: First-party sign-in workflows', () => {
       expect(authRes.body.sessionId).toBe(sessionId);
       expect(authRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
-      expect(exchangeRes.body.exchangeToken).toBeDefined();
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       // Verify access token
@@ -105,7 +99,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -115,14 +110,9 @@ describe('Scenario: First-party sign-in workflows', () => {
         .send({ sessionId, email: 'user@example.com', password: 'password123', rememberMe: true })
         .expect(200);
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -139,11 +129,12 @@ describe('Scenario: First-party sign-in workflows', () => {
   });
 
   describe('magic-link sign-in (no MFA)', () => {
-    it('should complete: create → magic-link → validate → exchange → token', async () => {
+    it('should complete: create → magic-link → validate → exchange-session', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -165,14 +156,9 @@ describe('Scenario: First-party sign-in workflows', () => {
       expect(validateRes.body.sessionId).toBe(sessionId);
       expect(validateRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -197,7 +183,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       await createMultiFactorAuth(dataSource, user, true);
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -209,14 +196,9 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(authRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -237,11 +219,12 @@ describe('Scenario: First-party sign-in workflows', () => {
   // ──────────────────────────────────────────────────
 
   describe('session consumption', () => {
-    it('should not allow exchange twice', async () => {
+    it('should not allow exchange-session twice', async () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -251,64 +234,27 @@ describe('Scenario: First-party sign-in workflows', () => {
         .send({ sessionId, email: 'user@example.com', password: 'password123' })
         .expect(200);
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
+      // Complete the workflow
+      await request(app.getHttpServer())
+        .post(`${BASE}/exchange-session`)
         .send({ sessionId })
         .expect(200);
 
-      // Complete the workflow
-      await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
-        .expect(200);
-
-      // Session is consumed, second exchange fails
+      // Session is consumed, second exchange-session fails
       const response = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
+        .post(`${BASE}/exchange-session`)
         .send({ sessionId })
         .expect(404);
 
       expect(response.body.message).toBe('Session not found or expired');
     });
 
-    it('should not allow reuse of exchange token', async () => {
-      await createUserWithPassword(dataSource, 'user@example.com', 'password123');
-
-      const createRes = await request(app.getHttpServer())
-        .post(BASE)
-        .expect(201);
-
-      const sessionId = createRes.body.sessionId;
-
-      await request(app.getHttpServer())
-        .post(`${BASE}/primary/password`)
-        .send({ sessionId, email: 'user@example.com', password: 'password123' })
-        .expect(200);
-
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
-      await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
-        .expect(200);
-
-      // Second token exchange with same OTT fails
-      const response = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
-        .expect(401);
-
-      expect(response.body.message).toBe('Invalid token');
-    });
-
     it('should not allow any action after session is consumed', async () => {
       await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -318,14 +264,9 @@ describe('Scenario: First-party sign-in workflows', () => {
         .send({ sessionId, email: 'user@example.com', password: 'password123' })
         .expect(200);
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       await request(app.getHttpServer())
@@ -350,13 +291,14 @@ describe('Scenario: First-party sign-in workflows', () => {
   // ──────────────────────────────────────────────────
 
   describe('step ordering', () => {
-    it('should reject exchange before primary auth', async () => {
+    it('should reject exchange-session before primary auth', async () => {
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const response = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
+        .post(`${BASE}/exchange-session`)
         .send({ sessionId: createRes.body.sessionId })
         .expect(401);
 
@@ -365,7 +307,8 @@ describe('Scenario: First-party sign-in workflows', () => {
 
     it('should reject TOTP before primary auth', async () => {
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const response = await request(app.getHttpServer())
@@ -378,7 +321,8 @@ describe('Scenario: First-party sign-in workflows', () => {
 
     it('should reject magic-link validate without requesting it first', async () => {
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const response = await request(app.getHttpServer())
@@ -399,7 +343,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -418,14 +363,9 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(authRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -450,7 +390,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -467,14 +408,9 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(authRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -494,7 +430,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       const twoFactorAuth = await createMultiFactorAuth(dataSource, user, true);
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -521,14 +458,9 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(mfaRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -547,7 +479,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -572,14 +505,9 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(validateRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -604,11 +532,13 @@ describe('Scenario: First-party sign-in workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const session1Res = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const session2Res = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const session1 = session1Res.body.sessionId;
@@ -620,20 +550,15 @@ describe('Scenario: First-party sign-in workflows', () => {
         .expect(200);
 
       const response = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
+        .post(`${BASE}/exchange-session`)
         .send({ sessionId: session2 })
         .expect(401);
 
       expect(response.body.message).toBe('Primary authentication required');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId: session1 })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId: session1 })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -653,11 +578,13 @@ describe('Scenario: First-party sign-in workflows', () => {
       const bob = await createUserWithPassword(dataSource, 'bob@example.com', 'password456');
 
       const session1Res = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const session2Res = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       await request(app.getHttpServer())
@@ -670,24 +597,14 @@ describe('Scenario: First-party sign-in workflows', () => {
         .send({ sessionId: session2Res.body.sessionId, email: 'bob@example.com', password: 'password456' })
         .expect(200);
 
-      const exchange1 = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
+      const token1 = await request(app.getHttpServer())
+        .post(`${BASE}/exchange-session`)
         .send({ sessionId: session1Res.body.sessionId })
         .expect(200);
 
-      const exchange2 = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId: session2Res.body.sessionId })
-        .expect(200);
-
-      const token1 = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchange1.body.exchangeToken })
-        .expect(200);
-
       const token2 = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchange2.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId: session2Res.body.sessionId })
         .expect(200);
 
       const decoded1 = jwt.verify(
@@ -726,11 +643,13 @@ describe('Scenario: First-party sign-in workflows', () => {
       await createUserWithPassword(dataSource, 'real@example.com', 'password123');
 
       const session1Res = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const session2Res = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const realRes = await request(app.getHttpServer())
@@ -756,7 +675,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -768,14 +688,9 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(authRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -796,7 +711,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'password123');
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -818,14 +734,9 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(validateRes.body.nextStep).toBe('complete');
 
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       const decoded = jwt.verify(
@@ -843,7 +754,7 @@ describe('Scenario: First-party sign-in workflows', () => {
     });
   });
 
-  describe('expired password → reset → resume same session → exchange → token', () => {
+  describe('expired password → reset → resume same session → exchange-session', () => {
     it('should resume the same session after resetting an expired password', async () => {
       await setTenantConfig({ passwordExpirationEnabled: true, passwordMaxAgeSec: 60 });
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'OldP@ssw0rd!');
@@ -851,7 +762,8 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       // Start sign-in flow
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -888,15 +800,10 @@ describe('Scenario: First-party sign-in workflows', () => {
       expect(authRes.body.sessionId).toBe(sessionId);
       expect(authRes.body.nextStep).toBe('complete');
 
-      // Complete the flow: exchange → token
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
+      // Complete the flow: exchange-session
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       expect(tokenRes.body.accessToken).toBeDefined();
@@ -908,14 +815,15 @@ describe('Scenario: First-party sign-in workflows', () => {
     });
   });
 
-  describe('expired password → magic-link bypasses expiration → exchange → token', () => {
+  describe('expired password → magic-link bypasses expiration → exchange-session', () => {
     it('should complete sign-in via magic-link even when password is expired', async () => {
       const user = await createUserWithPassword(dataSource, 'user@example.com', 'OldP@ssw0rd!');
       await expirePassword(dataSource, user);
 
       // Start sign-in flow
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -938,15 +846,10 @@ describe('Scenario: First-party sign-in workflows', () => {
       expect(validateRes.body.sessionId).toBe(sessionId);
       expect(validateRes.body.nextStep).toBe('complete');
 
-      // Complete the flow: exchange → token
-      const exchangeRes = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId })
-        .expect(200);
-
+      // Complete the flow: exchange-session
       const tokenRes = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId })
         .expect(200);
 
       expect(tokenRes.body.accessToken).toBeDefined();
@@ -971,7 +874,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       // ── First login: MFA required, trust the device ──
 
       const createRes1 = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId1 = createRes1.body.sessionId;
@@ -1000,15 +904,10 @@ describe('Scenario: First-party sign-in workflows', () => {
 
       expect(mfaRes.body.nextStep).toBe('complete');
 
-      // Exchange → token
-      const exchangeRes1 = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId: sessionId1 })
-        .expect(200);
-
+      // Exchange-session
       const tokenRes1 = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes1.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId: sessionId1 })
         .expect(200);
 
       expect(tokenRes1.body.accessToken).toBeDefined();
@@ -1016,7 +915,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       // ── Second login: device trusted, MFA skipped ──
 
       const createRes2 = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId2 = createRes2.body.sessionId;
@@ -1031,15 +931,10 @@ describe('Scenario: First-party sign-in workflows', () => {
       // MFA should be skipped — nextStep is complete
       expect(authRes2.body.nextStep).toBe('complete');
 
-      // Exchange → token
-      const exchangeRes2 = await request(app.getHttpServer())
-        .post(`${BASE}/exchange`)
-        .send({ sessionId: sessionId2 })
-        .expect(200);
-
+      // Exchange-session
       const tokenRes2 = await request(app.getHttpServer())
-        .post(`${BASE}/token`)
-        .send({ exchangeToken: exchangeRes2.body.exchangeToken })
+        .post(`${BASE}/exchange-session`)
+        .send({ sessionId: sessionId2 })
         .expect(200);
 
       expect(tokenRes2.body.accessToken).toBeDefined();
@@ -1059,7 +954,8 @@ describe('Scenario: First-party sign-in workflows', () => {
       });
 
       const createRes = await request(app.getHttpServer())
-        .post(BASE)
+        .post(BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;

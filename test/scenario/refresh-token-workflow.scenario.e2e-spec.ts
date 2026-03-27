@@ -24,7 +24,8 @@ async function signIn(
   password: string
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const createRes = await request(app.getHttpServer())
-    .post(BASE)
+    .post(BASE + '/initiate')
+    .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
     .expect(201);
 
   const sessionId = createRes.body.sessionId;
@@ -34,14 +35,9 @@ async function signIn(
     .send({ sessionId, email, password })
     .expect(200);
 
-  const exchangeRes = await request(app.getHttpServer())
-    .post(`${BASE}/exchange`)
-    .send({ sessionId })
-    .expect(200);
-
   const tokenRes = await request(app.getHttpServer())
-    .post(`${BASE}/token`)
-    .send({ exchangeToken: exchangeRes.body.exchangeToken })
+    .post(`${BASE}/exchange-session`)
+    .send({ sessionId })
     .expect(200);
 
   return {

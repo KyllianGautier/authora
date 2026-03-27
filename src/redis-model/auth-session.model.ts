@@ -1,3 +1,5 @@
+import { IntegrationMode } from '../entity/tenant.entity';
+
 export enum MfaPolicy {
   Required = 'REQUIRED',
   Optional = 'OPTIONAL',
@@ -9,9 +11,12 @@ export interface AuthSession {
   id: string;
   tenantId: string;
   userId?: string;
+  mode: IntegrationMode.FirstParty | IntegrationMode.ThirdParty;
+
+  // First-party compliance:
+  deviceFingerprint?: string;
 
   // Third-party compliance:
-  mode: 'first-party' | 'third-party';
   appId?: string;
   codeChallenge?: string;
   redirectUri?: string;
@@ -25,9 +30,6 @@ export interface AuthSession {
   mfaPolicy: MfaPolicy;
   mfaSetup: boolean;
   deviceTrusted: boolean;
-
-  // Device:
-  deviceFingerprint?: string;
 
   // Exchange status:
   exchanged: boolean;

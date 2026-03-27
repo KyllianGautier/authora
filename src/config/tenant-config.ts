@@ -1,6 +1,11 @@
+import { IntegrationMode } from '../entity/integration-mode.enum';
 import { MfaPolicy } from '../redis-model/auth-session.model';
 
 export interface TenantConfig {
+  // Integration
+  integrationMode: IntegrationMode;
+  authoraUiBaseUrl: string;
+
   // Authentication
   jwtAccessTokenExpirationSec: number;
   jwtRefreshTokenShortExpirationSec: number;
@@ -56,6 +61,10 @@ export interface TenantConfig {
 }
 
 export const defaultTenantConfig: TenantConfig = {
+  // Integration
+  integrationMode: IntegrationMode.ThirdParty,
+  authoraUiBaseUrl: process.env.AUTHORA_UI_BASE_URL ?? 'http://localhost:3000/ui',
+
   // Authentication
   jwtAccessTokenExpirationSec: 900,
   jwtRefreshTokenShortExpirationSec: 86_400,

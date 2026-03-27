@@ -13,14 +13,15 @@ import { extractCookie } from '../controller/utils/extract-cookie';
 const SIGN_IN_BASE = '/api/v1/auth/sign-in';
 const PASSWORD_BASE = '/api/v1/account/password';
 
-/** Helper: full sign-in flow (create → password → exchange → token). */
+/** Helper: full sign-in flow (create → password → exchange-session). */
 async function signIn(
   app: INestApplication<App>,
   email: string,
   password: string
 ): Promise<{ accessToken: string; refreshTokenCookie: string }> {
   const createRes = await request(app.getHttpServer())
-    .post(SIGN_IN_BASE)
+    .post(SIGN_IN_BASE + '/initiate')
+    .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
     .expect(201);
 
   await request(app.getHttpServer())
@@ -28,14 +29,9 @@ async function signIn(
     .send({ sessionId: createRes.body.sessionId, email, password })
     .expect(200);
 
-  const exchangeRes = await request(app.getHttpServer())
-    .post(`${SIGN_IN_BASE}/exchange`)
-    .send({ sessionId: createRes.body.sessionId })
-    .expect(200);
-
   const tokenRes = await request(app.getHttpServer())
-    .post(`${SIGN_IN_BASE}/token`)
-    .send({ exchangeToken: exchangeRes.body.exchangeToken })
+    .post(`${SIGN_IN_BASE}/exchange-session`)
+    .send({ sessionId: createRes.body.sessionId })
     .expect(200);
 
   const cookie = extractCookie(tokenRes, 'refreshToken');
@@ -79,7 +75,8 @@ describe('Scenario: Change password workflows', () => {
 
       // Sign-in with new password should succeed
       const createRes = await request(app.getHttpServer())
-        .post(SIGN_IN_BASE)
+        .post(SIGN_IN_BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const authRes = await request(app.getHttpServer())
@@ -109,7 +106,8 @@ describe('Scenario: Change password workflows', () => {
         .expect(200);
 
       const createRes = await request(app.getHttpServer())
-        .post(SIGN_IN_BASE)
+        .post(SIGN_IN_BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const authRes = await request(app.getHttpServer())
@@ -177,7 +175,8 @@ describe('Scenario: Change password workflows', () => {
 
       // Only the latest password works
       const createRes = await request(app.getHttpServer())
-        .post(SIGN_IN_BASE)
+        .post(SIGN_IN_BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createRes.body.sessionId;
@@ -188,7 +187,8 @@ describe('Scenario: Change password workflows', () => {
         .expect(401);
 
       const session2 = await request(app.getHttpServer())
-        .post(SIGN_IN_BASE)
+        .post(SIGN_IN_BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       await request(app.getHttpServer())
@@ -197,7 +197,8 @@ describe('Scenario: Change password workflows', () => {
         .expect(401);
 
       const session3 = await request(app.getHttpServer())
-        .post(SIGN_IN_BASE)
+        .post(SIGN_IN_BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const authRes = await request(app.getHttpServer())

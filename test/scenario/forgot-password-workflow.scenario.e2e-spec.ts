@@ -61,7 +61,8 @@ describe('Scenario: Forgot password workflows', () => {
 
       // Step 4: Sign in with the new password via sign-in flow
       const createSessionRes = await request(app.getHttpServer())
-        .post(SIGN_IN_BASE)
+        .post(SIGN_IN_BASE + '/initiate')
+        .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
         .expect(201);
 
       const sessionId = createSessionRes.body.sessionId;

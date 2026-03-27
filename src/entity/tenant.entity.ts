@@ -1,15 +1,11 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiKeyEntity } from './api-key.entity';
+import { IntegrationMode } from './integration-mode.enum';
 import { RegistrationEntity } from './registration.entity';
 import { TenantConfigEntity } from './tenant-config.entity';
 import { UserEntity } from './user.entity';
 
-
-export enum IntegrationMode {
-  FirstParty = 'FIRST_PARTY',
-  ThirdParty = 'THIRD_PARTY',
-  Hybrid = 'HYBRID'
-}
+export { IntegrationMode } from './integration-mode.enum';
 
 @Entity('tenant')
 export class TenantEntity {

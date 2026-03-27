@@ -52,13 +52,16 @@ export class SignInService {
     private readonly _settingsService: SettingsService
   ) {}
 
-  async createSession(tenant: TenantEntity): Promise<AuthSession> {
-    return this._authSessionRedisService.create({
-      tenantId: tenant.id,
-      mode: 'first-party',
-      primaryAuthVerified: false,
-      mfaPolicy: MfaPolicy.Disabled
-    });
+  async createFirstPartySession(tenant: TenantEntity, deviceFingerprint: string): Promise<AuthSession> {
+    return this._authSessionRedisService.createFirstParty(tenant.id, deviceFingerprint);
+  }
+
+  async createThirdPartySession(
+    tenant: TenantEntity,
+    redirectUri: string,
+    codeChallenge: string
+  ): Promise<AuthSession> {
+    return this._authSessionRedisService.createThirdParty(tenant.id, redirectUri, codeChallenge);
   }
 
   async primaryAuthPassword(
@@ -171,7 +174,7 @@ export class SignInService {
       session.tenantId
     );
 
-    await this._emailService.sendMagicLink(email, token, sessionId, dto.locale);
+    await this._emailService.sendMagicLink(email, token, session.tenantId, sessionId, dto.locale);
   }
 
   async primaryAuthMagicLinkValidate(
@@ -345,28 +348,43 @@ export class SignInService {
       throw new InvalidCredentialsException();
     }
 
-    // Generate the access token
-    const accessToken = await this._jwtService.signAsync(
-      { sub: user.id, email: user.email },
-      { keyid: 'CHANGE_IT' }
-    );
+    return this._issueTokens(user, consumedSession.tenantId, consumedSession.rememberMe);
+  }
 
-    // Generate the refresh token with expiration based on rememberMe
-    const refreshTokenExpirationSeconds = consumedSession.rememberMe
-      ? await this._settingsService.get(TenantSetting.JwtRefreshTokenLongExpirationSec, consumedSession.tenantId)
-      : await this._settingsService.get(TenantSetting.JwtRefreshTokenShortExpirationSec, consumedSession.tenantId);
+  async exchangeSession(
+    sessionId: string
+  ): Promise<SignInOutputDto & { refreshToken: string }> {
+    const session = await this._getSession(sessionId);
 
-    const refreshToken = await this._refreshTokenEntityService.create(
-      user,
-      refreshTokenExpirationSeconds
-    );
+    if (!session.primaryAuthVerified) {
+      throw new UnauthorizedException('Primary authentication required');
+    }
 
-    return {
-      accessToken,
-      type: 'Bearer',
-      expiresIn: await this._settingsService.get(TenantSetting.JwtAccessTokenExpirationSec, consumedSession.tenantId),
-      refreshToken
-    };
+    if (
+      session.mfaPolicy !== MfaPolicy.Disabled &&
+      !session.mfaVerified &&
+      !session.deviceTrusted
+    ) {
+      throw new UnauthorizedException('MFA verification required');
+    }
+
+    if (session.exchanged) {
+      throw new SessionNotFoundException();
+    }
+
+    if (session.userId === undefined) {
+      throw new InvalidCredentialsException();
+    }
+
+    const user = await this._userEntityService.findById(session.userId);
+
+    if (user === null) {
+      throw new InvalidCredentialsException();
+    }
+
+    await this._authSessionRedisService.delete(session);
+
+    return this._issueTokens(user, session.tenantId, session.rememberMe);
   }
 
   async refreshToken(
@@ -483,6 +501,33 @@ export class SignInService {
 
     // Revoke the entire family
     await this._refreshTokenEntityService.revokeFamily(activeToken.family);
+  }
+
+  private async _issueTokens(
+    user: UserEntity,
+    tenantId: string,
+    rememberMe: boolean
+  ): Promise<SignInOutputDto & { refreshToken: string }> {
+    const accessToken = await this._jwtService.signAsync(
+      { sub: user.id, email: user.email },
+      { keyid: 'CHANGE_IT' }
+    );
+
+    const refreshTokenExpirationSeconds = rememberMe
+      ? await this._settingsService.get(TenantSetting.JwtRefreshTokenLongExpirationSec, tenantId)
+      : await this._settingsService.get(TenantSetting.JwtRefreshTokenShortExpirationSec, tenantId);
+
+    const refreshToken = await this._refreshTokenEntityService.create(
+      user,
+      refreshTokenExpirationSeconds
+    );
+
+    return {
+      accessToken,
+      type: 'Bearer',
+      expiresIn: await this._settingsService.get(TenantSetting.JwtAccessTokenExpirationSec, tenantId),
+      refreshToken
+    };
   }
 
   private async _getSession(sessionId: string): Promise<AuthSession> {

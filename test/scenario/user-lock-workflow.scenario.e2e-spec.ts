@@ -23,7 +23,8 @@ async function createSession(
   app: INestApplication<App>
 ): Promise<string> {
   const res = await request(app.getHttpServer())
-    .post(BASE)
+    .post(BASE + '/initiate')
+    .set('Cookie', 'X-Device-Fingerprint=test-fingerprint')
     .expect(201);
 
   return res.body.sessionId as string;
@@ -55,14 +56,9 @@ async function signIn(
     .send({ sessionId, email, password })
     .expect(200);
 
-  const exchangeRes = await request(app.getHttpServer())
-    .post(`${BASE}/exchange`)
-    .send({ sessionId })
-    .expect(200);
-
   const tokenRes = await request(app.getHttpServer())
-    .post(`${BASE}/token`)
-    .send({ exchangeToken: exchangeRes.body.exchangeToken })
+    .post(`${BASE}/exchange-session`)
+    .send({ sessionId })
     .expect(200);
 
   return {

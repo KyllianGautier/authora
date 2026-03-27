@@ -10,20 +10,7 @@ import { REDIS_CLIENT } from '../../config/redis.provider';
 import { AuthoraSetting } from '../../config/settings';
 import { AuthSession, MfaPolicy } from '../../redis-model/auth-session.model';
 import { SettingsService } from '../settings.service';
-
-export interface CreateAuthSessionOptions {
-  tenantId: string;
-  userId?: string;
-  mode: 'first-party' | 'third-party';
-  appId?: string;
-  codeChallenge?: string;
-  redirectUri?: string;
-  primaryAuthVerified: boolean;
-  rememberMe?: boolean;
-  mfaPolicy: MfaPolicy;
-  mfaSetup?: boolean;
-  deviceTrusted?: boolean;
-}
+import { IntegrationMode } from '../../entity/tenant.entity';
 
 @Injectable()
 export class AuthSessionRedisService {
@@ -32,25 +19,46 @@ export class AuthSessionRedisService {
     private readonly _settingsService: SettingsService
   ) {}
 
-  async create(options: CreateAuthSessionOptions): Promise<AuthSession> {
+  async createFirstParty(tenantId: string, deviceFingerprint: string): Promise<AuthSession> {
+    return this._persist({
+      tenantId,
+      mode: IntegrationMode.FirstParty,
+      deviceFingerprint,
+      primaryAuthVerified: false,
+      rememberMe: false,
+      mfaPolicy: MfaPolicy.Disabled,
+      mfaSetup: false,
+      mfaVerified: false,
+      deviceTrusted: false,
+      exchanged: false
+    });
+  }
+
+  async createThirdParty(tenantId: string, redirectUri: string, codeChallenge: string): Promise<AuthSession> {
+    return this._persist({
+      tenantId,
+      mode: IntegrationMode.ThirdParty,
+      redirectUri,
+      codeChallenge,
+      primaryAuthVerified: false,
+      rememberMe: false,
+      mfaPolicy: MfaPolicy.Disabled,
+      mfaSetup: false,
+      mfaVerified: false,
+      deviceTrusted: false,
+      exchanged: false
+    });
+  }
+
+  private async _persist(
+    fields: Omit<AuthSession, 'id' | 'createdAt' | 'expiresAt'>
+  ): Promise<AuthSession> {
     const authSessionTtlSec = await this._settingsService.get(AuthoraSetting.AuthSessionTtlSec);
     const now = DateTime.utc();
 
     const session: AuthSession = {
       id: randomUUID(),
-      tenantId: options.tenantId,
-      userId: options.userId,
-      mode: options.mode,
-      appId: options.appId,
-      codeChallenge: options.codeChallenge,
-      redirectUri: options.redirectUri,
-      primaryAuthVerified: options.primaryAuthVerified,
-      rememberMe: options.rememberMe ?? false,
-      mfaPolicy: options.mfaPolicy,
-      mfaSetup: options.mfaSetup ?? false,
-      mfaVerified: false,
-      deviceTrusted: options.deviceTrusted ?? false,
-      exchanged: false,
+      ...fields,
       createdAt: now.toISO(),
       expiresAt: now.plus({ seconds: authSessionTtlSec }).toISO()
     };

@@ -9,6 +9,7 @@ import {
   UpdateDateColumn
 } from 'typeorm';
 import { TenantConfig, defaultTenantConfig } from '../config/tenant-config';
+import { IntegrationMode } from './integration-mode.enum';
 import { TenantEntity } from './tenant.entity';
 import { MfaPolicy } from '../redis-model/auth-session.model';
 
@@ -32,6 +33,13 @@ export class TenantConfigEntity implements TenantConfig {
 
   @Column({ name: 'is_active', type: 'boolean', default: false })
   isActive: boolean;
+
+  // Integration
+  @Column({ name: 'integration_mode', type: 'enum', enum: IntegrationMode, default: defaultTenantConfig.integrationMode })
+  integrationMode: IntegrationMode;
+
+  @Column({ name: 'authora_ui_base_url', type: 'varchar', default: defaultTenantConfig.authoraUiBaseUrl })
+  authoraUiBaseUrl: string;
 
   // Authentication
   @Column({ name: 'jwt_access_token_expiration_sec', type: 'int', default: defaultTenantConfig.jwtAccessTokenExpirationSec })

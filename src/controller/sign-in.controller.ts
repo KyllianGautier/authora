@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,6 +14,7 @@ import {
 import { Delay } from '../decorator/delay.decorator';
 import {
   ApiAcceptedResponse,
+  ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -22,19 +24,21 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
-import { SignInPasswordInputDto } from '../dto/input/sign-in-password.input.dto';
+import { TenantSetting } from '../config/settings';
+import { CurrentTenant } from '../decorator/current-tenant.decorator';
+import { SignInAuthorizeInputDto } from '../dto/input/sign-in-authorize.input.dto';
+import { SignInExchangeInputDto } from '../dto/input/sign-in-exchange.input.dto';
+import { SignInExchangeSessionInputDto } from '../dto/input/sign-in-exchange-session.input.dto';
 import { SignInMagicLinkInputDto } from '../dto/input/sign-in-magic-link.input.dto';
 import { SignInMagicLinkValidateInputDto } from '../dto/input/sign-in-magic-link-validate.input.dto';
-import { SignInTotpValidateInputDto } from '../dto/input/sign-in-totp-validate.input.dto';
-import { SignInExchangeInputDto } from '../dto/input/sign-in-exchange.input.dto';
+import { SignInPasswordInputDto } from '../dto/input/sign-in-password.input.dto';
 import { SignInTokenInputDto } from '../dto/input/sign-in-token.input.dto';
+import { SignInTotpValidateInputDto } from '../dto/input/sign-in-totp-validate.input.dto';
 import { AuthSessionStatusOutputDto } from '../dto/output/auth-session-status.output.dto';
 import { SignInOutputDto } from '../dto/output/sign-in.output.dto';
-import { TenantSetting } from '../config/settings';
-import { SignInService } from '../service/sign-in.service';
-import { SettingsService } from '../service/settings.service';
-import { CurrentTenant } from '../decorator/current-tenant.decorator';
 import { TenantEntity } from '../entity/tenant.entity';
+import { SettingsService } from '../service/settings.service';
+import { SignInService } from '../service/sign-in.service';
 
 @ApiTags('Sign-in')
 @Controller('auth/sign-in')
@@ -44,16 +48,121 @@ export class SignInController {
     private readonly _settingsService: SettingsService
   ) {}
 
-  @Post()
+  // ── First-party ────────────────────────────────────
+
+  @Post('initiate')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new auth session' })
+  @ApiOperation({ summary: 'Initiate a first-party sign-in session' })
   @ApiCreatedResponse({ description: 'Session created', type: AuthSessionStatusOutputDto })
-  async createSession(
-    @CurrentTenant() tenant: TenantEntity
+  @ApiBadRequestResponse({ description: 'Missing X-Device-Fingerprint cookie' })
+  async initiate(
+    @CurrentTenant() tenant: TenantEntity,
+    @Req() req: Request
   ): Promise<AuthSessionStatusOutputDto> {
-    const session = await this._signInService.createSession(tenant);
+    const deviceFingerprint = req.cookies?.['X-Device-Fingerprint'] as string | undefined;
+
+    if (deviceFingerprint === undefined) {
+      throw new BadRequestException('Missing X-Device-Fingerprint cookie');
+    }
+
+    const session = await this._signInService.createFirstPartySession(tenant, deviceFingerprint);
     return AuthSessionStatusOutputDto.fromSession(session);
   }
+
+  @Post('exchange-session')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Exchange a completed session for access and refresh tokens',
+    description: 'First-party integration mode only. Not available in third-party mode.'
+  })
+  @ApiOkResponse({ description: 'Tokens generated', type: SignInOutputDto })
+  @ApiUnauthorizedResponse({ description: 'Authentication incomplete' })
+  @ApiNotFoundResponse({ description: 'Session not found or expired' })
+  async exchangeSession(
+    @Body() dto: SignInExchangeSessionInputDto,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<SignInOutputDto> {
+    const { refreshToken, ...body } = await this._signInService.exchangeSession(dto.sessionId);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/'
+    });
+
+    return body;
+  }
+
+  // ── Third-party ────────────────────────────────────
+
+  @Get('authorize')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Initiate a third-party sign-in session (OAuth/PKCE)' })
+  @ApiCreatedResponse({ description: 'Session created', type: AuthSessionStatusOutputDto })
+  @ApiBadRequestResponse({ description: 'Invalid request' })
+  async authorize(
+    @Query() dto: SignInAuthorizeInputDto,
+    @CurrentTenant() tenant: TenantEntity
+  ): Promise<AuthSessionStatusOutputDto> {
+    const session = await this._signInService.createThirdPartySession(tenant, dto.redirectUri, dto.codeChallenge);
+
+    return AuthSessionStatusOutputDto.fromSession(session);
+  }
+
+  @Post('exchange')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Exchange session for a one-time exchange token',
+    description: 'Third-party integration mode only. Not available in first-party mode.'
+  })
+  @ApiOkResponse({ description: 'Exchange token generated' })
+  @ApiUnauthorizedResponse({ description: 'Authentication incomplete' })
+  @ApiNotFoundResponse({ description: 'Session not found or expired' })
+  async exchange(
+    @Body() dto: SignInExchangeInputDto
+  ): Promise<{ exchangeToken: string }> {
+    const exchangeToken = await this._signInService.exchange(dto.sessionId);
+    return { exchangeToken };
+  }
+
+  @Post('token')
+  @Delay()
+  @UseGuards(AuthThrottleGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Exchange a one-time token for access and refresh tokens',
+    description: 'Third-party integration mode only. Not available in first-party mode.'
+  })
+  @ApiOkResponse({ description: 'Tokens generated', type: SignInOutputDto })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired exchange token' })
+  async token(
+    @Body() dto: SignInTokenInputDto,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<SignInOutputDto> {
+    const { refreshToken, ...body } = await this._signInService.token(
+      dto.exchangeToken
+    );
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/'
+    });
+
+    return body;
+  }
+
+  // ── Shared ─────────────────────────────────────────
 
   @Post('primary/password')
   @Delay()
@@ -140,46 +249,6 @@ export class SignInController {
     return AuthSessionStatusOutputDto.fromSession(session);
   }
 
-  @Post('exchange')
-  @Delay()
-  @UseGuards(AuthThrottleGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Exchange session for a one-time exchange token' })
-  @ApiOkResponse({ description: 'Exchange token generated' })
-  @ApiUnauthorizedResponse({ description: 'Authentication incomplete' })
-  @ApiNotFoundResponse({ description: 'Session not found or expired' })
-  async exchange(
-    @Body() dto: SignInExchangeInputDto
-  ): Promise<{ exchangeToken: string }> {
-    const exchangeToken = await this._signInService.exchange(dto.sessionId);
-    return { exchangeToken };
-  }
-
-  @Post('token')
-  @Delay()
-  @UseGuards(AuthThrottleGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Exchange a one-time token for access and refresh tokens' })
-  @ApiOkResponse({ description: 'Tokens generated', type: SignInOutputDto })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired exchange token' })
-  async token(
-    @Body() dto: SignInTokenInputDto,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<SignInOutputDto> {
-    const { refreshToken, ...body } = await this._signInService.token(
-      dto.exchangeToken
-    );
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      path: '/'
-    });
-
-    return body;
-  }
-
   @Post('token/refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access and refresh tokens' })
@@ -236,6 +305,8 @@ export class SignInController {
 
     return { message: 'Token revoked' };
   }
+
+  // ── Private ────────────────────────────────────────
 
   private async _setDeviceFingerprintCookie(
     res: Response,
