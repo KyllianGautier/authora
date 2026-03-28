@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -21,6 +21,7 @@ import { DelayInterceptor } from './interceptor/delay.interceptor';
 import { PASSWORD_CONSTRAINTS } from './dto/validator/password';
 import { SERVICES } from './service';
 import { TenantMiddleware } from './middleware/tenant.middleware';
+import { ClientMiddleware } from './middleware/client.middleware';
 
 @Module({
   imports: [
@@ -130,5 +131,22 @@ export class AppModule implements NestModule {
     consumer
       .apply(TenantMiddleware)
       .forRoutes('*');
+
+    consumer
+      .apply(ClientMiddleware)
+      .forRoutes(
+        // Endpoints that don't receive any JWT:
+        { path: 'auth/sign-in/initiate', method: RequestMethod.POST },
+        { path: 'auth/sign-in/authorize', method: RequestMethod.GET },
+        { path: 'auth/sign-in/primary/(.*)', method: RequestMethod.ALL },
+        { path: 'auth/sign-in/mfa/(.*)', method: RequestMethod.ALL },
+        { path: 'auth/sign-in/exchange-session', method: RequestMethod.POST },
+        { path: 'auth/sign-in/exchange', method: RequestMethod.POST },
+        { path: 'auth/sign-in/token', method: RequestMethod.POST },
+        { path: 'sign-up/(.*)', method: RequestMethod.ALL },
+        { path: 'account/password/forgot', method: RequestMethod.POST },
+        { path: 'account/password/reset', method: RequestMethod.POST },
+        { path: 'mfa/(.*)', method: RequestMethod.ALL },
+      )
   }
 }
