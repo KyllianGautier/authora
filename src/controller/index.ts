@@ -4,6 +4,8 @@ import { PasswordController } from './password.controller';
 import { SignInController } from './sign-in.controller';
 import { SignUpController } from './sign-up.controller';
 import { StatusController } from './status.controller';
+import { AdminController } from './admin.controller';
+import { TenantAdminController } from './tenant-admin.controller';
 
 export const CONTROLLERS = [
   AccountController,
@@ -11,5 +13,7 @@ export const CONTROLLERS = [
   PasswordController,
   SignInController,
   SignUpController,
-  StatusController
+  StatusController,
+  AdminController,
+  TenantAdminController
 ];

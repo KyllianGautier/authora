@@ -24,7 +24,7 @@ export class RefreshTokenEntityService {
     private readonly _settingsService: SettingsService
   ) {}
 
-  async create(user: UserEntity, expirationSeconds: number): Promise<string> {
+  async create(user: UserEntity, expirationSeconds: number, jwt: string): Promise<string> {
     // Revoke previous refresh tokens for this user
     await this._repository.update(
       { user: { id: user.id }, revoked: false },
@@ -42,12 +42,19 @@ export class RefreshTokenEntityService {
       this._repository.create({
         user,
         tokenHash,
+        jwt,
         family: randomUUID(),
         expiredAt
       })
     );
 
     return clearToken;
+  }
+
+  async findByJwt(user: UserEntity, jwt: string): Promise<RefreshTokenEntity | null> {
+    return this._repository.findOne({
+      where: { user: { id: user.id }, jwt, revoked: false }
+    });
   }
 
   async findActiveForUser(
@@ -118,7 +125,8 @@ export class RefreshTokenEntityService {
 
   async rotate(
     refreshToken: RefreshTokenEntity,
-    user: UserEntity
+    user: UserEntity,
+    jwt: string
   ): Promise<string> {
     // Revoke the current refresh token
     await this._repository.update(refreshToken.id, { revoked: true });
@@ -131,6 +139,7 @@ export class RefreshTokenEntityService {
       this._repository.create({
         user,
         tokenHash,
+        jwt,
         family: refreshToken.family,
         expiredAt: refreshToken.expiredAt
       })

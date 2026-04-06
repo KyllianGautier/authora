@@ -8,7 +8,7 @@ import { hashCreate } from './hash';
 export async function createRefreshToken(
   dataSource: DataSource,
   user: UserEntity,
-  options?: { family?: string }
+  options?: { family?: string; jwt?: string }
 ): Promise<RefreshTokenEntity> {
   const repo = dataSource.getRepository(RefreshTokenEntity);
   const tokenHash = await hashCreate('fake-refresh-token');
@@ -17,6 +17,7 @@ export async function createRefreshToken(
     repo.create({
       user,
       tokenHash,
+      jwt: options?.jwt ?? 'fake-jwt',
       family: options?.family ?? randomUUID(),
       expiredAt: DateTime.utc().plus({ hours: 1 }).toJSDate()
     })

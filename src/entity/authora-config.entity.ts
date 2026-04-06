@@ -58,6 +58,10 @@ export class AuthoraConfigEntity {
   @Column({ name: 'ott_exchange_ttl_sec', type: 'int', default: defaultAuthoraConfig.ottExchangeTtlSec })
   ottExchangeTtlSec: number;
 
+  // Super admin
+  @Column({ name: 'super_admin_jwt_expiration_sec', type: 'int', default: defaultAuthoraConfig.superAdminJwtExpirationSec })
+  superAdminJwtExpirationSec: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

@@ -19,7 +19,10 @@ export enum AuthoraSetting {
 
   // Session & exchange TTLs (seconds)
   AuthSessionTtlSec = 'authSessionTtlSec',
-  OttExchangeTtlSec = 'ottExchangeTtlSec'
+  OttExchangeTtlSec = 'ottExchangeTtlSec',
+
+  // Super admin
+  SuperAdminJwtExpirationSec = 'superAdminJwtExpirationSec'
 }
 
 export enum TenantSetting {

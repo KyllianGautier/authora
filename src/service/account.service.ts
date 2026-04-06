@@ -195,6 +195,14 @@ export class AccountService {
     await this._userEntityService.delete(user);
   }
 
+  async signOut(user: UserEntity, jwt: string): Promise<void> {
+    const refreshToken = await this._refreshTokenEntityService.findByJwt(user, jwt);
+
+    if (refreshToken !== null) {
+      await this._refreshTokenEntityService.revokeFamily(refreshToken.family);
+    }
+  }
+
   async listDevices(user: UserEntity): Promise<TrustedDeviceEntity[]> {
     return this._trustedDeviceEntityService.findAllForUser(user);
   }

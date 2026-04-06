@@ -425,6 +425,11 @@ export class SignInService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
+    // Verify the access token matches the one stored with the refresh token
+    if (matchedToken.jwt !== accessToken) {
+      throw new UnauthorizedException('Access token does not match refresh token');
+    }
+
     // Verify the token (also handles reuse detection)
     const isValid = await this._refreshTokenEntityService.verify(
       matchedToken,
@@ -436,16 +441,17 @@ export class SignInService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    // Rotate the refresh token (revoke old, create new in the same family)
-    const newRefreshToken = await this._refreshTokenEntityService.rotate(
-      matchedToken,
-      user
-    );
-
     // Generate a new access token
     const newAccessToken = await this._jwtService.signAsync(
       { sub: user.id, email: user.email },
       { keyid: 'CHANGE_IT' }
+    );
+
+    // Rotate the refresh token (revoke old, create new in the same family)
+    const newRefreshToken = await this._refreshTokenEntityService.rotate(
+      matchedToken,
+      user,
+      newAccessToken
     );
 
     return {
@@ -519,7 +525,8 @@ export class SignInService {
 
     const refreshToken = await this._refreshTokenEntityService.create(
       user,
-      refreshTokenExpirationSeconds
+      refreshTokenExpirationSeconds,
+      accessToken
     );
 
     return {

@@ -17,6 +17,9 @@ export interface AuthoraConfig {
   // Session & exchange TTLs (seconds)
   authSessionTtlSec: number;
   ottExchangeTtlSec: number;
+
+  // Super admin
+  superAdminJwtExpirationSec: number;
 }
 
 export const defaultAuthoraConfig: AuthoraConfig = {
@@ -33,7 +36,9 @@ export const defaultAuthoraConfig: AuthoraConfig = {
   endpointDelayMaxMs: 400,
 
   authSessionTtlSec: 600,
-  ottExchangeTtlSec: 300
+  ottExchangeTtlSec: 300,
+
+  superAdminJwtExpirationSec: 3_600
 };
 
 export const testAuthoraConfig: AuthoraConfig = {
@@ -50,5 +55,7 @@ export const testAuthoraConfig: AuthoraConfig = {
   endpointDelayMaxMs: 2,
 
   authSessionTtlSec: 600,
-  ottExchangeTtlSec: 300
+  ottExchangeTtlSec: 300,
+
+  superAdminJwtExpirationSec: 3_600
 };

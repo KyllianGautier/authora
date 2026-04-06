@@ -7,8 +7,10 @@ import {
   HttpStatus,
   Param,
   Post,
+  Req,
   UseGuards
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { Delay } from '../decorator/delay.decorator';
 import {
   ApiAcceptedResponse,
@@ -20,6 +22,7 @@ import {
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { AuthThrottleGuard } from '../config/auth-throttle.guard';
+import { CurrentUser } from '../decorator/current-user.decorator';
 import { ChangePasswordInputDto } from '../dto/input/change-password.input.dto';
 import { DeleteAccountInputDto } from '../dto/input/delete-account.input.dto';
 import { ForgotPasswordInputDto } from '../dto/input/forgot-password.input.dto';
@@ -27,6 +30,8 @@ import { ForgotPasswordVerifyInputDto } from '../dto/input/forgot-password-verif
 import { VerifyDeleteAccountInputDto } from '../dto/input/verify-delete-account.input.dto';
 import { DeviceOutputDto } from '../dto/output/device.output.dto';
 import { SessionOutputDto } from '../dto/output/session.output.dto';
+import { UserEntity } from '../entity/user.entity';
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { AccountService } from '../service/account.service';
 
 @ApiTags('Account')
@@ -35,11 +40,29 @@ export class AccountController {
   constructor(private readonly _accountService: AccountService) {}
 
   @Get('me')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiOkResponse({ description: 'User profile' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   async me(): Promise<void> {
-    // TODO: implement with JWT auth guard
+    // TODO: implement
+  }
+
+  @Post('sign-out')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sign out — revokes the session associated with the current JWT' })
+  @ApiOkResponse({ description: 'Signed out' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  async signOut(
+    @CurrentUser() user: UserEntity,
+    @Req() req: Request
+  ): Promise<{ message: string }> {
+    const jwt = req.headers.authorization!.slice(7);
+
+    await this._accountService.signOut(user, jwt);
+
+    return { message: 'Signed out' };
   }
 
   @Post('password/change')
@@ -100,68 +123,72 @@ export class AccountController {
   }
 
   @Get('device')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'List all devices for the current user' })
   @ApiOkResponse({ description: 'List of devices', type: [DeviceOutputDto] })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  async listDevices(): Promise<DeviceOutputDto[]> {
-    // TODO: get user from JWT auth guard
-    const user = null as any;
-
+  async listDevices(
+    @CurrentUser() user: UserEntity
+  ): Promise<DeviceOutputDto[]> {
     const devices = await this._accountService.listDevices(user);
 
     return devices.map(DeviceOutputDto.fromEntity);
   }
 
   @Post('device/:id/distrust')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove trust from a device' })
   @ApiOkResponse({ description: 'Device distrusted', type: DeviceOutputDto })
   @ApiNotFoundResponse({ description: 'Device not found' })
-  async distrustDevice(@Param('id') id: string): Promise<DeviceOutputDto> {
-    // TODO: get user from JWT auth guard
-    const user = null as any;
-
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  async distrustDevice(
+    @CurrentUser() user: UserEntity,
+    @Param('id') id: string
+  ): Promise<DeviceOutputDto> {
     const device = await this._accountService.distrustDevice(user, id);
 
     return DeviceOutputDto.fromEntity(device);
   }
 
   @Delete('device/:id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a device' })
   @ApiOkResponse({ description: 'Device deleted' })
   @ApiNotFoundResponse({ description: 'Device not found' })
-  async deleteDevice(@Param('id') id: string): Promise<{ message: string }> {
-    // TODO: get user from JWT auth guard
-    const user = null as any;
-
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  async deleteDevice(
+    @CurrentUser() user: UserEntity,
+    @Param('id') id: string
+  ): Promise<{ message: string }> {
     await this._accountService.deleteDevice(user, id);
 
     return { message: 'Device deleted' };
   }
 
   @Get('session')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'List all active sessions for the current user' })
   @ApiOkResponse({ description: 'List of active sessions', type: [SessionOutputDto] })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  async listSessions(): Promise<SessionOutputDto[]> {
-    // TODO: get user from JWT auth guard
-    const user = null as any;
-
+  async listSessions(
+    @CurrentUser() user: UserEntity
+  ): Promise<SessionOutputDto[]> {
     const sessions = await this._accountService.listSessions(user);
 
     return sessions.map(SessionOutputDto.fromEntity);
   }
 
   @Post('session/revoke-all')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Revoke all active sessions' })
   @ApiOkResponse({ description: 'All sessions revoked' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  async revokeAllSessions(): Promise<{ message: string }> {
-    // TODO: get user from JWT auth guard
-    const user = null as any;
-
+  async revokeAllSessions(
+    @CurrentUser() user: UserEntity
+  ): Promise<{ message: string }> {
     await this._accountService.revokeAllSessions(user);
 
     return { message: 'All sessions revoked' };

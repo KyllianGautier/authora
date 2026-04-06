@@ -25,6 +25,9 @@ export class RefreshTokenEntity {
   @Column({ name: 'family', type: 'uuid' })
   family: string;
 
+  @Column({ name: 'jwt', type: 'text' })
+  jwt: string;
+
   @Column({ name: 'revoked', type: 'boolean', default: false })
   revoked: boolean;
 

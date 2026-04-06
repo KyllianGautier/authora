@@ -5,6 +5,7 @@ import { TenantEntityService } from '../entity-service/tenant-entity.service';
 import { UserEntityService } from '../entity-service/user-entity.service';
 import { PasswordEntityService } from '../entity-service/password-entity.service';
 import { UserRole } from '../../entity/user.entity';
+import { AuthoraConfigBootstrapService } from './authora-config-bootstrap.service';
 import { DEFAULT_TENANT_SLUG, TenantBootstrapService } from './tenant-bootstrap.service';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class AdminUserBootstrapService implements OnApplicationBootstrap {
 
   constructor(
     private readonly _tenantBootstrap: TenantBootstrapService,
+    private readonly _authoraConfigBootstrap: AuthoraConfigBootstrapService,
     private readonly _tenantService: TenantEntityService,
     private readonly _userEntityService: UserEntityService,
     private readonly _passwordEntityService: PasswordEntityService,
@@ -32,6 +34,7 @@ export class AdminUserBootstrapService implements OnApplicationBootstrap {
     if (this._configService.getOrThrow('ENABLE_MULTI_TENANT')) return;
 
     await this._tenantBootstrap.onApplicationBootstrap();
+    await this._authoraConfigBootstrap.onApplicationBootstrap();
 
     const defaultTenant = await this._tenantService.findBySlug(DEFAULT_TENANT_SLUG);
 
